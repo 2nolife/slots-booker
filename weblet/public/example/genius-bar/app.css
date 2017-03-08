@@ -1,0 +1,215 @@
+body {
+  background: silver;
+}
+
+h1.top {
+  font-size: 24px;
+  padding: 10px;
+  margin: 0;
+  background: #eee;
+}
+
+h1.top a {
+  font-size: 14px;
+  float: right;
+  display: block;
+  padding: 5px;
+}
+
+#page-wrapper {
+  background: white;
+  width: 800px;
+  min-height: 500px;
+  margin: 10px auto;
+  padding:10px;
+}
+
+footer {
+  background: #eee;
+  width: 800px;
+  margin: 10px auto;
+  padding: 10px;
+  height: 40px;
+}
+
+footer p:last-child {
+  float:right;
+}
+
+footer p:first-child {
+  float:left;
+}
+
+.error {
+  color: red;
+}
+
+#view-sign-in {
+  margin: 120px 250px;
+}
+
+#view-sign-in form {
+  border: 1px solid silver;
+  padding: 20px;
+  width: 300px;
+}
+
+#view-dashboard nav {
+  margin: 100px 250px;
+}
+
+#view-dashboard nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+#view-dashboard nav li {
+  border: 1px solid silver;
+  margin: 10px;
+  padding: 0;
+  list-style-type: none;
+}
+
+#view-dashboard nav a {
+  display: block;
+  padding: 10px;
+}
+
+
+#view-add-reservation .select-store nav {
+  margin: 70px 250px;
+}
+
+#view-add-reservation .select-store nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+#view-add-reservation .select-store nav li {
+  border: 1px solid silver;
+  margin: 10px;
+  padding: 0;
+  list-style-type: none;
+}
+
+#view-add-reservation .select-store nav a {
+  display: block;
+  padding: 10px;
+}
+
+#view-add-reservation .select-store h4 {
+  text-align: center;
+}
+
+
+#view-add-reservation .select-slot nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+#view-add-reservation .select-slot nav li {
+  border: 1px solid silver;
+  margin: 10px;
+  padding: 0;
+  list-style-type: none;
+}
+
+#view-add-reservation .select-slot nav li p,
+#view-add-reservation .select-slot nav a {
+  display: block;
+  padding: 10px;
+  margin: 0;
+  text-align: center;
+}
+
+#view-add-reservation .select-slot nav li p.late {
+  color: silver;
+}
+
+#view-add-reservation .select-slot nav li p.booked {
+  background: repeating-linear-gradient(45deg, #ddd, #ddd 10px, #fff 10px, #fff 20px);
+}
+
+#view-add-reservation .select-slot nav>p {
+  text-align: center;
+}
+
+#view-add-reservation .select-slot nav>p:first-child {
+  font-size: small;
+  margin-bottom: 0;
+}
+
+#view-add-reservation .select-slot h4 {
+  text-align: center;
+}
+
+#view-add-reservation .select-slot h4 a {
+  margin-left: 20px;
+}
+
+
+#view-add-reservation .book-slot p,
+#view-add-reservation .book-slot h3,
+#view-add-reservation .book-slot h4 {
+  text-align: center;
+}
+
+#view-add-reservation .book-slot h3 {
+  padding-top: 30px;
+}
+
+
+#view-my-reservations .select-booking h4 {
+  text-align: center;
+  margin-left: 20px;
+}
+
+#view-my-reservations .select-booking h4 a {
+  margin-left: 20px;
+}
+
+#view-my-reservations .select-booking nav {
+  margin: 50px 230px;
+}
+
+#view-my-reservations .select-booking nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+#view-my-reservations .select-booking nav li {
+  border: 1px solid silver;
+  margin: 10px;
+  padding: 0;
+  list-style-type: none;
+}
+
+#view-my-reservations .select-booking nav p,
+#view-my-reservations .select-booking nav a {
+  display: block;
+  padding: 10px;
+  margin: 0;
+  text-align: left;
+}
+
+#view-my-reservations .select-booking nav p span,
+#view-my-reservations .select-booking nav a span {
+  float: right;
+}
+
+#view-my-reservations .select-booking nav p.late {
+  color: silver;
+}
+
+#view-my-reservations .booking-info h4 {
+  text-align: center;
+}
+
+#view-my-reservations .booking-info div {
+  padding-top: 30px;
+  text-align: center;
+}
+
+#view-my-reservations .booking-info button {
+  margin-top: 20px;
+}

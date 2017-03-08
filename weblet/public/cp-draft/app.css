@@ -1,0 +1,7 @@
+#page-wrapper {
+  padding-top: 10px !important;
+}
+
+.ui-datepicker {
+  z-index:1051 !important;
+}

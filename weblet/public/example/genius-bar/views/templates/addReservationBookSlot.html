@@ -1,0 +1,11 @@
+<div class="book-slot">
+
+  <h4 class="alert alert-warning" ng-show="status == 0">Booking, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 1">Booking complete</h4>
+  <h4 class="alert alert-danger" ng-show="status == 2">Booking failed, please try with another store or date</h4>
+
+  <h3>Reservation details</h3>
+  <p>{{space.name}}</p>
+  <p>{{mySlot.shortDate}} at {{mySlot.timeFrom | numberAsTime}}</p>
+
+</div>

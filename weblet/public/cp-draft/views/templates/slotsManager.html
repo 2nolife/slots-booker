@@ -1,0 +1,20 @@
+<div class="slots-manager panel panel-default" ng-show="editedSpace">
+
+  <ng-include src="'views/templates/slotsManagerSlots.html'" include-replace />
+
+  <ng-include src="'views/templates/slotsManagerSelectedSlot.html'" include-replace />
+
+  <ng-include src="'views/templates/slotsManagerBookings.html'" include-replace />
+
+  <ng-include src="'views/templates/slotsManagerSelectedBooking.html'" include-replace />
+
+  <ng-include src="'views/templates/slotsManagerAddBooking.html'" include-replace />
+
+  <user-finder-dialog trigger="userFinderTrigger" on-submit="onSelectUser(user)"/>
+
+  <slots-manager-add-slot-dialog slot="newSlot.source" on-submit="dialogOptions.onSubmit()"/>
+
+  <spaces-manager-edit-price-dialog price="editedPrice.source" trigger="editedPrice" dialog-title="{{dialogOptions.title}}"
+                                    on-submit="dialogOptions.onSubmit()" on-delete="dialogOptions.onDelete()" has-delete="{{dialogOptions.hasDelete}}"/>
+
+</div>

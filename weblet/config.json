@@ -1,0 +1,15 @@
+{
+
+  "port": "8080",
+
+  "log_requests": true,
+
+  "proxy": {
+    "auth":     "http://localhost:8022",
+    "profiles": "http://localhost:8021",
+    "places":   "http://localhost:8024",
+    "slots":    "http://localhost:8023",
+    "booking":  "http://localhost:8025"
+  }
+
+}

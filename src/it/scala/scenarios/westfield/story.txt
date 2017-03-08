@@ -1,0 +1,8 @@
+Vue Westfield London
+https://uk.westfield.com/london/entertainment/cinema
+
+The cinema has 4 screens:
+  Screen 1: 30 ordinary seats,  6 VIP seats, 0 wheelchair spaces.
+  Screen 2: 40 ordinary seats,  8 VIP seats, 1 wheelchair spaces.
+  Screen 3: 50 ordinary seats, 10 VIP seats, 2 wheelchair spaces.
+  Screen 4: 60 ordinary seats, 12 VIP seats, 3 wheelchair spaces.

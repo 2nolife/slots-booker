@@ -1,0 +1,27 @@
+<div class="select-slot">
+
+  <h4>
+    Select time and day of your visit
+    <a href ng-click="refreshSlots()"><i class="fa fa-refresh {{refreshSlotsSpin ? 'fa-spin' : ''}}"></i></a>
+  </h4>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-2" ng-repeat="ds in mySpace.daySlots">
+
+        <nav>
+          <p>{{ds.short}}</p>
+          <p>{{ds.day}}</p>
+          <ul>
+            <li ng-repeat="slot in ds.slots">
+              <a href ng-click="submitSlot(slot)" ng-show="slot.status == 'free'">{{slot.timeFrom | numberAsTime}}</a>
+              <p ng-show="slot.status != 'free'" class="{{slot.status}}">{{slot.timeFrom | numberAsTime}}</p>
+            </li>
+          </ul>
+        </nav>
+
+      </div>
+    </div>
+  </div>
+
+</div>

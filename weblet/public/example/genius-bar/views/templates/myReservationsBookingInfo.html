@@ -1,0 +1,15 @@
+<div class="booking-info">
+
+  <h4 class="alert alert-warning" ng-show="status == 1">Reservation cancelled</h4>
+  <h4 class="alert alert-danger" ng-show="status == 2">Operation failed, please try again later</h4>
+
+  <div>
+    <h3>Reservation details</h3>
+
+    <p>{{space.name}}</p>
+    <p>{{mySlot.shortDate}} at {{mySlot.timeFrom | numberAsTime}}</p>
+
+    <button class="btn btn-danger" ng-click="cancelBooking()" ng-show="status != 1">Cancel reservation</button>
+  </div>
+
+</div>

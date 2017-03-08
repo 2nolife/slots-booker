@@ -1,0 +1,124 @@
+========================================
+Slots Booker - A flexible booking system
+Inception: 27 Aug 2016 by Sergei Abramov
+========================================
+
+
+Model diagram
+=============
+  Profile
+  |
+  +-- Properties (username, email, etc)
+  +-- Metadata (arbitrary json) - deprecated due to attributes
+  +-- Attributes
+
+  Token
+  |
+  +-- Properties (token, expires, etc)
+
+  Place
+  |
+  +-- Address
+  +-- Properties (name, address, etc)
+  +-- Attributes
+  |
+  +-- Space (array of Spaces)
+  +-- Space  <--+ (same as)
+     |          |
+     +---- Space (array of inner Spaces)
+     +---- Space
+     |     |
+     |     +-- Properties (name etc)
+     |     +-- Attributes
+     |
+     +-- Price (array of Prices)
+     +-- Price
+     |   |
+     |   +-- Properties (name, amount, etc)
+     |
+     +-- Metadata (arbitrary json) - deprecated due to attributes
+
+  Slot (linked to a space by space_id)
+  |
+  +-- Properties (name, etc)
+  +-- Attributes
+  |
+  +-- Price (array of Prices)
+  +-- Price
+  |   |
+  |   +-- Properties (name, amount, etc)
+  |
+  +-- Booking (array of Bookings)
+  +-- Booking
+  |   |
+  |   +-- Properties (status, etc)
+  |   +-- Attributes
+  |
+  +-- Booked
+
+  * Booking status property
+    0 - inactive/cancelled
+    1 - active
+    2 - is being booked
+
+  * book_status property
+    0 - bookable
+    1 - booked
+    2 - is being booked
+    3 - is being released (goes to bookable)
+
+  Booked (booking transaction)
+  |
+  +-- Properties (deal, status, etc)
+  +-- booking_ids (array of booking IDs)
+  +-- slot_ids (array of slots IDs)
+
+  * deal property
+    true  - package deal or discount was applied, bookings may only be cancelled all at once
+    false - individual bookings may be cancelled without affecting the others
+
+  * status property
+    1 - is being booked
+    2 - booked
+    3 - conflict/failed
+
+Attributes
+==========
+  1. keys and permissions defined through configuration
+  2. permissions:
+        r - readable by object owner
+        w - writeable by object owner
+        p - public, readable by anyone
+        o - once set cannot be overwritten (not impl, needed?)
+        eg. first_name rwp, cancel_reason rwo
+  3. admin or system can add/read/write/delete any attribute
+  4. value validation (regex) may be added later
+  5. Each object should have Attributes with external_key to link to the outside world
+
+
+Booking process (successful flow)
+=================================
+   o
+  -|-                 [Booking MS]            [Slots MS]
+  / \                       |                      |
+   |   POST slots A B       |   POST  booked       |
+   | ---------------------> | -------------------> | (create Booked)      POST  /slots/booked               (status: 1)
+   |                        |   PATCH slot A       |
+   |                        | -------------------> | (reserve Slot A)     PATCH /slots/{id}/hold            (book_status: 2)
+   |                        |   PATCH slot B       |
+   |                        | -------------------> | (reserve Slot B)     PATCH /slots/{id}/hold            (book_status: 2)
+   |                        |   POST  booking      |
+   |                        | -------------------> | (create Booking A)   POST  /slots/{id}/bookings        (status: 2)
+   |                        |   POST  booking      |
+   |                        | -------------------> | (create Booking B)   POST  /slots/{id}/bookings        (status: 2)
+   |                        |   PATCH booked       |
+   |                        | -------------------> | (update Booked)      PATCH /slots/booked/{id}          (status: 2)
+   |                        |   PATCH slot A       |
+   |                        | -------------------> | (confirm Slot A)     PATCH /slots/{id}/hold            (book_status: 1)
+   |                        |   PATCH slot B       |
+   |                        | -------------------> | (confirm Slot B)     PATCH /slots/{id}/hold            (book_status: 1)
+   |                        |   PATCH booking A    |
+   |                        | -------------------> | (update Booking A)   PATCH /slots/{id}/bookings/{id}   (status: 1)
+   |                        |   PATCH booking B    |
+   |   201                  | -------------------> | (update Booking B)   PATCH /slots/{id}/bookings/{id}   (status: 1)
+   | <--------------------- |                      |

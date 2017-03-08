@@ -1,0 +1,30 @@
+<div class="panel-heading" ng-show="newBooking">Add a New Booking</div>
+<div class="panel-body item-data" ng-show="newBooking">
+
+  <button class="btn btn-xs btn-danger pull-right delete-item" ng-click="cancelNewBooking()"><i class="fa fa-times"></i> Cancel</button>
+  <div class="btn-group pull-right">
+    <button class="btn btn-xs btn-success" ng-click="submitNewBooking()"><i class="fa fa-check fa-fw"></i> Apply</button>
+  </div>
+
+
+  <form class="form-horizontal">
+    <fieldset>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Book for</label>
+        <div class="input-group col-sm-8">
+          <span class="input-group-btn">
+            <button class="btn" ng-click="showBookForUserFragment()"><i class="fa fa-search fa-lg"></i></button>
+          </span>
+          <p class="form-control">{{newBooking.user.fullName}}</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Attributes</label>
+        <div class="col-sm-9">
+          <textarea class="form-control" ng-model="newBooking.attributes"></textarea>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+
+</div>

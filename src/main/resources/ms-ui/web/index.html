@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="app">
+<head>
+  <meta charset="UTF-8">
+  <title>{{bookTitle || 'Slots Booker'}}</title>
+
+  <link type="text/css" rel="stylesheet" href="app.css"/>
+  <link type="text/css" rel="stylesheet" href="pages/dummy.css"/>
+  <link type="text/css" rel="stylesheet" href="pages/login.css"/>
+
+</head>
+<body>
+
+<div data-ng-view></div>
+
+<script src="libs/angular.min.js"></script>
+<script src="libs/angular-resource.min.js"></script>
+<script src="libs/angular-route.min.js"></script>
+<script src="app.js"></script>
+<script src="pages/dummy.js"></script>
+<script src="pages/login.js"></script>
+
+</body>
+</html>

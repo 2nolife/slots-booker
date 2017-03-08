@@ -1,0 +1,49 @@
+.spaces-manager-wrapper .panel-title {
+	cursor: pointer;
+}
+
+.spaces-manager-wrapper .panel-collapse {
+	padding: 10px 0 10px 0;
+}
+
+.spaces-manager .root-spaces h5 {
+  background: #FFEFD5;
+  padding: 0px;
+  margin: 1px;
+  height: 25px;
+}
+
+.spaces-manager .root-spaces h5 span {
+  padding: 5px;
+  display: inline-block;
+}
+
+.spaces-manager .root-spaces h5 button {
+  height: inherit;
+}
+
+.spaces-manager .root-spaces a {
+  background: #fff5e6;
+  padding: 5px;
+  margin: 1px;
+  display: block;
+}
+
+.spaces-manager .item-data .breadcrumb {
+  margin-bottom: 10px;
+}
+
+.spaces-manager .item-data .delete-item {
+  margin-left: 25px;
+}
+
+.spaces-manager .item-data form {
+  clear: both;
+}
+
+.spaces-manager .item-data form .input-group-addon:first-child,
+.spaces-manager .item-data form .input-group-addon.new-group {
+  min-width: 150px;
+  text-align: left;
+  font-weight: bold;
+}

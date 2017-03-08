@@ -1,0 +1,54 @@
+<div class="spaces-manager container-fluid">
+  <div class="row">
+    <div class="col-md-3 root-spaces">
+
+      <h5><span>Root spaces</span> <button class="btn btn-xs pull-right" ng-click="showAddRootSpaceFragment()"><i class="fa fa-plus fa-fw"></i> Add new</button></h5>
+      <a href ng-repeat="space in place.spaces" ng-click="showEditSpaceFragment(space.id)">{{space.name}}</a>
+
+    </div>
+    <div class="col-md-9">
+
+      <p ng-show="!editedSpace">Select a space from the list or add a new one</p>
+
+      <div ng-show="editedSpace" class="item-data">
+        <ul class="breadcrumb">
+          <li ng-repeat="parentSpace in editedSpace.parentSpaces"><a href ng-click="showEditSpaceFragment(parentSpace.id)">{{parentSpace.name}}</a></li>
+          <li>{{editedSpace.name}}</li>
+        </ul>
+
+        <button class="btn btn-xs btn-danger pull-right delete-item" ng-click="deleteEditedSpace()"><i class="fa fa-times"></i> Delete</button>
+        <div class="btn-group pull-right">
+          <button class="btn btn-xs btn-success" ng-click="submitEditedSpace()"><i class="fa fa-check fa-fw"></i> Apply</button>
+          <button class="btn btn-xs" ng-click="showAddSpaceFragment()"><i class="fa fa-plus fa-fw"></i> New space</button>
+          <button class="btn btn-xs" ng-click="showAddPriceFragment()"><i class="fa fa-plus fa-fw"></i> New price</button>
+        </div>
+
+        <form class="form-horizontal">
+          <fieldset>
+            <div class="input-group">
+              <span class="input-group-addon">Name</span>
+              <input class="form-control" type="text" ng-model="editedSpace.name" />
+            </div>
+          </fieldset>
+        </form>
+
+        <div class="col-md-6">
+          <h5 ng-show="editedSpace.prices.length > 0">Prices</h5>
+          <a href class="col-md-2" ng-repeat="price in editedSpace.prices" ng-click="showEditPriceFragment(price.id)">{{price.amount | numberX100 : true }}</a>
+        </div>
+        <div class="col-md-6" ng-show="editedSpace.spaces.length > 0">
+          <h5>Sub-spaces</h5>
+          <a href class="col-md-3" ng-repeat="space in editedSpace.spaces" ng-click="showEditSpaceFragment(space.id)">{{space.name}}</a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <spaces-manager-edit-price-dialog price="editedPrice.source" trigger="editedPrice" dialog-title="{{dialogOptions.title}}"
+                                    on-submit="dialogOptions.onSubmit()" on-delete="dialogOptions.onDelete()" has-delete="{{dialogOptions.hasDelete}}"/>
+
+  <spaces-manager-add-space-dialog space="newSpace.source" on-submit="dialogOptions.onSubmit()"/>
+
+</div>

@@ -1,0 +1,15 @@
+<div id="view-add-reservation">
+
+  <h1 class="top">
+    Add Reservation
+    <a href ng-click="showSelectStoreFragment()" ng-show="mySpace && !slotBooked"><i class="fa fa-fw fa-long-arrow-left"></i>Select a store</a>
+    <a href="#/dashboard"><i class="fa fa-fw fa-long-arrow-left"></i>Dashboard</a>
+  </h1>
+
+  <add-reservation-select-store place="myPlace" on-submit="onSubmitSpace(space)" ng-show="!mySpace"/>
+
+  <add-reservation-select-slot space="mySpace" on-submit="onSubmitSlot(slot)" ng-show="mySpace && !mySlot"/>
+
+  <add-reservation-book-slot place="myPlace" space="mySpace" slot="mySlot" on-success="onBookedSlot()" ng-show="mySlot"/>
+
+</div>

@@ -1,0 +1,13 @@
+<div id="view-my-reservations">
+
+  <h1 class="top">
+    My Reservations
+    <a href ng-click="showMyReservationsFragment()" ng-show="mySlot && !bookingCancelled"><i class="fa fa-fw fa-long-arrow-left"></i>My reservations</a>
+    <a href="#/dashboard"><i class="fa fa-fw fa-long-arrow-left"></i>Dashboard</a>
+  </h1>
+
+  <my-reservations-select-booking place="myPlace" on-submit="onSubmitBookedSlot(space, slot)" ng-show="!mySlot"/>
+
+  <my-reservations-booking-info place="myPlace" space="mySpace" slot="mySlot" on-cancel="onCancelBooking()" ng-show="mySlot"/>
+
+</div>

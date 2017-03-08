@@ -1,0 +1,27 @@
+.slots-manager table .slot-date span {
+  width: 100px;
+  display: inline-block;
+}
+
+.slots-manager .no-slots-found {
+  text-align: center;
+}
+
+.slots-manager .no-bookings-found {
+  text-align: center;
+}
+
+.slots-manager .item-data .delete-item {
+  margin-left: 25px;
+}
+
+.slots-manager .item-data form {
+  clear: both;
+}
+
+.slots-manager .item-data form .input-group-addon:first-child,
+.slots-manager .item-data form .input-group-addon.new-group {
+  min-width: 150px;
+  text-align: left;
+  font-weight: bold;
+}

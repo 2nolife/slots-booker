@@ -1,0 +1,57 @@
+<div randomScopeID class="modal fade user-finder-dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <button class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Find a User</h4>
+      </div>
+
+      <div class="modal-body">
+        <form class="form-horizontal">
+          <fieldset>
+            <div class="form-group">
+              <label class="control-label col-sm-2">Search</label>
+              <div class="col-sm-9">
+                <input class="form-control" type="text" ng-model="searchValue" />
+              </div>
+              <button class="btn" ng-click="searchUser()"><i class="fa fa-search fa-lg"></i></button>
+            </div>
+          </fieldset>
+        </form>
+
+        <table class="table table-striped table-hover" ng-show="foundUsers.length > 0">
+          <thead>
+          <tr>
+            <th></th>
+            <th>First name</th>
+            <th>Last name</th>
+            <th>Username</th>
+          </tr>
+          </thead>
+          <tbody>
+
+          <tr ng-repeat="user in foundUsers">
+            <td><input type="radio" name="selectedUser" ng-click="selectUserById(user.profile_id)"/></td>
+            <td>{{user.attributes.first_name}}</td>
+            <td>{{user.attributes.last_name}}</td>
+            <td>{{user.username}}</td>
+          </tr>
+
+          </tbody>
+        </table>
+
+        <p ng-show="selectedUser != null">
+          TODO User details
+        </p>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-success" data-dismiss="modal" ng-click="submitSelectedUser()"><i class="fa fa-check fa-fw"></i> Submit</button>
+        <button class="btn" data-dismiss="modal"><i class="fa fa-ban fa-fw"></i> Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>

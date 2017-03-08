@@ -1,0 +1,17 @@
+<div class="select-booking">
+
+  <h4>
+    Select your reservation
+    <a href ng-click="refreshBookedSlots()"><i class="fa fa-refresh {{refreshSlotsSpin ? 'fa-spin' : ''}}"></i></a>
+  </h4>
+
+  <nav>
+    <ul>
+      <li ng-repeat="slot in bookedSlots | orderBy: ['dateFrom', 'timeFrom']">
+        <a ng-show="slot.status != 'late'" href ng-click="submitSlot(slot)">{{slot.shortDate}} <span>{{slot.parentSpace.name}}</span></a>
+        <p ng-show="slot.status == 'late'" class="{{slot.status}}">{{slot.shortDate}} <span>{{slot.parentSpace.name}}</span></p>
+      </li>
+    </ul>
+  </nav>
+
+</div>

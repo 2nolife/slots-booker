@@ -1,0 +1,15 @@
+{
+  "url": "https://film.list.co.uk/cinema/43109-vue-westfield-london",
+  "email": "westfield@example.org",
+  "contact_number": "08712240240",
+  "address":
+  {
+    "number": "",
+    "line1": "Westfield Shopping Centre",
+    "line2": "White City",
+    "line3": "",
+    "postcode": "W12 7GF",
+    "town": "London",
+    "country": "UK"
+  }
+}
