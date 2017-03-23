@@ -3,9 +3,8 @@ package test
 
 import akka.http.scaladsl.model.headers.Authorization
 import org.apache.http.HttpStatus._
-import org.bson.types.ObjectId
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FlatSpec, Matchers}
-import com.coldcore.slotsbooker.ms.places.vo
+import ms.places.vo
 import spray.json.{JsObject, JsString}
 
 abstract class BaseMsPlacesSpec extends FlatSpec with BeforeAndAfterAll with BeforeAndAfter with Matchers with HelperObjects {
@@ -394,7 +393,7 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
       val (space_A, space_A1, space_A2) = (spacesB.head, spacesB.head.spaces.get(0), spacesB.head.spaces.get(1))
       (space_A.name.get, space_A1.name.get, space_A2.name.get) shouldBe ("Space A", "Space A1", "Space A2")
       val (price_A, price_A1, price_A2) = (space_A.prices.get.head, space_A1.prices.get.head, space_A2.prices.get.head)
-      (price_A.name, price_A1.name, price_A1.name) shouldBe (None, None, None)
+      (price_A.name, price_A1.name, price_A2.name) shouldBe (None, None, None)
     }
   }
 
@@ -426,9 +425,9 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
 
     {
       val (space_A1, space_A2) = (spaceB.spaces.get(0), spaceB.spaces.get(1))
-      (space_A1.name, space_A1.name) shouldBe (None, None)
+      (space_A1.name, space_A2.name) shouldBe (None, None)
       val (price_A, prices_A1, prices_A2) = (spaceB.prices.get.head, space_A1.prices, space_A2.prices)
-      (price_A.name, prices_A1, prices_A1) shouldBe (None, None, None)
+      (price_A.name, prices_A1, prices_A2) shouldBe (None, None, None)
     }
 
     val urlC = s"$baseurl?deep_prices=false" // all spaces with shallow prices
@@ -440,7 +439,7 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
       val (space_A1, space_A2) = (spaceC.spaces.get(0), spaceC.spaces.get(1))
       (space_A1.name.get, space_A2.name.get) shouldBe ("Space A1", "Space A2")
       val (price_A, price_A1, price_A2) = (spaceC.prices.get.head, space_A1.prices.get.head, space_A2.prices.get.head)
-      (price_A.name, price_A1.name, price_A1.name) shouldBe (None, None, None)
+      (price_A.name, price_A1.name, price_A2.name) shouldBe (None, None, None)
     }
   }
 

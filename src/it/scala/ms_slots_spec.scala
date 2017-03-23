@@ -402,7 +402,7 @@ class MsSlotsHoldSpec extends BaseMsSlotsSpec {
     When patchTo url entity json withHeaders systemTokenHeader expect() code SC_OK
   }
 
-  "PATCH to /slots/{id}/hold" should "release a booked slot for that user" in { //todo implement "deal" logic
+  "PATCH to /slots/{id}/hold" should "release a booked slot for that user" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)
     val bookedId = mongoCreateBooked(placeId)

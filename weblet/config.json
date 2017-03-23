@@ -9,7 +9,8 @@
     "profiles": "http://localhost:8021",
     "places":   "http://localhost:8024",
     "slots":    "http://localhost:8023",
-    "booking":  "http://localhost:8025"
+    "booking":  "http://localhost:8025",
+    "payments": "http://localhost:8026"
   }
 
 }

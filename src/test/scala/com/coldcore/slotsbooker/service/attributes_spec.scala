@@ -17,7 +17,7 @@ class AttributesUtilSpec extends FlatSpec with MockitoSugar with Matchers with B
 
   val (attrA, attrB, attrC) = (
     Attributes(JsObject("a" -> JsString("a"))),
-    Attributes(JsObject("b" -> JsNumber("1"))),
+    Attributes(JsObject("b" -> JsNumber(1))),
     Attributes(JsObject("c" -> JsObject())))
 
   var classA: MyClassA = _

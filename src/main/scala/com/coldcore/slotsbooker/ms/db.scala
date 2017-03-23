@@ -75,4 +75,13 @@ trait MongoQueries {
     byAttributesQuery ++ notDeleted
   }
 
+  def entryCreated(id: String, collection: MongoCollection) {
+    collection
+      .update(finderById(id), $currentDate("entry.created" -> "date"))
+    entryUpdated(id, collection)
+  }
+
+  def entryUpdated(id: String, collection: MongoCollection) =
+    collection
+      .update(finderById(id), $currentDate("entry.updated" -> "date"))
 }

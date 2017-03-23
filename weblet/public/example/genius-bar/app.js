@@ -19,6 +19,7 @@ app.config(function($routeProvider, $httpProvider) {
 
 app.constant('config', {
 
+  client_key: 'example',
   place_external_key: 'genius-bar'
 
 })

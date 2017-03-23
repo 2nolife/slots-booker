@@ -7,7 +7,7 @@ app.service('placesService', function(apiPlacesService, notifyService, config) {
 
   service.loadPlaces = function(/*fn*/ callback, /*bool*/ force) {
     if (force || !service.cachedPlaces) {
-      apiPlacesService.findPlaces({ attributes: [{ 'external_key': config.place_external_key }] }, function(/*[Place]*/ places) {
+      apiPlacesService.findPlaces({ attributes: [{ 'client_key': config.client_key, 'external_key': config.place_external_key }] }, function(/*[Place]*/ places) {
 
           service.cachedPlaces = places
           callback(service.cachedPlaces)

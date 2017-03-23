@@ -1,6 +1,8 @@
 package com.coldcore.slotsbooker
 package test
 
+import java.util.Date
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.Authorization
 import ms.http.RestClient
@@ -21,7 +23,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
 /** Common trait to include into the integration tests. */
-trait HelperObjects extends MongoOps with SystemStart with RestClientOps with RestClientDSL with FilesReader {
+trait HelperObjects extends MongoOps with SystemStart with RestClientOps with RestClientDSL with RestAssert with FilesReader {
 
   implicit def string2jso(s: String): JsObject = s.parseJson.asJsObject
 
@@ -76,6 +78,7 @@ trait SystemStart extends BaseURLs {
     slots.start.run
     places.start.run
     booking.start.run
+    payments.start.run
 
     // wait till all micro services start
     val restClient = new RestClient
@@ -105,9 +108,10 @@ trait BaseURLs {
   val placesBaseUrl = "http://localhost:8024"
   val slotsBaseUrl = "http://localhost:8023"
   val bookingBaseUrl = "http://localhost:8025"
+  val paymentsBaseUrl = "http://localhost:8026"
 
   val baseUrls =
-    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: Nil
+    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: paymentsBaseUrl :: Nil
 }
 
 /** MongoDB client and operations. */
@@ -135,6 +139,12 @@ trait MongoTables {
   lazy val mongoBookings: MongoCollection = mongoDB(slots.Constants.MS+"-bookings")
   lazy val mongoBooked: MongoCollection = mongoDB(slots.Constants.MS+"-booked")
   lazy val mongoSlotPrices: MongoCollection = mongoDB(slots.Constants.MS+"-prices")
+
+  lazy val mongoBalances: MongoCollection = mongoDB(payments.Constants.MS+"-balances")
+
+  lazy val mongoQuotes: MongoCollection = mongoDB(booking.Constants.MS+"-quotes")
+  lazy val mongoRefunds: MongoCollection = mongoDB(booking.Constants.MS+"-refunds")
+  lazy val mongoReferences: MongoCollection = mongoDB(booking.Constants.MS+"-references")
 }
 
 /** MongoDB users setup. */
@@ -355,6 +365,135 @@ trait MongoCreate {
     price.idString
   }
 
+  def mongoCreateBalance(placeId: String, amount: Int, currency: String = "GBP", username: String = "testuser") = {
+    val balance = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "profile_id" -> mongoProfileId(username),
+      "credit" -> MongoDBList(MongoDBObject(
+        "amount" -> amount,
+        "currency" -> currency
+      )))
+    mongoBalances
+      .insert(balance)
+  }
+
+  def mongoCreateFreeRefund(placeId: String, slotsIds: Seq[String], quoteIds: Seq[String], status: Int = 0, username: String = "testuser"): String = {
+    val refund = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "profile_id" -> mongoProfileId(username),
+      "status" -> status,
+      "prices" -> slotsIds.map(slotId => MongoDBObject("slot_id" -> slotId)),
+      "quote_ids" -> quoteIds)
+
+    mongoRefunds
+      .insert(refund)
+
+    val refundId = refund.idString
+
+    entryCreated(refundId, mongoRefunds)
+
+    refundId
+  }
+
+  def mongoCreatePaidRefund(placeId: String, slotsPrices: Seq[(String, Int)],
+                            quoteIds: Seq[String] = Nil, status: Int = 0, username: String = "testuser"): String = {
+    val refundId = mongoCreateFreeRefund(placeId, Seq.empty, quoteIds, status, username)
+    mongoRefunds
+      .findAndModify(
+        finderById(refundId),
+        $set(
+          "prices" -> slotsPrices.map { case (slotId, amount) => MongoDBObject(
+            "slot_id" -> slotId,
+            "amount" -> amount,
+            "price_id" -> randomId,
+            "currency" -> "GBP",
+            "name" -> "Price A")
+          },
+          "amount" -> slotsPrices.map(_._2).sum,
+          "currency" -> "GBP"
+        )
+      )
+
+    refundId
+  }
+
+  def mongoCreateFreeQuote(placeId: String, slotsIds: Seq[String] = Nil, status: Int = 0, username: String = "testuser"): String = {
+    val quote = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "profile_id" -> mongoProfileId(username),
+      "status" -> status,
+      "prices" -> slotsIds.map(slotId => MongoDBObject("slot_id" -> slotId)))
+
+    mongoQuotes
+      .insert(quote)
+
+    val quoteId = quote.idString
+
+    entryCreated(quoteId, mongoQuotes)
+
+    quoteId
+  }
+
+  def mongoCreatePaidQuote(placeId: String, slotsPrices: Seq[(String, Int)],
+                           status: Int = 0, username: String = "testuser"): String = {
+    val quoteId = mongoCreateFreeQuote(placeId, Seq.empty, status, username)
+    mongoQuotes
+      .findAndModify(
+        finderById(quoteId),
+        $set(
+          "prices" -> slotsPrices.map { case (slotId, amount) => MongoDBObject(
+            "slot_id" -> slotId,
+            "amount" -> amount,
+            "price_id" -> randomId,
+            "currency" -> "GBP",
+            "name" -> "Price A")
+          },
+          "amount" -> slotsPrices.map(_._2).sum,
+          "currency" -> "GBP"
+        )
+      )
+
+    quoteId
+  }
+
+  def mongoCreateReference(placeId: String, bookedIds: Seq[String], quoteId: Option[String] = None, refundId: Option[String] = None, refSfx: String = "1", username: String = "testuser"): String = {
+    val reference = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "ref" -> s"${username.capitalize}_$refSfx",
+      "profile_id" -> mongoProfileId(username),
+      "booked_ids" -> MongoDBList(bookedIds: _*)
+    )
+
+    mongoReferences
+      .insert(reference)
+
+    val referenceId = reference.idString
+
+    Map(
+      "quote_id" -> quoteId,
+      "refund_id" -> refundId
+    ).foreach { case (key, value) =>
+      update(finderById(referenceId), mongoReferences, key, value)
+    }
+
+    referenceId
+  }
+
+  def mongoEntryDates(id: String, collection: MongoCollection,
+                      created: Option[Date] = None, updated: Option[Date] = None, inflight: Option[Date] = None) {
+    Map(
+      "entry.created" -> created,
+      "entry.updated" -> updated,
+      "entry.inflight" -> inflight
+    ).foreach { case (key, value) =>
+      update(finderById(id), collection, key, value)
+    }
+  }
+
 }
 
 /** Verify objects in MongoDB */
@@ -371,7 +510,7 @@ trait MongoVerify {
         .find(
           ("profile_id" $eq profileId) ++
           ("status" $eq bookedStatus) ++
-          ("slot_ids" $in Seq(slotId)))
+          ("slot_ids" $eq slotId))
         .toSeq match {
         case Seq(x) => x
         case Seq() => fail(s"Booked record not found")
@@ -413,6 +552,7 @@ trait MongoVerify {
     if (placeId != slotData.as[String]("place_id") ||
         placeId != bookingData.as[String]("place_id"))
       fail("Booked record Place mismatch")
+
   }
 
   def mongoVerifyActiveBookingIntegrity(slotId: String, username: String = "testuser") =
@@ -444,7 +584,11 @@ trait MongoCleaner {
         mongoSlotPrices ::
         mongoSlots ::
         mongoPrices ::
-        mongoSpaces  ::
+        mongoSpaces ::
+        mongoBalances ::
+        mongoQuotes ::
+        mongoRefunds ::
+        mongoReferences ::
         Nil
       ).foreach(_.remove("place_id" $eq placeId))
 
@@ -545,4 +689,15 @@ trait RestClientDSL {
     def withApiCode(value: String) = withHeader("X-Api-Code", value)
   }
 
+}
+
+trait RestAssert {
+  self: RestClientDSL =>
+
+  private type RestDslVerbs = { def withHeaders(headers: Seq[(String,String)]): Headers }
+
+  def assert401_invalidToken(verbs: RestDslVerbs) {
+    val headers = Seq((Authorization.name, s"Bearer ABCDEF"))
+    verbs withHeaders headers expect() code SC_UNAUTHORIZED
+  }
 }

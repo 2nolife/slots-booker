@@ -28,7 +28,7 @@ object start {
     slots.start.run
     places.start.run
     booking.start.run
-    ui.start.run
+    payments.start.run
 
     Await.result(system.whenTerminated, Duration.Inf)
   }

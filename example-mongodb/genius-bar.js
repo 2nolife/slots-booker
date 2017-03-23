@@ -114,7 +114,7 @@ function addPlace() {
     {
       profile_id: _profileIds['support'],
       name: 'Genius Bar Support',
-      attributes: { external_key: 'genius-bar' }
+      attributes: { client_key: 'example', external_key: 'genius-bar' }
     },
     function(err, item) {
       assert.equal(null, err)

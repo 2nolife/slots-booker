@@ -23,8 +23,8 @@ Model diagram
   +-- Attributes
   |
   +-- Space (array of Spaces)
-  +-- Space  <--+ (same as)
-     |          |
+  +-- Space <--+ (same as)
+     |         |
      +---- Space (array of inner Spaces)
      +---- Space
      |     |
@@ -67,20 +67,54 @@ Model diagram
     2 - is being booked
     3 - is being released (goes to bookable)
 
-  Booked (booking transaction)
+  Booked (maps slots with bookings)
   |
-  +-- Properties (deal, status, etc)
+  +-- Properties (status, etc)
   +-- booking_ids (array of booking IDs)
   +-- slot_ids (array of slots IDs)
-
-  * deal property
-    true  - package deal or discount was applied, bookings may only be cancelled all at once
-    false - individual bookings may be cancelled without affecting the others
 
   * status property
     1 - is being booked
     2 - booked
     3 - conflict/failed
+
+  Quote
+  |
+  +-- Properties (deal, status, etc)
+  +-- SlotPrice (array of SlotPrices)
+  +-- SlotPrice
+      |
+      +-- Properties (name, amount, etc)
+
+  * status property
+    0 - inactive
+    1 - complete
+    2 - pending payment (from user)
+    3 - not paid
+
+  * deal property
+    true  - package deal or discount was applied, bookings may only be cancelled all at once
+    false - individual bookings may be cancelled without affecting the others
+
+  Refund
+  |
+  +-- Properties (status, etc)
+  +-- SlotPrice (array of SlotPrices)
+  +-- SlotPrice
+      |
+      +-- Properties (name, amount, etc)
+
+  * status property
+    0 - inactive
+    1 - complete
+    2 - pending payment (to user)
+
+  Reference (maps quotes and refunds to bookings)
+  |
+  +-- Properties (ref, etc)
+  +-- Quote  \ one of the other
+  +-- Refund /
+
 
 Attributes
 ==========
@@ -89,8 +123,9 @@ Attributes
         r - readable by object owner
         w - writeable by object owner
         p - public, readable by anyone
-        o - once set cannot be overwritten (not impl, needed?)
-        eg. first_name rwp, cancel_reason rwo
+        o - once set cannot be overwritten (not impl)
+        a - writeable by admin only        (not impl)
+        eg. first_name rwp, cancel_reason rwo, client_key ap
   3. admin or system can add/read/write/delete any attribute
   4. value validation (regex) may be added later
   5. Each object should have Attributes with external_key to link to the outside world
@@ -122,3 +157,37 @@ Booking process (successful flow)
    |                        |   PATCH booking B    |
    |   201                  | -------------------> | (update Booking B)   PATCH /slots/{id}/bookings/{id}   (status: 1)
    | <--------------------- |                      |
+
+Booking process:
+  1. the user requests a Quote for selected slots, a new Quote is saved to the database
+  2. the user books the selected slots:
+    a) the Quote is found in the database
+    b) the booking process goes as pictured
+    c) a new Reference is saved to the database
+  3. if the Quote require payment, the user initiates the Payment MS
+
+  Note:
+    If slots require payment, the user must request a new Quote (sees the amount to pay).
+    If slots do not require payment, a Quote step may be omitted (it be created by MS).
+
+Cancel process:
+  1. the user requests a Refund for selected slots, a new Refund is saved to the database
+  2. the user cancels the selected slots:
+    a) the Refund is found in the database
+    b) the cancel process goes (releasing the Slots and deactivating Bookings)
+    c) a new Reference is saved to the database
+  3. if the Refund require payment, the user initiates the Payment MS
+
+  Note:
+    The Quote(s) must exist in the database, whether paid or due payment.
+    If the Quote was paid, the user must request a new Refund (sees the amount to refund).
+    If the Quote was not paid, a Refund step may be omitted (it be created by MS).
+
+
+Available features:
+  * Multiple club owners and multiple clubs per owner.
+  * Hierarchy of spaces (e.g. halls, parking lots) and time slots per club.
+  * Hierarchy of prices across spaces and slots.
+  * Bookings which do or do not require payment.
+  * Refunds for bookings.
+  * Users balance per club in multiple currencies.

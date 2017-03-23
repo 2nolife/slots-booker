@@ -137,7 +137,6 @@ trait VoFactory {
       place_id = as[String]("place_id"),
       profile_id = getAs[String]("profile_id"),
       status = getAs[Int]("status"),
-      deal = getAs[Boolean]("deal"),
       slot_ids =
         getAs[Seq[String]]("slot_ids")
           .noneIfEmpty,
@@ -310,7 +309,7 @@ trait BookingCrudImpl {
       booked
         .findOne(
           ("profile_id" $eq profileId) ++
-          ("slot_ids" $in Seq(parentSlotId)) ++
+          ("slot_ids" $eq parentSlotId) ++
           ("status" $eq bookedStatus('being_booked)))
         .map(asBooked(_))
 
@@ -387,7 +386,6 @@ trait BookedCrudImpl {
     import obj._
     Map(
       "status" -> status,
-      "deal" -> deal,
       "booking_ids" -> booking_ids.map(MongoDBList(_: _*))
     ).foreach { case (key, value) =>
       update(finderById(bookedId), booked, key, value)

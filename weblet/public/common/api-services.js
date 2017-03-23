@@ -486,7 +486,7 @@ app.service('apiBookingService', function($http, notifyService, $q, apiClassWrap
   }
 
   service.bookSlots = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.post('/api/booking/slots', entity)
+    $http.post('/api/booking/book', entity)
       .then(
         function successCallback(response) {
           callback()

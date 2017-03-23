@@ -39,24 +39,35 @@ Feedback email cftp@coldcore.com
 
 This code is open source software licensed under the [GNU Lesser General Public License v3](http://www.gnu.org/licenses/lgpl-3.0.en.html).
 
-## Outstanding work ###
+## Available features ##
+* Authentication with OAuth2 token
+* Multiple club owners and multiple clubs per owner
+* Hierarchy of spaces (e.g. halls, parking lots) and time slots per club
+* Hierarchy of prices across spaces and slots
+* Bookings which do or do not require payment
+* Cancellation and refunds for bookings
+* Users balance per club in multiple currencies
+* Expiration of unpaid bookings
+* References for successful bookings and refunds
+* A simple UI example to demo basic features
+
+## Outstanding work ##
 
 ### Major topics ###
 * Control panel for users, admins and moderators
-* Users must be able to credit accounts through PayPal
-* Bookings which require payment with refund if cancelled
+* Users must be able to credit clubs through PayPal
 * Deals and promotions on slots (get 3 for the price of 2)
 * Discount for club members and membership types
 * Queue for booked slots in case if cancelled
-* Future slots availability time
-* Bookings cancel and refund (full or partial) time
+* Future slots availability time periods
+* Bookings cancel and refund (full or partial) time periods
 * Example applications to demo all the features
 * Audit logs
 * Means to integrate with external parties
 * Temporary reservations to complete later (plane seats reserved but not selected nor paid for)
+* Optional payments (extra luggage, fancy 3D glasses)
 
 ### Other features ###
 * Read only anonymous users support
 * Better error responses with custom codes
-* Provide a reference when creating or modifying bookings
-* Local timezone support
+* Local timezone support per club

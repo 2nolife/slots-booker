@@ -4,10 +4,11 @@ package ms.booking
 import akka.actor.ActorSystem
 import actors.BookingActor
 import akka.routing.FromConfig
-import com.coldcore.slotsbooker.ms.{CreateAuthActors, CreateRestClient, StartSingle}
+import db.MongoBookingDb
+import ms._
 import rest.BookingRestService
 
-object start extends StartSingle with Constants with CreateAuthActors with CreateRestClient {
+object start extends StartSingle with Constants with CreateAuthActors with CreateMongoClient with CreateRestClient {
 
   def main(args: Array[String]) =
     startSingle()
@@ -16,11 +17,14 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
     implicit val executionContext = system.dispatcher
     val config = Settings(system)
 
+    val mongoClient = createMongoClient(config)
+    val bookingDb = new MongoBookingDb(mongoClient, config.mongoDbName)
+
     val restClient = createRestClient(config)
 
-    val bookingActor = system.actorOf(BookingActor.props(config.placesBaseUrl, config.slotsBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-actor")
+    val bookingActor = system.actorOf(BookingActor.props(bookingDb, config.placesBaseUrl, config.slotsBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-actor")
 
-    new BookingRestService(config.hostname, config.port, bookingActor, externalAuthActor(config, restClient))
+    new BookingRestService(config.hostname, config.port, config.systemToken, bookingActor, externalAuthActor(config, restClient))
   }
 }
 
