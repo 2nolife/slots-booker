@@ -1,0 +1,20 @@
+<div id="view-refund">
+
+  <h1 class="top">Refund</h1>
+
+  <h4 class="alert alert-warning" ng-show="status == 'count'">Counting, please wait...</h4>
+  <h4 class="alert alert-warning" ng-show="status == 'progress'">Refunding, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Refund complete</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Something went wrong, please try again</h4>
+
+  <div class="total" ng-show="total">
+    <p>Refund of &nbsp; {{total.currency}} {{total.amount | numberX100 : true}} &nbsp; for {{total.count}} tickets</p>
+    <button class="btn btn-primary" ng-click="confirm()" ng-show="total.amount > 0 && !status">Confirm</button>
+  </div>
+
+  <p class="ref" ng-show="reference">Reference &nbsp; {{reference.ref}}</p>
+
+  <a href="#/my-tickets" class="empty" ng-show="!basket.slots">Nothing to refund, back to tickets?</a>
+  <a href="#/my-tickets" class="empty" ng-show="status == 'failed' || status == 'success'">Back to tickets?</a>
+
+</div>

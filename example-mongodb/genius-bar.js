@@ -58,7 +58,7 @@ function addSlots() {
     })
     var promises = [].concat.apply([], arr)
 
-    Q.all(promises).then(function() { deferred.resolve() })
+    Q.all(promises).then(deferred.resolve)
   })
 
   return deferred.promise
@@ -90,17 +90,23 @@ function addSpaces() {
       function(err, item) {
         assert.equal(null, err)
         spaceIds.push(''+item.ops[0]._id.valueOf())
-        if (--n == 0)
-          _places.findAndModify(
-            finderById(_placeId),
-            sortById(),
-            { $set: { spaces: spaceIds }},
-            function(err, result) {
-              assert.equal(null, err)
-              assert(result.value != null, 'Place not found')
-              console.log('Genius Bar branches added')
-              deferred.resolve()
-            })
+
+        if (--n == 0) {
+          console.log('Genius Bar branches added')
+          deferred.resolve()
+        }
+        
+//        if (--n == 0)
+//          _places.findAndModify(
+//            finderById(_placeId),
+//            sortById(),
+//            { $set: { spaces: spaceIds }},
+//            function(err, result) {
+//              assert.equal(null, err)
+//              assert(result.value != null, 'Place not found')
+//              console.log('Genius Bar branches added')
+//              deferred.resolve()
+//            })
       })
   })
 
@@ -139,13 +145,6 @@ function setupPlace() {
       console.log('Genius Bar place set up')
       deferred.resolve()
     })
-
-
-//  var slotsPerDay = 10, slotLengthMin = 60, startTime = 0900
-//  console.log('Genius Bar has '+slotsPerDay+' slots per day, '+slotLengthMin+' minutes each')
-//  addSlots(placeIds['genius-bar'], slotsPerDay, slotLengthMin, startTime)
-
-//  deferredA.promise.then(addSpaces)
 
   return deferred.promise
 }

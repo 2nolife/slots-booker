@@ -9,16 +9,7 @@ app.controller('signInController', function($scope, loginService, notifyService)
     }
     delete $scope.password
 
-    loginService.login(credentials, function(/*str*/ status, /*obj*/ response) {
-      if (status == 'error')
-        switch (response.status) {
-          case 401:
-            notifyError('Invalid username or password')
-            break
-          default:
-            notifyError('Response code: '+response.status)
-        }
-    })
+    loginService.login(credentials)
   }
 
   function notifyError(/*str*/ msg) {

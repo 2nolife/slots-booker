@@ -1,13 +1,20 @@
 function Callbacks() {
   
-  var callbacks = []
+  var callbacks = {},
+      index = 0
   
   this.add = function(/*fn*/ callback) {
-    callbacks.push(callback)
+    var handle = ++index+''
+    callbacks[handle] = callback
+    return handle
   }
   
+  this.remove = function(/*str*/ handle) {
+    delete callbacks[handle]
+  }
+
   this.trigger = function(/*str*/ key, /*obj*/ src, /*any*/ arg) {
-    callbacks.forEach(function(callback) {
+    Object.values(callbacks).forEach(function(callback) {
       callback(key, src, arg)
     })
   }
@@ -69,6 +76,7 @@ function Place(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -121,11 +129,8 @@ function Place(/*json*/ source, /*services*/ sc) {
   function refreshSpaces(/*bool*/ force, /*fn*/ callback) {
     if (!_this.spaces || force) {
 
-      var f = force ?
-        sc.apiSpacesService.refreshSpaces.bind(null, _this.id, null) :
-        sc.apiSpacesService.expandSpaces.bind(null, source.spaces || [])
-
-      f(function(/*[Space]*/ spaces) {
+      sc.apiSpacesService.refreshSpaces(_this.id, null,
+        function(/*[Space]*/ spaces) {
           _this.spaces = spaces
           _this.applyChangesToSource()
         },
@@ -199,6 +204,7 @@ function Space(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -210,8 +216,10 @@ function Space(/*json*/ source, /*services*/ sc) {
     _this.name = source._name || source.name
     _this.prices = source._prices
     _this.spaces = source._spaces
+    _this.firstSpace = source._firstSpace
     _this.slots = source._slots
     _this.slotsFilter = source._slotsFilter || defaultSlotFilter()
+    _this.attributes = source._attributes || source.attributes || {}
   }
 
   applyChangesFromSource()
@@ -220,18 +228,15 @@ function Space(/*json*/ source, /*services*/ sc) {
   var changesToSource = new ChangesToSource(_this, source)
 
   function defaultSlotFilter() {
-    return { from: todayDate(), to: todayDate() }
+    return { from: todayDate(), to: todayDate(), inner: false }
   }
 
   /** get space prices from API (expands the source object) */
   function refreshPrices(/*bool*/ force, /*fn*/ callback) {
     if (!_this.prices || force) {
 
-      var f = force ?
-        sc.apiSpacesService.refreshPrices.bind(null, _this.placeId, _this.id) :
-        sc.apiSpacesService.expandPrices.bind(null, source.prices || [])
-
-      f(function(/*[Price]*/ prices) {
+      sc.apiSpacesService.refreshPrices(_this.placeId, _this.id,
+        function(/*[Price]*/ prices) {
           _this.prices = prices
           _this.applyChangesToSource()
         },
@@ -240,15 +245,27 @@ function Space(/*json*/ source, /*services*/ sc) {
     } else callback('noop')
   }
 
+  /** get space inner spaces first space from API (expands the source object) */
+  function refreshFirstSpace(/*bool*/ force, /*fn*/ callback) {
+    if (!_this.spaces || force) {
+
+      sc.apiSpacesService.refreshSpaces(_this.placeId, _this.id,
+        function(/*[Space]*/ spaces) {
+          _this.firstSpace = spaces.length ? spaces[0] : null
+          _this.applyChangesToSource()
+        },
+        callback,
+        { limit: 1 })
+
+    } else callback('noop')
+  }
+
   /** get space inner spaces from API (expands the source object) */
   function refreshSpaces(/*bool*/ force, /*fn*/ callback) {
     if (!_this.spaces || force) {
 
-      var f = force ?
-        sc.apiSpacesService.refreshSpaces.bind(null, _this.placeId, _this.id) :
-        sc.apiSpacesService.expandSpaces.bind(null, source.spaces || [])
-
-      f(function(/*[Space]*/ spaces) {
+      sc.apiSpacesService.refreshSpaces(_this.placeId, _this.id,
+        function(/*[Space]*/ spaces) {
           _this.spaces = spaces
           _this.applyChangesToSource()
         },
@@ -262,7 +279,7 @@ function Space(/*json*/ source, /*services*/ sc) {
     var slotsFilterChanged = function() {
       var slotsFilter = source._slotsFilter || defaultSlotFilter
       return _this.slotsFilter.from != slotsFilter.from || _this.slotsFilter.to != slotsFilter.to ||
-             _this.slotsFilter.booked != slotsFilter.booked
+             _this.slotsFilter.booked != slotsFilter.booked || _this.slotsFilter.inner != slotsFilter.inner
     }
 
     if (!_this.slots || force || slotsFilterChanged()) {
@@ -295,6 +312,10 @@ function Space(/*json*/ source, /*services*/ sc) {
         f = refreshThis
         break
 
+      case 'firstSpace':
+        f = refreshFirstSpace
+        break
+
       case 'spaces':
         f = refreshSpaces
         break
@@ -322,6 +343,7 @@ function Space(/*json*/ source, /*services*/ sc) {
     changesToSource.field('name')
     changesToSource.field('spaces')
     changesToSource.field('prices')
+    changesToSource.field('attributes', {})
 
     if (source._slots != _this.slots) {
       source._slotsFilter = $.extend(true, {}, _this.slotsFilter)
@@ -342,6 +364,7 @@ function Slot(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -357,6 +380,7 @@ function Slot(/*json*/ source, /*services*/ sc) {
     _this.timeTo = source._time_to || source.time_to
     _this.prices = source._prices
     _this.bookings = source._bookings
+    _this.activeBookings = source._activeBookings
     _this.attributes = source._attributes || source.attributes || {}
     _this.book_status = source.book_status
   }
@@ -370,11 +394,8 @@ function Slot(/*json*/ source, /*services*/ sc) {
   function refreshPrices(/*bool*/ force, /*fn*/ callback) {
     if (!_this.prices || force) {
 
-      var f = force ?
-        sc.apiSlotsService.refreshPrices.bind(null, _this.id) :
-        sc.apiSlotsService.expandPrices.bind(null, source.prices || [])
-
-      f(function(/*[Price]*/ prices) {
+      sc.apiSlotsService.refreshPrices(_this.id,
+        function(/*[Price]*/ prices) {
           _this.prices = prices
           _this.applyChangesToSource()
         },
@@ -387,15 +408,27 @@ function Slot(/*json*/ source, /*services*/ sc) {
   function refreshBookings(/*bool*/ force, /*fn*/ callback) {
     if (!_this.bookings || force) {
 
-      var f = force ?
-        sc.apiSlotsService.refreshBookings.bind(null, _this.id) :
-        sc.apiSlotsService.expandBookings.bind(null, source.bookings || [])
-
-      f(function(/*[Booking]*/ bookings) {
+      sc.apiSlotsService.refreshBookings(_this.id,
+        function(/*[Booking]*/ bookings) {
           _this.bookings = bookings
           _this.applyChangesToSource()
         },
         callback)
+
+    } else callback('noop')
+  }
+
+  /** get slot active bookings from API (expands the source object) */
+  function refreshActiveBookings(/*bool*/ force, /*fn*/ callback) {
+    if (!_this.activeBookings || force) {
+
+      sc.apiSlotsService.refreshBookings(_this.id,
+        function(/*[Booking]*/ bookings) {
+          _this.activeBookings = bookings
+          _this.applyChangesToSource()
+        },
+        callback,
+        { active: '' })
 
     } else callback('noop')
   }
@@ -422,6 +455,10 @@ function Slot(/*json*/ source, /*services*/ sc) {
 
       case 'bookings':
         f = refreshBookings
+        break
+
+      case 'activeBookings':
+        f = refreshActiveBookings
         break
 
       default:
@@ -468,6 +505,7 @@ function Price(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -485,6 +523,7 @@ function Price(/*json*/ source, /*services*/ sc) {
     _this.name = source._name || source.name
     _this.amount = source._amount || source.amount
     _this.currency = source._currency || source.currency
+    _this.attributes = source._attributes || source.attributes || {}
   }
 
   applyChangesFromSource()
@@ -536,6 +575,7 @@ function Price(/*json*/ source, /*services*/ sc) {
     changesToSource.field('name')
     changesToSource.field('amount')
     changesToSource.field('currency')
+    changesToSource.field('attributes', {})
   }
 
   this.copyFrom = function(/*json|Price*/ src) {
@@ -551,6 +591,7 @@ function Booking(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -562,6 +603,7 @@ function Booking(/*json*/ source, /*services*/ sc) {
     _this.status = source._status || source.status
     _this.user = source._user
     _this.attributes = source._attributes || source.attributes || {}
+    _this.price = source._price
   }
 
   applyChangesFromSource()
@@ -579,6 +621,22 @@ function Booking(/*json*/ source, /*services*/ sc) {
           _this.applyChangesToSource()
         },
         callback)
+
+    } else callback('noop')
+  }
+
+  /** get booking price from API (expands the source object) */
+  function refreshPrice(/*bool*/ force, /*fn*/ callback) {
+    if ((!_this.price || force) && _this.attributes.price_id) {
+
+      sc.apiSlotsService.getPrice(_this.slotId, _this.attributes.price_id,
+        function(/*Price*/ price) {
+          _this.price = price
+          _this.applyChangesToSource()
+        },
+        callback)
+
+        //todo price from space if not found on slot
 
     } else callback('noop')
   }
@@ -603,6 +661,10 @@ function Booking(/*json*/ source, /*services*/ sc) {
         f = refreshUser
         break
 
+      case 'price':
+        f = refreshPrice
+        break
+
       default:
         console.log('Unknown refresh target: '+target)
     }
@@ -618,6 +680,7 @@ function Booking(/*json*/ source, /*services*/ sc) {
     changesToSource.field('name')
     changesToSource.field('status')
     changesToSource.field('user')
+    changesToSource.field('price')
     changesToSource.field('attributes', {})
   }
 
@@ -634,6 +697,7 @@ function User(/*json*/ source, /*services*/ sc) {
 
   var _this = this
 
+  this.sc = sc
   this.source = source
 
   this.onChangeCallback = new Callbacks()
@@ -698,5 +762,46 @@ function User(/*json*/ source, /*services*/ sc) {
     applyChangesFromSource()
     _this.onChangeCallback.trigger('*', _this)
   }
+
+}
+
+function Quote(/*json*/ source, /*services*/ sc) { // read-only
+
+  this.sc = sc
+  this.source = source
+
+  this.id = source.quote_id
+  this.amount = source.amount
+  this.currency = source.currency
+
+}
+
+function Refund(/*json*/ source, /*services*/ sc) { // read-only
+
+  this.sc = sc
+  this.source = source
+
+  this.id = source.refund_id
+  this.amount = source.amount
+  this.currency = source.currency
+
+}
+
+function Reference(/*json*/ source, /*services*/ sc) { // read-only
+
+  this.sc = sc
+  this.source = source
+
+  this.id = source.reference_id
+  this.ref = source.ref
+
+}
+
+function Balance(/*json*/ source, /*services*/ sc) { // read-only
+
+  this.sc = sc
+  this.source = source
+
+  //todo credit
 
 }

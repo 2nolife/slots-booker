@@ -1,9 +1,5 @@
-app.service('apiPlacesService', function($http, notifyService, $q, apiClassWrap) {
+app.service('apiPlacesService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
-
-  function notifyResponseError(/*obj*/ response) {
-    notifyService.notify('<strong>'+response.status+'</strong>', 'danger')
-  }
 
   service.findPlaces = function(/*json*/ searchOptions, /*fn*/ callback, /*fn*/ statusCallback) {
     var attrs0 = (searchOptions.attributes || []).map(function(attr) {
@@ -23,7 +19,7 @@ app.service('apiPlacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -36,7 +32,7 @@ app.service('apiPlacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -49,18 +45,14 @@ app.service('apiPlacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap) {
+app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
-
-  var notifyResponseError = function(/*obj*/ response) {
-    notifyService.notify('<strong>'+response.status+'</strong>', 'danger')
-  }
 
   service.patchPrice = function(/*str*/ placeId, /*str*/ spaceId, /*str*/ priceId, /*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.patch('/api/places/'+placeId+'/spaces/'+spaceId+'/prices/'+priceId, entity)
@@ -71,7 +63,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -83,7 +75,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -96,7 +88,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -109,7 +101,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -122,7 +114,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -134,7 +126,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -147,7 +139,7 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -160,96 +152,46 @@ app.service('apiSpacesService', function($http, notifyService, $q, apiClassWrap)
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
-  service.expandSpaces = function(/*[json]*/ spaces, /*fn*/ callback, /*fn*/ statusCallback) {
-    var promises = spaces.map(function(space) {
-      return $http.get('/api/places/'+space.place_id+'/spaces/'+space.space_id)
-    })
+  service.refreshSpaces = function(/*str*/ placeId, /*str(optional)*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
+    options = $.extend(true, {}, {}, options)
 
-    if (promises.length == 0) {
-      callback([])
-      if (statusCallback) statusCallback('success')
-    }
+    var query = ''
+    if (options.limit != undefined) query += '&limit='+options.limit
+    if (query) query = '?'+query.substring(1)
 
-    $q.all(promises).then(
-      function successCallback(responses) {
-        var spaces = responses.map(function(response) {
-          return response.data
-        })
-        callback(spaces.map(function(space) { return apiClassWrap.wrap(space, 'space') }))
-        if (statusCallback) statusCallback('success')
-      },
-      function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error')) notifyResponseError(responses[0])
-      })
-  }
-
-  service.expandPrices = function(/*[json]*/ prices, /*fn*/ callback, /*fn*/ statusCallback) {
-    var promises = prices.map(function(price) {
-      return $http.get('/api/places/'+price.place_id+'/spaces/'+price.space_id+'/prices/'+price.price_id)
-    })
-
-    if (promises.length == 0) {
-      callback([])
-      if (statusCallback) statusCallback('success')
-    }
-
-    $q.all(promises).then(
-      function successCallback(responses) {
-        var prices = responses.map(function(response) {
-          return response.data
-        })
-        callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
-        if (statusCallback) statusCallback('success')
-      },
-      function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error')) notifyResponseError(responses[0])
-      })
-  }
-
-  service.refreshSpaces = function(/*str*/ placeId, /*str(optional)*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/places/'+placeId+(spaceId ? '/spaces/'+spaceId : ''))
+    $http.get('/api/places/'+placeId+(spaceId ? '/spaces/'+spaceId : '')+'/spaces'+query)
       .then(
         function successCallback(response) {
-          var spaces = response.data.spaces
-          if (spaces) service.expandSpaces(spaces, callback, statusCallback)
-          else {
-            callback([])
-            if (statusCallback) statusCallback('success')
-          }
+          var spaces = response.data
+          callback(spaces.map(function(space) { return apiClassWrap.wrap(space, 'space') }))
+          if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
   service.refreshPrices = function(/*str*/ placeId, /*str*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/places/'+placeId+'/spaces/'+spaceId)
+    $http.get('/api/places/'+placeId+'/spaces/'+spaceId+'/prices')
       .then(
         function successCallback(response) {
-          var prices = response.data.prices
-          if (prices) service.expandPrices(prices, callback, statusCallback)
-          else {
-            callback([])
-            if (statusCallback) statusCallback('success')
-          }
+          var prices = response.data
+          callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
+          if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) {
+app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
-
-  var notifyResponseError = function(/*obj*/ response) {
-    notifyService.notify('<strong>'+response.status+'</strong>', 'danger')
-  }
 
   service.patchPrice = function(/*str*/ slotId, /*str*/ priceId, /*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.patch('/api/slots/'+slotId+'/prices/'+priceId, entity)
@@ -260,7 +202,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -272,7 +214,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -285,7 +227,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -298,7 +240,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -311,7 +253,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -324,7 +266,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -337,7 +279,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -349,7 +291,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -362,7 +304,7 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -375,93 +317,47 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
-  service.expandBookings = function(/*[json]*/ bookings, /*fn*/ callback, /*fn*/ statusCallback) {
-    var promises = bookings.map(function(booking) {
-      return $http.get('/api/slots/'+booking.slot_id+'/bookings/'+booking.booking_id)
-    })
+  service.refreshBookings = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
+    options = $.extend(true, {}, {}, options)
 
-    if (promises.length == 0) {
-      callback([])
-      if (statusCallback) statusCallback('success')
-    }
+    var query = ''
+    if (options.active != undefined) query += '&active'
+    if (query) query = '?'+query.substring(1)
 
-    $q.all(promises).then(
-      function successCallback(responses) {
-        var bookings = responses.map(function(response) {
-          return response.data
-        })
-        callback(bookings.map(function(booking) { return apiClassWrap.wrap(booking, 'booking') }))
-        if (statusCallback) statusCallback('success')
-      },
-      function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error')) notifyResponseError(responses[0])
-      })
-  }
-
-  service.expandPrices = function(/*[json]*/ prices, /*fn*/ callback, /*fn*/ statusCallback) {
-    var promises = prices.map(function(price) {
-      return $http.get('/api/slots/'+price.slot_id+'/prices/'+price.price_id)
-    })
-
-    if (promises.length == 0) {
-      callback([])
-      if (statusCallback) statusCallback('success')
-    }
-
-    $q.all(promises).then(
-      function successCallback(responses) {
-        var prices = responses.map(function(response) {
-          return response.data
-        })
-        callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
-        if (statusCallback) statusCallback('success')
-      },
-      function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error')) notifyResponseError(responses[0])
-      })
-  }
-
-  service.refreshBookings = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/slots/'+slotId)
+    $http.get('/api/slots/'+slotId+'/bookings'+query)
       .then(
         function successCallback(response) {
-          var bookings = response.data.bookings
-          if (bookings) service.expandBookings(bookings, callback, statusCallback)
-          else {
-            callback([])
-            if (statusCallback) statusCallback('success')
-          }
+          var bookings = response.data
+          callback(bookings.map(function(booking) { return apiClassWrap.wrap(booking, 'booking') }))
+          if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
   service.refreshPrices = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/slots/'+slotId)
+    $http.get('/api/slots/'+slotId+'/prices')
       .then(
         function successCallback(response) {
-          var prices = response.data.prices
-          if (prices) service.expandPrices(prices, callback, statusCallback)
-          else {
-            callback([])
-            if (statusCallback) statusCallback('success')
-          }
+          var prices = response.data
+          callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
+          if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
   service.findSlots = function(/*json*/ searchOptions, /*fn*/ callback, /*fn*/ statusCallback) {
-    var defaultOptions = { from: '19700101', to: '99990101' }
+    var defaultOptions = { from: '19700101', to: '99990101', inner: false }
     searchOptions = $.extend(true, {}, defaultOptions, searchOptions)
 
-    var query = '?place_id='+searchOptions.placeId+'&space_id='+searchOptions.spaceId+'&from='+searchOptions.from+'&to='+searchOptions.to+'&inner=false'
+    var query = '?place_id='+searchOptions.placeId+'&space_id='+searchOptions.spaceId+'&from='+searchOptions.from+'&to='+searchOptions.to+'&inner='+searchOptions.inner
     if (searchOptions.booked != undefined) query += '&booked='+searchOptions.booked
 
     $http.get('/api/slots/search'+query)
@@ -472,51 +368,71 @@ app.service('apiSlotsService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiBookingService', function($http, notifyService, $q, apiClassWrap) {
+app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
 
-  var notifyResponseError = function(/*obj*/ response) {
-    notifyService.notify('<strong>'+response.status+'</strong>', 'danger')
-  }
-
-  service.bookSlots = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+  service.book = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.post('/api/booking/book', entity)
       .then(
         function successCallback(response) {
-          callback()
+          var reference = response.data
+          callback(apiClassWrap.wrap(reference, 'reference'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
-  service.cancelSlots = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+  service.cancel = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.post('/api/booking/cancel', entity)
       .then(
         function successCallback(response) {
-          callback()
+          var reference = response.data
+          callback(apiClassWrap.wrap(reference, 'reference'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.quote = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.post('/api/booking/quote', entity)
+      .then(
+        function successCallback(response) {
+          var quote = response.data
+          callback(apiClassWrap.wrap(quote, 'quote'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.refund = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.post('/api/booking/refund', entity)
+      .then(
+        function successCallback(response) {
+          var refund = response.data
+          callback(apiClassWrap.wrap(refund, 'refund'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) {
+app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
-
-  function notifyResponseError(/*obj*/ response) {
-    notifyService.notify('<strong>'+response.status+'</strong>', 'danger')
-  }
 
   service.getUser = function(/*str*/ userId, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.get('/api/profiles/'+userId)
@@ -527,7 +443,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -550,7 +466,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
         if (statusCallback) statusCallback('success')
       },
       function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error')) notifyResponseError(responses[0])
+        if (!statusCallback || !statusCallback('error', responses)) apiHelper.notifyResponseError(responses[0])
       })
   }
 
@@ -572,7 +488,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -585,7 +501,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -597,7 +513,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -609,7 +525,7 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -622,7 +538,25 @@ app.service('apiUsersService', function($http, notifyService, $q, apiClassWrap) 
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error')) notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  }
+
+})
+
+app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
+  var service = this
+
+  service.processReference = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.post('/api/payments/reference/process', entity)
+      .then(
+        function successCallback(response) {
+          var balance = response.data
+          callback(apiClassWrap.wrap(balance, 'balance'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
         })
   }
 
@@ -666,6 +600,18 @@ app.service('apiClassWrap', function($injector) {
       case 'booking':
         clz = new Booking(json, sc)
         break
+      case 'quote':
+        clz = new Quote(json, sc)
+        break
+      case 'refund':
+        clz = new Refund(json, sc)
+        break
+      case 'reference':
+        clz = new Reference(json, sc)
+        break
+      case 'balance':
+        clz = new Balance(json, sc)
+        break
     }
 
     return clz
@@ -699,6 +645,16 @@ app.service('apiClassService', function($timeout) {
     }
 
     source.refresh(target, force, retryCallback)
+  }
+
+})
+
+app.service('apiHelper', function(notifyService) {
+  var service = this
+
+  service.notifyResponseError = function(/*obj*/ response) {
+    var apiCode = apiCodeFromResponse(response)
+    notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
   }
 
 })

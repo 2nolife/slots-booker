@@ -20,7 +20,7 @@ trait ProfileCRUD {
   def profileById(profileId: String): Option[vo.Profile]
   def createProfile(obj: vo.RegisterUser): vo.Profile
   def deleteProfile(profileId: String): Boolean
-  def softDeleteProfile(profileId: String): Boolean
+  def rollbackProfile(profileId: String): Boolean
   def updateProfile(profileId: String, obj: vo.UpdateProfile): Option[vo.Profile]
 }
 
@@ -91,11 +91,11 @@ trait ProfileCrudImpl {
   }
 
   override def deleteProfile(profileId: String): Boolean =
-    profiles.findAndRemove(finderById(profileId)).isDefined
+    softDeleteOne(finderById(profileId), profiles)
 
-  override def softDeleteProfile(profileId: String): Boolean =
+  override def rollbackProfile(profileId: String): Boolean =
     profiles
-      .findAndModify(finderById(profileId), $set("deleted" -> true))
+      .findAndRemove(finderById(profileId))
       .isDefined
 
   override def updateProfile(profileId: String, obj: vo.UpdateProfile): Option[vo.Profile] = {

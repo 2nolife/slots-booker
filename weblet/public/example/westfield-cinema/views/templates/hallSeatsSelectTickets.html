@@ -1,0 +1,17 @@
+<div class="select-tickets">
+
+  <div class="ticket" ng-repeat="seat in selectedSeats">
+    <p class="type">{{seat.type}}</p>
+    <label class="radio-inline" ng-repeat="price in seat.slot.prices">
+      <input type="radio" ng-model="seat.slot.selectedPriceId" value="{{price.id}}" ng-change="priceChanged(price)"/>
+      <span class="age">{{price.age}}</span>
+      <span class="price">{{price.sign}} {{price.amount | numberX100 : true}}</span>
+    </label>
+  </div>
+
+  <div class="total" ng-show="total.amount > 0">
+    <p>{{total.sign}} {{total.amount | numberX100 : true}}</p>
+    <a href ng-click="checkout()">Checkout <i class="fa fa-chevron-right"></i></a>
+  </div>
+
+</div>

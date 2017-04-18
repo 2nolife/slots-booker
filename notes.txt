@@ -10,7 +10,7 @@ Model diagram
   |
   +-- Properties (username, email, etc)
   +-- Metadata (arbitrary json) - deprecated due to attributes
-  +-- Attributes
+  +-- Attributes (permitted for user)
 
   Token
   |
@@ -20,39 +20,41 @@ Model diagram
   |
   +-- Address
   +-- Properties (name, address, etc)
-  +-- Attributes
+  +-- Attributes (permitted for moderator)
   |
   +-- Space (array of Spaces)
   +-- Space <--+ (same as)
-     |         |
-     +---- Space (array of inner Spaces)
-     +---- Space
-     |     |
-     |     +-- Properties (name etc)
-     |     +-- Attributes
-     |
-     +-- Price (array of Prices)
-     +-- Price
-     |   |
-     |   +-- Properties (name, amount, etc)
-     |
-     +-- Metadata (arbitrary json) - deprecated due to attributes
+      |        |
+      +--- Space (array of inner Spaces)
+      +--- Space
+      |    |
+      |    +-- Properties (name etc)
+      |    +-- Attributes (permitted for moderator)
+      |
+      +-- Price (array of Prices)
+      +-- Price
+      |   |
+      |   +-- Properties (name, amount, etc)
+      |   +-- Attributes (permitted for moderator)
+      |
+      +-- Metadata (arbitrary json) - deprecated due to attributes
 
   Slot (linked to a space by space_id)
   |
   +-- Properties (name, etc)
-  +-- Attributes
+  +-- Attributes (permitted for moderator)
   |
   +-- Price (array of Prices)
   +-- Price
   |   |
   |   +-- Properties (name, amount, etc)
+  |   +-- Attributes (permitted for moderator)
   |
   +-- Booking (array of Bookings)
   +-- Booking
   |   |
   |   +-- Properties (status, etc)
-  |   +-- Attributes
+  |   +-- Attributes (permitted for moderator and booker)
   |
   +-- Booked
 
@@ -112,7 +114,7 @@ Model diagram
   Reference (maps quotes and refunds to bookings)
   |
   +-- Properties (ref, etc)
-  +-- Quote  \ one of the other
+  +-- Quote  \__ one or the other
   +-- Refund /
 
 
@@ -123,12 +125,10 @@ Attributes
         r - readable by object owner
         w - writeable by object owner
         p - public, readable by anyone
-        o - once set cannot be overwritten (not impl)
-        a - writeable by admin only        (not impl)
-        eg. first_name rwp, cancel_reason rwo, client_key ap
+        o - write once (applies to: booking, cannot be overwritten by booker)
+        eg. first_name pw, cancel_reason ro, client_key p
   3. admin or system can add/read/write/delete any attribute
   4. value validation (regex) may be added later
-  5. Each object should have Attributes with external_key to link to the outside world
 
 
 Booking process (successful flow)
@@ -183,11 +183,8 @@ Cancel process:
     If the Quote was paid, the user must request a new Refund (sees the amount to refund).
     If the Quote was not paid, a Refund step may be omitted (it be created by MS).
 
-
-Available features:
-  * Multiple club owners and multiple clubs per owner.
-  * Hierarchy of spaces (e.g. halls, parking lots) and time slots per club.
-  * Hierarchy of prices across spaces and slots.
-  * Bookings which do or do not require payment.
-  * Refunds for bookings.
-  * Users balance per club in multiple currencies.
+TODO
+Maximum bookings per day
+Expiry actor every minute while no refs and then pull all refs one by one without delay
+prm# attribute (expands to prm1, prm2 etc)
+create and update timestamps on all of the mongo entries

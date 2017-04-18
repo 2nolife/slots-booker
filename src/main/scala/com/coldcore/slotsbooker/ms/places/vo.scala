@@ -9,52 +9,56 @@ case class Address(line1: Option[String], line2: Option[String], line3: Option[S
 object Address extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
 
 case class Price(price_id: String, place_id: String, space_id: String, name: Option[String],
-                 amount: Option[Int], currency: Option[String], roles: Option[Seq[String]])
-object Price extends DefaultJsonProtocol {
-  implicit val format = jsonFormat7(apply)
-
-  def apply(priceId: String, placeId: String, spaceId: String): Price =
-    Price(priceId, placeId, spaceId, None, None, None, None)
-}
+                 amount: Option[Int], currency: Option[String], roles: Option[Seq[String]], attributes: Option[Attributes])
+object Price extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
 case class Space(space_id: String, place_id: String, parent_space_id: Option[String], name: Option[String],
-                 spaces: Option[Seq[Space]], prices: Option[Seq[Price]], metadata: Option[JsObject])
+                 spaces: Option[Seq[Space]], prices: Option[Seq[Price]], metadata: Option[JsObject], attributes: Option[Attributes])
 object Space extends DefaultJsonProtocol {
   implicit val format: RootJsonFormat[Space] =
-    rootFormat(lazyFormat(jsonFormat(Space.apply, "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata")))
+    rootFormat(lazyFormat(jsonFormat(Space.apply, "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes")))
+}
 
-  def apply(spaceId: String, placeId: String): Space =
-    Space(spaceId, placeId, None, None, None, None, None)
+case class DateTime(timezone: Option[String], offset_minutes: Option[Int],
+                    date: Option[Int], time: Option[Int], utc_date: Option[Int], utc_time: Option[Int])
+object DateTime extends DefaultJsonProtocol {
+  implicit val format = jsonFormat6(apply)
+
+  def apply(timezone: Option[String], offset_minutes: Option[Int]): DateTime =
+    DateTime(timezone, offset_minutes, None, None, None, None)
 }
 
 case class Place(place_id: String, profile_id: String,
                  name: Option[String], url: Option[String], email: Option[String], address: Option[Address],
-                 spaces: Option[Seq[Space]], moderators: Option[Seq[String]], attributes: Option[Attributes])
+                 spaces: Option[Seq[Space]], moderators: Option[Seq[String]], attributes: Option[Attributes],
+                 datetime: Option[DateTime])
 object Place extends DefaultJsonProtocol {
   implicit val placeFormat: RootJsonFormat[Place] =
-    jsonFormat(Place.apply, "place_id", "profile_id", "name", "url", "email", "address", "spaces", "moderators", "attributes")
+    jsonFormat(Place.apply, "place_id", "profile_id", "name", "url", "email", "address", "spaces", "moderators", "attributes", "datetime")
 }
 
 case class CreatePlace(name: String)
 object CreatePlace extends DefaultJsonProtocol { implicit val format = jsonFormat1(apply) }
 
 case class UpdatePlace(name: Option[String], address: Option[Address],
-                       moderators: Option[Seq[String]], attributes: Option[Attributes])
-object UpdatePlace extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
+                       moderators: Option[Seq[String]], attributes: Option[Attributes],
+                       datetime: Option[DateTime])
+object UpdatePlace extends DefaultJsonProtocol { implicit val format = jsonFormat5(apply) }
 
 
 case class CreateSpace(name: String)
 object CreateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat1(apply) }
 
-case class UpdateSpace(name: Option[String], metadata: Option[JsObject])
-object UpdateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+case class UpdateSpace(name: Option[String], metadata: Option[JsObject], attributes: Option[Attributes])
+object UpdateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
 
 case class CreatePrice(name: String, amount: Int, currency: String)
 object CreatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
-case class UpdatePrice(name: Option[String], amount: Option[Int], currency: Option[String], roles: Option[Seq[String]])
-object UpdatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
+case class UpdatePrice(name: Option[String], amount: Option[Int], currency: Option[String],
+                       roles: Option[Seq[String]], attributes: Option[Attributes])
+object UpdatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat5(apply) }
 
 
 object Implicits {

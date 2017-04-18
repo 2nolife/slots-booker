@@ -83,8 +83,11 @@ package ext {
       Slot(slotId, placeId, spaceId, None, None, None, None, None, None, None, None, None)
   }
 
-  case class Place(place_id: String, profile_id: String, moderators: Option[Seq[String]])
-  object Place extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+  case class DateTime(timezone: Option[String], offset_minutes: Option[Int])
+  object DateTime extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+
+  case class Place(place_id: String, profile_id: String, moderators: Option[Seq[String]], datetime: Option[DateTime])
+  object Place extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
 
   case class CreateSlotBooking(as_profile_id: String, name: String)
   object CreateSlotBooking extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }

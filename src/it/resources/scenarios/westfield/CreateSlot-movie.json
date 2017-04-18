@@ -1,9 +1,0 @@
-{
-  "space_id": "{space_id}",
-  "place_id": "{place_id}",
-  "name": "Movie: {title}",
-  "date_from": {date},
-  "date_to": {date},
-  "time_from": {time_from},
-  "time_to": {time_to}
-}

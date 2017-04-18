@@ -5,15 +5,17 @@ var assert = require('assert'),
 module.exports = {
   setDb: setDb,
   addSlot: addSlot,
+  addPrice: addPrice,
   bookRandomSlots: bookRandomSlots
 }
 
-var _slots, _booked, _bookings
+var _slots, _booked, _bookings, _prices
 
 function setDb(/*obj*/ db) {
   _slots = db.collection('ms-slots')
   _booked = db.collection('ms-slots-booked')
   _bookings = db.collection('ms-slots-bookings')
+  _prices = db.collection('ms-slots-prices')
 }
 
 function finderById(/*str*/ id) {
@@ -24,7 +26,7 @@ function sortById() {
   return [['_id', 'asc']]
 }
 
-function addSlot(/*str*/ placeId, /*str*/ spaceId, /*str*/ name, /*num*/ dateFrom, /*num*/ dateTo, /*num*/ timeFrom, /*num*/ timeTo) {
+function addSlot(/*str*/ placeId, /*str*/ spaceId, /*str*/ name, /*num*/ dateFrom, /*num*/ dateTo, /*num*/ timeFrom, /*num*/ timeTo, /*json*/ attributes) {
   var deferred = Q.defer()
 
   _slots.insert(
@@ -36,11 +38,44 @@ function addSlot(/*str*/ placeId, /*str*/ spaceId, /*str*/ name, /*num*/ dateFro
       date_to: dateTo,
       time_from: timeFrom,
       time_to: timeTo,
-      book_status: 0
+      book_status: 0,
+      attributes: attributes || {}
     },
     function(err, item) {
       assert.equal(null, err)
       deferred.resolve()
+    })
+
+  return deferred.promise
+}
+
+function addPrice(/*str*/ placeId, /*str*/ spaceId, /*str*/ slotId, /*str*/ name, /*num*/ amount, /*str*/ currency, /*json*/ attributes) {
+  var deferred = Q.defer()
+
+  _prices.insert(
+    {
+      place_id: placeId,
+      space_id: spaceId,
+      slot_id: slotId,
+      name: name,
+      amount: amount,
+      currency: currency,
+      attributes: attributes || {}
+    },
+    function(err, item) {
+      assert.equal(null, err)
+      var priceId = ''+item.ops[0]._id.valueOf()
+      deferred.resolve()
+
+//      _slots.findAndModify(
+//        finderById(slotId),
+//        sortById(),
+//        { $addToSet: { prices: priceId }},
+//        function(err, result) {
+//          assert.equal(null, err)
+//          assert(result.value != null, 'Slot not found')
+//          deferred.resolve()
+//        })
     })
 
   return deferred.promise
@@ -61,7 +96,7 @@ function bookRandomSlots(/*str*/ placeId, /*str*/ profileId, /*num*/ chance) {
     })
     var promises = [].concat.apply([], arr)
 
-    Q.all(promises).then(function() { deferred.resolve() })
+    Q.all(promises).then(deferred.resolve)
   })
 
   return deferred.promise

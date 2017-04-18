@@ -99,13 +99,15 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute {
         get {
           parameters('deep ? getDeepFields,
                      'deep_spaces.as[Boolean].?,
-                     'deep_prices.as[Boolean].?) {
+                     'deep_prices.as[Boolean].?,
+                     'limit.as[Int].?) {
             (deep,
              deep_spaces,
-             deep_prices) =>
+             deep_prices,
+             limit) =>
 
             completeByActor[Seq[vo.Space]](placesActor, GetSpacesIN(placeId, profile,
-                                                                    deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+                                                                    deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep), limit))
           }
         }
 
@@ -137,6 +139,24 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute {
           } ~
           delete {
             completeByActor[EmptyEntity](placesActor, DeleteSpaceIN(placeId, spaceId, profile))
+          }
+
+        } ~
+        path("spaces") {
+
+          get {
+            parameters('deep ? getDeepFields,
+                       'deep_spaces.as[Boolean].?,
+                       'deep_prices.as[Boolean].?,
+                       'limit.as[Int].?) {
+              (deep,
+               deep_spaces,
+               deep_prices,
+               limit) =>
+
+              completeByActor[Seq[vo.Space]](placesActor, GetInnerSpacesIN(placeId, spaceId, profile,
+                                                                           deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep), limit))
+            }
           }
 
         } ~

@@ -9,5 +9,5 @@ object Settings extends ExtensionKey[Settings]
 
 class Settings(val system: ExtendedActorSystem) extends Extension with Constants with CommonSettings {
   val placesBaseUrl: String = readString("places_base_url")
-  val voAttributes: VoAttributes = collectVoAttributes("booking")
+  val voAttributes: VoAttributes = collectVoAttributes("booking", "slot", "price")
 }

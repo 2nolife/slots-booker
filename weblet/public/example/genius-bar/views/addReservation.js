@@ -252,7 +252,7 @@ app.directive('addReservationBookSlot', function() {
     }
 
     function book() {
-      apiBookingService.bookSlots(
+      apiBookingService.book(
         $scope.mySlot.toApiBookEntity(),
         slotBooked,
         function statusCallback(/*str*/ status) {

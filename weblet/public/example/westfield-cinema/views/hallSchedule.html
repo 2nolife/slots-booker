@@ -1,0 +1,22 @@
+<div id="view-hall-schedule">
+
+  <h1 class="top">{{cinemaHall.name}} Schedule</h1>
+
+  <div class="week-schedule">
+    <div class="day-schedule" ng-repeat="daySchedule in cinemaHall.weekSchedule.daily">
+
+      <p class="date">
+        <span>{{daySchedule.shortDate}}</span>
+        <span>{{daySchedule.day}}</span>
+      </p>
+
+      <a class="movie" href="#/hall/{{cinemaHall.id}}/{{slot.id}}" ng-repeat="slot in daySchedule.slots">
+        <p class="time">{{slot.timeFrom | numberAsTime}}</p>
+        <img src="img/{{slot.movie.cover}}" />
+        <p class="title">{{slot.movie.title}}</p>
+      </a>
+
+    </div>
+  </div>
+
+</div>

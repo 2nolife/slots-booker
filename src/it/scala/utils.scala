@@ -1,6 +1,7 @@
 package com.coldcore.slotsbooker
 package test
 
+import java.text.SimpleDateFormat
 import java.util.Date
 
 import akka.actor.ActorSystem
@@ -224,13 +225,20 @@ trait MongoCreate {
       .findAndModify(finderById(placeId),
         $set("moderators" -> MongoDBList(moderators: _*)))
 
-  def mongoCreatePlace(username: String = "testuser"): String = {
+  def mongoCreatePlace(offset_minutes: Option[Int] = None, username: String = "testuser"): String = {
     val place = MongoDBObject(
       "test" -> true,
       "profile_id" -> mongoProfileId(username),
       "name" -> "My Place Name")
     mongoPlaces
       .insert(place)
+
+    Map(
+      "datetime.offset_minutes" -> offset_minutes
+    ).foreach { case (key, value) =>
+      update(finderById(place.idString), mongoPlaces, key, value)
+    }
+
     place.idString
   }
 
@@ -242,7 +250,7 @@ trait MongoCreate {
     mongoSpaces
       .insert(space)
 
-    addToArray(finderById(placeId), mongoPlaces, "spaces", space.idString)
+    //addToArray(finderById(placeId), mongoPlaces, "spaces", space.idString)
 
     space.idString
   }
@@ -256,10 +264,22 @@ trait MongoCreate {
     mongoSpaces
       .insert(space)
 
-    addToArray(finderById(parentSpaceId), mongoSpaces, "spaces", space.idString)
+    //addToArray(finderById(parentSpaceId), mongoSpaces, "spaces", space.idString)
 
     space.idString
   }
+
+  def mongoSetSpaceAttributes(spaceId: String, attributes: JsObject) =
+    mongoSpaces
+      .findAndModify(finderById(spaceId), $set("attributes" -> asDBObject(attributes)))
+
+  def mongoSetSpacePriceAttributes(priceId: String, attributes: JsObject) =
+    mongoPrices
+      .findAndModify(finderById(priceId), $set("attributes" -> asDBObject(attributes)))
+
+  def mongoSetSlotPriceAttributes(priceId: String, attributes: JsObject) =
+    mongoSlotPrices
+      .findAndModify(finderById(priceId), $set("attributes" -> asDBObject(attributes)))
 
   def mongoCreateSlot(placeId: String, spaceId: String, name: String = "Slot A",
                       dateFrom: Int = 0, dateTo: Int = 0, timeFrom: Int = 0, timeTo: Int = 2400,
@@ -283,6 +303,20 @@ trait MongoCreate {
 
     slot.idString
   }
+
+  def mongoSetSlotAttributes(slotId: String, attributes: JsObject) =
+    mongoSlots
+      .findAndModify(finderById(slotId), $set("attributes" -> asDBObject(attributes)))
+
+  def mongoUpdateSlot(slotId: String, dateFrom: Some[Int], dateTo: Some[Int], timeFrom: Some[Int], timeTo: Some[Int]) =
+    Map(
+      "date_from" -> dateFrom,
+      "date_to" -> dateTo,
+      "time_from" -> timeFrom,
+      "time_to" -> timeTo
+    ).foreach { case (key, value) =>
+      update(finderById(slotId), mongoSlots, key, value)
+    }
 
   def mongoSetSlotBooked(slotId: String, bookedId: String) =
     mongoSlots
@@ -316,7 +350,7 @@ trait MongoCreate {
     mongoBookings
       .insert(booking)
 
-    addToArray(finderById(slotId), mongoSlots, "bookings", booking.idString)
+    //addToArray(finderById(slotId), mongoSlots, "bookings", booking.idString)
 
     if (status == 1)
       mongoSlots
@@ -342,7 +376,7 @@ trait MongoCreate {
     mongoSlotPrices
       .insert(price)
 
-    addToArray(finderById(slotId), mongoSlots, "prices", price.idString)
+    //addToArray(finderById(slotId), mongoSlots, "prices", price.idString)
 
     price.idString
   }
@@ -360,7 +394,7 @@ trait MongoCreate {
     mongoPrices
       .insert(price)
 
-    addToArray(finderById(spaceId), mongoSpaces, "prices", price.idString)
+    //addToArray(finderById(spaceId), mongoSpaces, "prices", price.idString)
 
     price.idString
   }
@@ -484,7 +518,7 @@ trait MongoCreate {
   }
 
   def mongoEntryDates(id: String, collection: MongoCollection,
-                      created: Option[Date] = None, updated: Option[Date] = None, inflight: Option[Date] = None) {
+                      created: Option[Long] = None, updated: Option[Long] = None, inflight: Option[Long] = None) {
     Map(
       "entry.created" -> created,
       "entry.updated" -> updated,

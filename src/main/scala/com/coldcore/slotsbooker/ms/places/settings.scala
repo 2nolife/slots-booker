@@ -8,5 +8,5 @@ import ms.config.CommonSettings
 object Settings extends ExtensionKey[Settings]
 
 class Settings(val system: ExtendedActorSystem) extends Extension with Constants with CommonSettings {
-  val voAttributes: VoAttributes = collectVoAttributes("place")
+  val voAttributes: VoAttributes = collectVoAttributes("place", "space", "price")
 }

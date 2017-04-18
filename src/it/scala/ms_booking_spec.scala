@@ -1,8 +1,7 @@
 package com.coldcore.slotsbooker
 package test
 
-import java.util.{Calendar, GregorianCalendar}
-
+import ms.{Timestamp => ts}
 import org.apache.http.HttpStatus._
 import org.scalatest._
 import ms.booking.vo
@@ -40,6 +39,9 @@ abstract class BaseMsBookingSpec extends FlatSpec with BeforeAndAfterAll with Be
     val bookedId = mongoCreateBooked(placeId, Seq(slotIdA, slotIdB), Seq(bookingIdA, bookingIdB), bookAsUsername)
     mongoSetSlotBooked(slotIdA, bookedId)
     mongoSetSlotBooked(slotIdB, bookedId)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
+
     Map(
       "placeId" -> placeId,
       "spaceId" -> spaceId,
@@ -47,6 +49,14 @@ abstract class BaseMsBookingSpec extends FlatSpec with BeforeAndAfterAll with Be
       "slotIdB" -> slotIdB,
       "bookedId" -> bookedId
     )
+  }
+
+  def updateSlotTime(slotId: String, fromOffsetMinutes: Int = 60, toOffsetMinutes: Int = 120) {
+    val now = ts.asCalendar
+    val (from, to) = (ts.addMinutes(ts.copy(now), fromOffsetMinutes), ts.addMinutes(ts.copy(now), toOffsetMinutes))
+    mongoUpdateSlot(slotId,
+      dateFrom = Some(ts.dateString(from).toInt), timeFrom = Some(ts.timeString(from).toInt),
+      dateTo = Some(ts.dateString(to).toInt), timeTo = Some(ts.timeString(to).toInt))
   }
 }
 
@@ -63,6 +73,9 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
     val priceId2 = mongoCreateSpacePrice(placeId, spaceId1, "Default child", amount = 800)
     val priceIdA1 = mongoCreateSlotPrice(placeId, spaceId1, slotIdA, "Price A adult", amount = 1600)
     val priceIdA2 = mongoCreateSlotPrice(placeId, spaceId1, slotIdA, "Price A child", amount = 1000)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
+    updateSlotTime(slotIdC)
 
     val url = s"$bookingBaseUrl/booking/quote"
 
@@ -128,6 +141,29 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
 
     val url = s"$bookingBaseUrl/booking/quote"
     val json = s"""{ "selected": [{ "slot_id": "$slotIdA" }, { "slot_id": "$slotIdB" }] }"""
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+  }
+
+  "POST to /booking/quote" should "give 409 if a slot time is in the past" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    updateSlotTime(slotId, -30, 30)
+
+    val url = s"$bookingBaseUrl/booking/quote"
+    val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+  }
+
+  "POST to /booking/quote" should "give 409 if a slot time is in the past compared to place local time" in {
+    val offset = 120
+    val placeId = mongoCreatePlace(offset_minutes = Some(offset))
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    updateSlotTime(slotId, -30+offset, 30+offset)
+
+    val url = s"$bookingBaseUrl/booking/quote"
+    val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
     When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
   }
 
@@ -257,6 +293,38 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     When postTo url entity json withHeaders headers expect() code SC_CONFLICT
   }
 
+  "POST to /booking/refund" should "give 409 if a slot time is in the past" in {
+    val (placeId, slotId, bookedId) = {
+      val ids = setup2ActiveBookings()
+      (ids("placeId"), ids("slotIdA"), ids("bookedId"))
+    }
+    val quoteId = mongoCreateFreeQuote(placeId, Seq(slotId), status = 1, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
+    updateSlotTime(slotId, -30, 30)
+
+    val url = s"$bookingBaseUrl/booking/refund"
+    val headers = authHeaderSeq("testuser2")
+    val json = s"""{ "slot_ids": ["$slotId"] }"""
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+  }
+
+  "POST to /booking/refund" should "give 409 if a slot time is in the past compared to place local time" in {
+    val offset = 120
+    val placeId = mongoCreatePlace(offset_minutes = Some(120))
+    val (slotId, bookedId) = {
+      val ids = setup2ActiveBookings(existingPlaceId = Some(placeId))
+      (ids("slotIdA"), ids("bookedId"))
+    }
+    val quoteId = mongoCreateFreeQuote(placeId, Seq(slotId), status = 1, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
+    updateSlotTime(slotId, -30+offset, 30+offset)
+
+    val url = s"$bookingBaseUrl/booking/refund"
+    val headers = authHeaderSeq("testuser2")
+    val json = s"""{ "slot_ids": ["$slotId"] }"""
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+  }
+
 }
 
 class MsBookingBookSpec extends BaseMsBookingSpec {
@@ -268,6 +336,8 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     val slotIdB = mongoCreateSlot(placeId, spaceId)
     val priceId1 = mongoCreateSpacePrice(placeId, spaceId, "Default adult", amount = 1200)
     val priceId2 = mongoCreateSpacePrice(placeId, spaceId, "Default child", amount = 800)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
 
     val headers = authHeaderSeq("testuser2")
 
@@ -276,7 +346,7 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     val quote = (When postTo urlQ entity jsonQ withHeaders headers expect() code SC_CREATED).withBody[vo.Quote]
 
     val url = s"$bookingBaseUrl/booking/book"
-    val json = s"""{"quote_id": "${quote.quote_id}", "attributes": { "key_rw": "special instructions" }}"""
+    val json = s"""{"quote_id": "${quote.quote_id}", "attributes": { "kez_rw": "special instructions" }}"""
     val reference = (When postTo url entity json withHeaders headers expect() code SC_CREATED).withBody[vo.Reference]
 
     mongoVerifyActiveBookingIntegrity(slotIdA, username = "testuser2")
@@ -285,12 +355,12 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     val urlA = s"$slotsBaseUrl/slots/$slotIdA"
     val slotA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("special instructions")))
+    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("special instructions")))
 
     val urlB = s"$slotsBaseUrl/slots/$slotIdB"
     val slotB = (When getTo urlB withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("special instructions")))
+    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("special instructions")))
   }
 
   "POST to /booking/book" should "book selected slots which do not require payment without quote" in {
@@ -298,6 +368,8 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     val spaceId = mongoCreateSpace(placeId)
     val slotIdA = mongoCreateSlot(placeId, spaceId)
     val slotIdB = mongoCreateSlot(placeId, spaceId)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
 
     val url = s"$bookingBaseUrl/booking/book"
     val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"] }"""
@@ -365,7 +437,7 @@ class MsBookingCancelSpec extends BaseMsBookingSpec {
     val refund = (When postTo urlR entity jsonR withHeaders headers expect() code SC_CREATED).withBody[vo.Refund]
 
     val url = s"$bookingBaseUrl/booking/cancel"
-    val json = s"""{"refund_id": "${refund.refund_id}", "attributes": { "key_rw": "reason" }}"""
+    val json = s"""{"refund_id": "${refund.refund_id}", "attributes": { "kez_rw": "reason" }}"""
     val reference = (When postTo url entity json withHeaders headers expect() code SC_CREATED).withBody[vo.Reference]
 
     mongoVerifyCancelledBookingIntegrity(slotIdA, username = "testuser2")
@@ -374,12 +446,12 @@ class MsBookingCancelSpec extends BaseMsBookingSpec {
     val urlA = s"$slotsBaseUrl/slots/$slotIdA"
     val slotA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
 
     val urlB = s"$slotsBaseUrl/slots/$slotIdB"
     val slotB = (When getTo urlB withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
   }
 
   "POST to /booking/cancel" should "cancel a single slot which required payment with refund" in {
@@ -502,7 +574,7 @@ class MsBookingUpdateSpec extends BaseMsBookingSpec {
     }
 
     val url = s"$bookingBaseUrl/booking/update"
-    val json = s"""{ "slot_ids": ["$slotIdA"], "attributes": { "key_rw": "reason" } }"""
+    val json = s"""{ "slot_ids": ["$slotIdA"], "attributes": { "kez_rw": "reason" } }"""
     val headers = authHeaderSeq("testuser2")
     When postTo url entity json withHeaders headers expect() code SC_OK
 
@@ -512,7 +584,7 @@ class MsBookingUpdateSpec extends BaseMsBookingSpec {
     val urlA = s"$slotsBaseUrl/slots/$slotIdA"
     val slotA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
   }
 
   "POST to /booking/update" should "update selected slots for a user" in {
@@ -522,7 +594,7 @@ class MsBookingUpdateSpec extends BaseMsBookingSpec {
     }
 
     val url = s"$bookingBaseUrl/booking/update"
-    val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"], "attributes": { "key_rw": "reason" } }"""
+    val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"], "attributes": { "kez_rw": "reason" } }"""
     val headers = authHeaderSeq("testuser2")
     When postTo url entity json withHeaders headers expect() code SC_OK
 
@@ -532,12 +604,12 @@ class MsBookingUpdateSpec extends BaseMsBookingSpec {
     val urlA = s"$slotsBaseUrl/slots/$slotIdA"
     val slotA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
 
     val urlB = s"$slotsBaseUrl/slots/$slotIdB"
     val slotB = (When getTo urlB withHeaders headers expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotB.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
   }
 
 }
@@ -561,6 +633,7 @@ class MsBookingQuoteModeratorSpec extends BaseMsBookingSpec {
     val spaceId = mongoCreateSpace(placeId)
     val slotId = mongoCreateSlot(placeId, spaceId)
     val profileId = mongoProfileId("testuser2")
+    updateSlotTime(slotId)
 
     val url = s"$bookingBaseUrl/booking/quote"
     val json = s"""{ "selected": [{ "slot_id": "$slotId" }], "as_profile_id": "$profileId" }"""
@@ -623,6 +696,7 @@ class MsBookingSlotsModeratorSpec extends BaseMsBookingSpec {
     val spaceId = mongoCreateSpace(placeId)
     val slotId = mongoCreateSlot(placeId, spaceId)
     val profileId = mongoProfileId("testuser2")
+    updateSlotTime(slotId)
 
     val url = s"$bookingBaseUrl/booking/book"
     val json = s"""{ "slot_ids": ["$slotId"], "as_profile_id": "$profileId" }"""
@@ -692,7 +766,7 @@ class MsBookingUpdateModeratorSpec extends BaseMsBookingSpec {
     val profileId = mongoProfileId("testuser2")
 
     val url = s"$bookingBaseUrl/booking/update"
-    val json = s"""{ "slot_ids": ["$slotId"], "as_profile_id": "$profileId", "attributes": { "key_rw": "reason" }}"""
+    val json = s"""{ "slot_ids": ["$slotId"], "as_profile_id": "$profileId", "attributes": { "kez_rw": "reason" }}"""
     When postTo url entity json withHeaders testuserTokenHeader expect() code SC_OK
 
     mongoVerifyActiveBookingIntegrity(slotId, username = "testuser2")
@@ -700,7 +774,7 @@ class MsBookingUpdateModeratorSpec extends BaseMsBookingSpec {
     val urlA = s"$slotsBaseUrl/slots/$slotId"
     val slotA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.ext.Slot]
 
-    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("reason")))
+    slotA.bookings.get.head.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("reason")))
   }
 
 }
@@ -743,11 +817,8 @@ class MsBookingReferenceSpec extends BaseMsBookingSpec {
     val quoteId = mongoCreatePaidQuote(placeId, Seq((slotIdA, 1600), (slotIdB, 800)), status = 2, username = "testuser2")
     mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
 
-    val timeout = (decMinutes: Int) => {
-      val cal = new GregorianCalendar()
-      cal.add(Calendar.MINUTE, -decMinutes)
-      cal.getTime
-    }
+    def timeout(decMinutes: Int): Long = ts.asLong(ts.addMinutes(ts.asCalendar, -decMinutes))
+
     mongoEntryDates(quoteId, mongoQuotes, created = Some(timeout(6)))
 
     val urlA = s"$bookingBaseUrl/booking/reference/expired"

@@ -221,7 +221,7 @@ app.directive('myReservationsBookingInfo', function() {
     }
 
     $scope.cancelBooking = function() {
-      apiBookingService.cancelSlots(
+      apiBookingService.cancel(
         $scope.mySlot.toApiCancelEntity(),
         bookingCancelled,
         function statusCallback(/*str*/ status) {

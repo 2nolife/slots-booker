@@ -1,6 +1,7 @@
 module.exports = {
   todayDate: todayDate,
-  addDaysDate: addDaysDate
+  addDaysDate: addDaysDate,
+  weekdayAsWord : weekdayAsWord
 }
 
 /** args -> UTC Date (no daylight saving) */
@@ -30,4 +31,11 @@ function addDaysDate(/*str*/ value, /*num*/ add) {
   var date = strToDate(value)
   var result = dateUTC(date.getFullYear(), date.getMonth(), date.getDate()+add)
   return dateToStr(result)
+}
+
+/** 20170123 -> Wednesday */
+function weekdayAsWord(/*str*/ value) {
+  var date = strToDate(value),
+      weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return weekday[date.getDay()]
 }

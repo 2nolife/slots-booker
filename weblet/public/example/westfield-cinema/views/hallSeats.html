@@ -1,0 +1,18 @@
+<div id="view-hall-seats">
+
+  <h1 class="top">{{cinemaSlot.movie.title}}</h1>
+
+  <div class="movie">
+    <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | numberAsTime}}</p>
+    <img src="img/{{cinemaSlot.movie.cover}}" />
+  </div>
+
+  <div class="seats">
+    <div ng-repeat="row in seatMatrix">
+      <p class="seat-{{seat.type}} seat-{{seat.status}}" ng-class="{'seat-toggled': isSeatToggled(seat)}" ng-repeat="seat in row" ng-click="toggleSeat(seat)"></p>
+    </div>
+  </div>
+
+  <hall-seats-select-tickets selected-seats="selectedSeats" />
+
+</div>

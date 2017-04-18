@@ -6,7 +6,7 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import akka.http.scaladsl.model.headers.Authorization
 import ms.attributes.{Util => au}
-import ms.http.RestClient
+import ms.http.{ApiCode, RestClient}
 import ms.http.RestClient.HttpCallSuccessful
 import ms.vo._
 import ms.vo.SystemTokenAndProfile._
@@ -119,7 +119,16 @@ trait MsgInterceptor extends ReceivePipeline with ActorLogging {
 
 object Common {
 
-  case class CodeEntityOUT[T : RootJsonWriter](code: Int, entity: Option[T], apiCode: Option[String] = None)
-  case class CodeOUT(code: Int, apiCode: Option[String] = None)
+  case class CodeEntityOUT[T : RootJsonWriter](code: Int, entity: Option[T], apiCode: Option[String])
+  object CodeEntityOUT {
+    def apply[T : RootJsonWriter](code: Int, entity: Option[T]): CodeEntityOUT[T] = CodeEntityOUT(code, entity, None)
+    def apply[T : RootJsonWriter](a: ApiCode, entity: Option[T]): CodeEntityOUT[T] = CodeEntityOUT(a.code, entity, a.apiCode)
+  }
+
+  case class CodeOUT(code: Int, apiCode: Option[String])
+  object CodeOUT {
+    def apply(code: Int): CodeOUT = CodeOUT(code, None)
+    def apply(a: ApiCode): CodeOUT = CodeOUT(a.code, a.apiCode)
+  }
 
 }

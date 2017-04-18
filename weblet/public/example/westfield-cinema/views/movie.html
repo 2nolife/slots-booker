@@ -1,0 +1,17 @@
+<div id="view-movie">
+
+  <h1 class="top">{{selectedMovie.title}}</h1>
+
+  <p class="movie">
+    <img src="img/{{selectedMovie.cover}}" />
+  </p>
+
+  <div class="halls">
+    <a href="#/hall/{{hall.id}}" ng-repeat="hall in cinemaPlace.halls">
+      <p class="name">{{hall.name}}</p>
+      <p class="day" ng-repeat="daySchedule in hall.weekSchedule.daily | cinemaDayScheduleHasMovieKey : movieKey">{{daySchedule.day}}</p>
+      <p class="empty" ng-show="hall.weekSchedule.daily && (hall.weekSchedule.daily | cinemaDayScheduleHasMovieKey : movieKey).length == 0">Not showing</p>
+    </a>
+  </div>
+
+</div>

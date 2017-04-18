@@ -1,0 +1,26 @@
+<div id="view-my-tickets">
+
+  <h1 class="top">My Tickets</h1>
+
+  <a href="#" class="empty" ng-show="bookedSlots.length == 0">No tickets, book some?</a>
+
+  <div class="tickets" ng-show="bookedSlots.length > 0">
+    <div class="ticket" ng-repeat="slot in bookedSlots">
+      <p class="title">
+        <span>{{slot.movie.title}}</span>
+        <span>{{slot.cinemaSeat.cinemaHall.name}} &nbsp; {{slot.day}}, {{slot.shortDate}} at {{slot.timeFrom | numberAsTime}}</span>
+      </p>
+      <p class="seat">
+        <span>Seat {{slot.cinemaSeat.seatN}}</span>
+        <span>{{slot.cinemaSeat.type | uppercase}} &nbsp; {{slot.activeBooking.price.age}}</span>
+      </p>
+      <p class="cancel" class="checkbox">
+        <span>refund</span>
+        <label><input type="checkbox" value="" ng-model="slot.selected" ng-change="toggleSlot(slot)"></label>
+      </p>
+    </div>
+  </div>
+
+  <my-tickets-select-tickets selected-slots="selectedSlots" />
+
+</div>

@@ -13,21 +13,24 @@ class AttributesUtilSpec extends FlatSpec with MockitoSugar with Matchers with B
 
   case class MyClassA(id: String, attributes: Option[Attributes])
   case class MyClassB(id: Long, abc: String, attributes: Option[Attributes])
-  case class MyWrapper(classA: Option[MyClassA], classB: Option[MyClassB], attributes: Option[Attributes], abc: Option[Attributes])
+  case class MyWrapper(classA: Option[MyClassA], classB: Option[Seq[MyClassB]], attributes: Option[Attributes], abc: Option[Attributes])
 
-  val (attrA, attrB, attrC) = (
-    Attributes(JsObject("a" -> JsString("a"))),
-    Attributes(JsObject("b" -> JsNumber(1))),
-    Attributes(JsObject("c" -> JsObject())))
+  var attrA: Attributes = _
+  var attrB: Attributes = _
+  var attrC: Attributes = _
 
   var classA: MyClassA = _
   var classB: MyClassB = _
   var wrapper: MyWrapper = _
 
   before {
+    attrA = Attributes(JsObject("a" -> JsString("a")))
+    attrB = Attributes(JsObject("b" -> JsNumber(1)))
+    attrC = Attributes(JsObject("c" -> JsObject()))
+
     classA = MyClassA("id", Some(attrA))
     classB = MyClassB(1, "abc", Some(attrB))
-    wrapper = MyWrapper(Some(classA), Some(classB), Some(attrC), None)
+    wrapper = MyWrapper(Some(classA), Some(Seq(classB)), Some(attrC), None)
   }
 
   "extractAttributedMembers" should "extract optional attributes from case classes" in {
@@ -48,6 +51,29 @@ class AttributesUtilSpec extends FlatSpec with MockitoSugar with Matchers with B
   "assertExposed" should "not throw exception if attributes were exposed" in {
     au.exposeClass(classA, Nil, _ => false)
     au.assertExposed(classA)
+  }
+
+  "assertExposed" should "throw exception if attributes of an inner object were not exposed" in {
+    intercept[IllegalStateException] {
+      au.exposeClass(wrapper, Nil, _ => false)
+      au.exposeClass(classB, Nil, _ => false)
+      au.assertExposed(wrapper)
+    }
+  }
+
+  "assertExposed" should "throw exception if attributes of an inner sequence were not exposed" in {
+    intercept[IllegalStateException] {
+      au.exposeClass(wrapper, Nil, _ => false)
+      au.exposeClass(classA, Nil, _ => false)
+      au.assertExposed(wrapper)
+    }
+  }
+
+  "assertExposed" should "not throw exception if attributes of inner objects were exposed" in {
+    au.exposeClass(wrapper, Nil, _ => false)
+    au.exposeClass(classA, Nil, _ => false)
+    au.exposeClass(classB, Nil, _ => false)
+    au.assertExposed(wrapper)
   }
 
   "parse" should "parse string into configured attributes" in {

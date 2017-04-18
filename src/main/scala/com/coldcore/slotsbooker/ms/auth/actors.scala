@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package ms.auth.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import com.coldcore.slotsbooker.ms.http.ApiCode
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.actors.MsgInterceptor
 import ms.auth.db.AuthDb
@@ -29,27 +30,23 @@ class TokenActor(authDb: AuthDb) extends Actor with ActorLogging with MsgInterce
   def receive = {
 
     case LoginIN(username, password) =>
-      val (code, result, apiCode) =
+      val (code, result) =
         authDb.userLogin(username, password) match {
           case (true, t @ Some(_)) =>
-            (SC_CREATED, t, None) // already logged in
+            (ApiCode.CREATED, t) // already logged in
           case (true, None) => // create new token
             val newToken = generateToken(username)
             authDb.saveToken(newToken)
-            (SC_CREATED, Some(newToken), None)
+            (ApiCode.CREATED, Some(newToken))
           case _ =>
-            (SC_UNAUTHORIZED, None, apiCodes.get('invalid_credentials)) // invalid username / password
+            (ApiCode(SC_UNAUTHORIZED, 'invalid_credentials), None) // invalid username / password
         }
 
-      reply ! CodeEntityOUT(code, result, apiCode)
+      reply ! CodeEntityOUT(code, result)
 
     case InvalidateTokenIN(token) =>
       val deleted = authDb.deleteToken(token)
-      val code =
-        if (deleted) SC_OK
-        else SC_UNAUTHORIZED
-
-      reply ! CodeOUT(code)
+      reply ! CodeOUT(ApiCode.OK)
 
     case RefreshTokenIN(token) =>
       val (code, result) =
@@ -57,9 +54,9 @@ class TokenActor(authDb: AuthDb) extends Actor with ActorLogging with MsgInterce
           case Some(vo.Token(_, _, _, username)) =>
             val newToken = generateToken(username)
             authDb.saveToken(newToken)
-            (SC_OK, Some(newToken))
+            (ApiCode.OK, Some(newToken))
           case _ =>
-            (SC_UNAUTHORIZED, None)
+            (ApiCode(SC_UNAUTHORIZED, 'expired_token), None)
         }
 
       reply ! CodeEntityOUT(code, result)
@@ -67,8 +64,8 @@ class TokenActor(authDb: AuthDb) extends Actor with ActorLogging with MsgInterce
     case ValidateTokenIN(token) =>
       val t = authDb.getToken(token)
       val (code, result) =
-        if (t.isDefined) (SC_OK, t)
-        else (SC_UNAUTHORIZED, None)
+        if (t.isDefined) (ApiCode.OK, t)
+        else (ApiCode(SC_UNAUTHORIZED, 'expired_token), None)
 
       reply ! CodeEntityOUT(code, result)
 
@@ -92,20 +89,20 @@ class UsersActor(authDb: AuthDb) extends Actor with ActorLogging with MsgInterce
 
     case CreateUserIN(username, obj) =>
       authDb.saveUser(username, obj)
-      reply ! CodeOUT(SC_CREATED)
+      reply ! CodeOUT(ApiCode.CREATED)
 
     case UpdateUserIN(username, obj) =>
       authDb.saveUser(username, obj)
-      reply ! CodeOUT(SC_OK)
+      reply ! CodeOUT(ApiCode.OK)
 
     case DeleteUserIN(username) =>
       authDb.deleteTokenByUsername(username)
       authDb.deleteUser(username)
-      reply ! CodeOUT(SC_OK)
+      reply ! CodeOUT(ApiCode.OK)
 
     case InvalidateTokenByUsernameIN(username) =>
       authDb.deleteTokenByUsername(username)
-      reply ! CodeOUT(SC_OK)
+      reply ! CodeOUT(ApiCode.OK)
 
   }
 

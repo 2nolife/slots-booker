@@ -5,22 +5,12 @@ import ms.vo.Attributes
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 case class Price(price_id: String, place_id: String, space_id: String, slot_id: String, name: Option[String],
-                 amount: Option[Int], currency: Option[String], roles: Option[Seq[String]])
-object Price extends DefaultJsonProtocol {
-  implicit val format = jsonFormat8(apply)
-
-  def apply(priceId: String, placeId: String, spaceId: String, slotId: String): Price =
-    Price(priceId, placeId, spaceId, slotId, None, None, None, None)
-}
+                 amount: Option[Int], currency: Option[String], roles: Option[Seq[String]], attributes: Option[Attributes])
+object Price extends DefaultJsonProtocol { implicit val format = jsonFormat9(apply) }
 
 case class Booking(booking_id: String, place_id: String, space_id: String, slot_id: String, profile_id: Option[String],
                    name: Option[String], status: Option[Int], attributes: Option[Attributes])
-object Booking extends DefaultJsonProtocol {
-  implicit val format = jsonFormat8(apply)
-
-  def apply(priceId: String, placeId: String, spaceId: String, slotId: String): Booking =
-    Booking(priceId, placeId, spaceId, slotId, None, None, None, None)
-}
+object Booking extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
 case class CreateBooking(as_profile_id: String, name: String)
 object CreateBooking extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
@@ -37,8 +27,9 @@ object UpdateBooked extends DefaultJsonProtocol { implicit val format = jsonForm
 case class CreatePrice(name: String, amount: Int, currency: String)
 object CreatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
-case class UpdatePrice(name: Option[String], amount: Option[Int], currency: Option[String], roles: Option[Seq[String]])
-object UpdatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
+case class UpdatePrice(name: Option[String], amount: Option[Int], currency: Option[String],
+                       roles: Option[Seq[String]], attributes: Option[Attributes])
+object UpdatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat5(apply) }
 
 case class UpdateHold(booked_id: String, status: Int)
 object UpdateHold extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
@@ -46,27 +37,23 @@ object UpdateHold extends DefaultJsonProtocol { implicit val format = jsonFormat
 case class Booked(booked_id: String, place_id: String, profile_id: Option[String],
                   status: Option[Int],
                   slot_ids: Option[Seq[String]], booking_ids: Option[Seq[String]])
-object Booked extends DefaultJsonProtocol {
-  implicit val format = jsonFormat6(apply)
-
-  def apply(booked_id: String, place_id: String): Booked =
-    Booked(booked_id, place_id, None, None, None, None)
-}
+object Booked extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
 
 case class Slot(slot_id: String, place_id: String, space_id: String,
                 name: Option[String],
                 date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
                 bookings: Option[Seq[Booking]], prices: Option[Seq[Price]],
-                book_status: Option[Int], booked: Option[Booked])
-object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat12(apply) }
+                book_status: Option[Int], booked: Option[Booked], attributes: Option[Attributes])
+object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat13(apply) }
 
 case class CreateSlot(place_id: String, space_id: String, name: String,
                       date_from: Int, date_to: Int, time_from: Int, time_to: Int)
 object CreateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat7(apply) }
 
 case class UpdateSlot(name: Option[String],
-                      date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int])
-object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat5(apply) }
+                      date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
+                      attributes: Option[Attributes])
+object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
 
 /** External JSON objects from other micro services. */
 package ext {

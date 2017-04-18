@@ -38,7 +38,8 @@ object SlotsDb {
 
   case class SearchCriteria(placeId: String, spaceIds: Seq[String],
                             dateFrom: Int, dateTo: Int, timeFrom: Int, timeTo: Int,
-                            bookedByProfileId: Option[String] = None)
+                            bookedByProfileId: Option[String] = None,
+                            groupBy: Option[String] = None)
 }
 
 trait SlotsDb extends SlotCRUD with BookingCRUD with BookedCRUD with PriceCRUD with Search
@@ -47,7 +48,7 @@ trait SlotCRUD {
   def slotById(slotId: String, fields: SlotFields = defaultSlotFields): Option[vo.Slot]
   def createSlot(parentPlaceId: String, parentSpaceId: String, obj: vo.CreateSlot, fields: SlotFields = defaultSlotFields): vo.Slot
   def updateSlot(slotId: String, obj: vo.UpdateSlot, fields: SlotFields = defaultSlotFields): Option[vo.Slot]
-  def deleteSlot(slotId: String)
+  def deleteSlot(slotId: String): Boolean
   def acquireHold(slotId: String, bookedId: String): Boolean
   def confirmHold(slotId: String, bookedId: String): Boolean
   def releaseHold(slotId: String, bookedId: String): Boolean
@@ -55,9 +56,10 @@ trait SlotCRUD {
 
 trait BookingCRUD {
   def bookingById(bookingId: String): Option[vo.Booking]
+  def bookingsBySlotId(slotId: String): Seq[vo.Booking]
   def createBooking(parentSlotId: String, profileId: String, obj: vo.CreateBooking): vo.Booking
   def updateBooking(bookingId: String, obj: vo.UpdateBooking): Option[vo.Booking]
-  def deleteBooking(bookingId: String)
+  def deleteBooking(bookingId: String): Boolean
 }
 
 trait BookedCRUD {
@@ -68,9 +70,10 @@ trait BookedCRUD {
 
 trait PriceCRUD {
   def priceById(priceId: String): Option[vo.Price]
+  def pricesBySlotId(slotId: String): Seq[vo.Price]
   def createPrice(parentSlotId: String, obj: vo.CreatePrice): vo.Price
   def updatePrice(priceId: String, obj: vo.UpdatePrice): Option[vo.Price]
-  def deletePrice(priceId: String)
+  def deletePrice(priceId: String): Boolean
 }
 
 trait Search {
@@ -97,15 +100,6 @@ trait VoFactory {
     val spaceId = as[String]("space_id")
     val slotId = as[ObjectId]("_id").toString
 
-    def fakeBooking(bookingId: String): Option[vo.Booking] =
-      Some(vo.Booking(bookingId, placeId, spaceId, slotId))
-
-    def fakePrice(priceId: String): Option[vo.Price] =
-      Some(vo.Price(priceId, placeId, spaceId, slotId))
-
-    def fakeBooked(bookedId: String): Option[vo.Booked] =
-      Some(vo.Booked(bookedId, placeId))
-
     vo.Slot(
       slot_id = slotId,
       place_id = placeId,
@@ -115,18 +109,13 @@ trait VoFactory {
       date_to = getAs[Int]("date_to"),
       time_from = getAs[Int]("time_from"),
       time_to = getAs[Int]("time_to"),
-      bookings =
-        getAs[Seq[String]]("bookings")
-          .map(_.flatMap(id => if (fields.deepBookings) bookingById(id) else fakeBooking(id)))
-          .noneIfEmpty,
-      prices =
-        getAs[Seq[String]]("prices")
-          .map(_.flatMap(id => if (fields.deepPrices) priceById(id) else fakePrice(id)))
-          .noneIfEmpty,
+      bookings = if (fields.deepBookings) Some(bookingsBySlotId(slotId)).noneIfEmpty else None,
+      prices = if (fields.deepPrices) Some(pricesBySlotId(slotId)).noneIfEmpty else None,
       book_status = getAs[Int]("book_status"),
-      booked =
-        getAs[String]("booked")
-          .flatMap(id => if (fields.deepBooked) bookedById(id) else fakeBooked(id))
+      booked = if (fields.deepBooked) getAs[String]("booked").flatMap(bookedById) else None,
+      attributes =
+        getAs[AnyRef]("attributes")
+          .map(json => Attributes(json.toString))
     )
   }
 
@@ -174,7 +163,10 @@ trait VoFactory {
       currency = getAs[String]("currency"),
       roles =
         getAs[Seq[String]]("roles")
-        .noneIfEmpty
+          .noneIfEmpty,
+      attributes =
+        getAs[AnyRef]("attributes")
+          .map(json => Attributes(json.toString))
     )
   }
 
@@ -188,9 +180,8 @@ trait SlotsCrudImpl {
       .findOne(finderById(slotId))
       .map(asSlot(_, fields))
 
-  override def deleteSlot(slotId: String): Unit =
-    slots
-      .findAndRemove(finderById(slotId))
+  override def deleteSlot(slotId: String): Boolean =
+    softDeleteOne(finderById(slotId), slots)
 
   override def createSlot(parentPlaceId: String, parentSpaceId: String, obj: vo.CreateSlot, fields: SlotFields): vo.Slot = {
     import obj._
@@ -206,8 +197,9 @@ trait SlotsCrudImpl {
     slots.
       insert(slot)
 
-    val slotId = slot.idString
-    slotById(slotId, fields).get
+    entryCreated(slot.idString, slots)
+
+    slotById(slot.idString, fields).get
   }
 
   override def updateSlot(slotId: String, obj: vo.UpdateSlot, fields: SlotFields): Option[vo.Slot] = {
@@ -221,6 +213,10 @@ trait SlotsCrudImpl {
     ).foreach { case (key, value) =>
       update(finderById(slotId), slots, key, value)
     }
+
+    attributes.foreach(a => mergeJsObject(finderById(slotId), slots, "attributes", a.value))
+
+    entryUpdated(slotId, slots)
 
     slotById(slotId, fields)
   }
@@ -294,14 +290,14 @@ trait BookingCrudImpl {
       .findOne(finderById(bookingId))
       .map(asBooking(_))
 
-  override def deleteBooking(bookingId: String): Unit = {
-    val booking = bookingById(bookingId)
-
-    booking.map(_.slot_id).foreach(slotId => removeFromArray(finderById(slotId), slots, "bookings", bookingId))
-
+  override def bookingsBySlotId(slotId: String): Seq[vo.Booking] =
     bookings
-      .findAndRemove(finderById(bookingId))
-  }
+      .find(finder("slot_id" $eq slotId))
+      .map(asBooking(_))
+      .toSeq
+
+  override def deleteBooking(bookingId: String): Boolean =
+    softDeleteOne(finderById(bookingId), bookings)
 
   @throws[BookingConflictException]
   override def createBooking(parentSlotId: String, profileId: String, obj: vo.CreateBooking): vo.Booking = {
@@ -337,12 +333,12 @@ trait BookingCrudImpl {
     bookings.
       insert(booking)
 
-    addToArray(finderById(parentSlotId), slots, "bookings", booking.idString)
+    entryCreated(booking.idString, bookings)
 
     bookingById(booking.idString).get
   }
 
-  override def updateBooking(bookingId: String, obj: vo.UpdateBooking): Option[vo.Booking] = {   //todo
+  override def updateBooking(bookingId: String, obj: vo.UpdateBooking): Option[vo.Booking] = {
     import obj._
     Map(
       "name" -> name,
@@ -352,6 +348,8 @@ trait BookingCrudImpl {
     }
 
     attributes.foreach(a => mergeJsObject(finderById(bookingId), bookings, "attributes", a.value))
+
+    entryUpdated(bookingId, bookings)
 
     bookingById(bookingId)
   }
@@ -379,6 +377,8 @@ trait BookedCrudImpl {
     booked.
       insert(entity)
 
+    entryCreated(entity.idString, booked)
+
     bookedById(entity.idString).get
   }
 
@@ -390,6 +390,8 @@ trait BookedCrudImpl {
     ).foreach { case (key, value) =>
       update(finderById(bookedId), booked, key, value)
     }
+
+    entryUpdated(bookedId, booked)
 
     bookedById(bookedId)
   }
@@ -403,6 +405,12 @@ trait PriceCrudImpl {
     prices
       .findOne(finderById(priceId))
       .map(asPrice(_))
+
+  override def pricesBySlotId(slotId: String): Seq[vo.Price] =
+    prices
+      .find(finder("slot_id" $eq slotId))
+      .map(asPrice(_))
+      .toSeq
 
   override def createPrice(parentSlotId: String, obj: vo.CreatePrice): vo.Price = {
     val parentSlot = slotById(parentSlotId, defaultSlotFields).get
@@ -419,7 +427,7 @@ trait PriceCrudImpl {
     prices.
       insert(price)
 
-    addToArray(finderById(parentSlotId), slots, "prices", price.idString)
+    entryCreated(price.idString, prices)
 
     priceById(price.idString).get
   }
@@ -435,17 +443,15 @@ trait PriceCrudImpl {
       update(finderById(priceId), prices, key, value)
     }
 
+    attributes.foreach(a => mergeJsObject(finderById(priceId), prices, "attributes", a.value))
+
+    entryUpdated(priceId, prices)
+
     priceById(priceId)
   }
 
-  override def deletePrice(priceId: String): Unit = {
-    val price = priceById(priceId)
-
-    price.map(_.slot_id).foreach(slotId => removeFromArray(finderById(slotId), slots, "prices", priceId))
-
-    prices
-      .findAndRemove(finderById(priceId))
-  }
+  override def deletePrice(priceId: String): Boolean =
+    softDeleteOne(finderById(priceId), prices)
 
 }
 
@@ -469,7 +475,7 @@ trait SearchImpl {
 
     val slotsByDate =
       slots
-        .find(placeAndSpaceQuery ++ datesInRangeQuery ++ onlyBookedQuery)
+        .find(finder() ++ placeAndSpaceQuery ++ datesInRangeQuery ++ onlyBookedQuery)
         .sort(MongoDBObject("date_from" -> 1, "time_from" -> 1, "date_to" -> 1, "time_to" -> 1))
         .map(asSlot(_, defaultSlotFields))
         .toSeq
@@ -502,7 +508,7 @@ trait SearchImpl {
 
     val activeBookingsByProfile = (slotIds: Seq[String], profileId: String) =>
       bookings
-        .find(("status" $eq bookingStatus('active)) ++ ("profile_id" $eq profileId) ++ ("slot_id" $in slotIds))
+        .find(finder() ++ ("status" $eq bookingStatus('active)) ++ ("profile_id" $eq profileId) ++ ("slot_id" $in slotIds))
         .map(asBooking(_))
         .toSeq
 
@@ -510,13 +516,26 @@ trait SearchImpl {
     val filterByTime = (_: Unit) =>
       (if (timeFrom == 0 && timeTo == 2400) slotsByDate else slotsByDateTime).map(_.slot_id)
 
+/*
+    // post process: group by date      //todo not needed, remove
+    val groupByDate = (slotIds: Seq[String]) =>
+      if (groupBy.exists(_.split(",").contains("date")))
+        slotIds
+          .map(slotId => slotsByDate.find(_.slot_id == slotId).get)
+          .groupBy(_.date_from.get)
+          .map(_._2.head).toSeq
+          .sortWith { case (slot1, slot2) => slot1.date_from.get < slot2.date_from.get }
+          .map(_.slot_id)
+      else slotIds
+*/
+
     // post process: filter with active booking by profile
     val filterByActiveBookings = (slotIds: Seq[String]) =>
       if (bookedByProfileId.isEmpty || bookedByProfileId.get == "*") slotIds
       else activeBookingsByProfile(slotIds, bookedByProfileId.get).map(_.slot_id)
 
     // get post processed slots with selected fields
-    val f = filterByTime andThen filterByActiveBookings
+    val f = filterByTime andThen filterByActiveBookings 
     val retrieve = (slotIds: Seq[String]) => slotIds.flatMap(slotId => slotById(slotId, fields))
     retrieve { f((): Unit) }
   }

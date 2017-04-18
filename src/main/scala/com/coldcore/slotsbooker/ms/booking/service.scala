@@ -1,12 +1,15 @@
 package com.coldcore.slotsbooker
 package ms.booking.service
 
-import com.coldcore.slotsbooker.ms.booking.vo.{Reference, SelectedPrice}
+import ms.{Timestamp => ts}
+import ms.booking.vo.{Reference, SelectedPrice}
 import ms.booking.db.BookingDb
 import ms.booking.vo
-import ms.http.{RestClient, SystemRestCalls}
+import ms.booking.Constants._
+import ms.http.{ApiCode, RestClient, SystemRestCalls}
 import ms.vo.{Attributes, StringEntity}
 import org.apache.http.HttpStatus._
+import spray.json.{JsObject, JsString}
 
 import collection.mutable.ListBuffer
 import scala.util.Random
@@ -19,12 +22,12 @@ trait PlacesMsRestCalls extends SystemRestCalls {
   } =>
 
   /** Get a place from the "places" micro service */
-  def placeFromMsPlaces(placeId: String): (Int, Option[vo.ext.Place]) =
+  def placeFromMsPlaces(placeId: String): (ApiCode, Option[vo.ext.Place]) =
     restGet[vo.ext.Place](s"$placesBaseUrl/places/$placeId?deep=false")
 
   /** Get a space from the "places" micro service */
   def spaceFromMsPlaces(placeId: String, spaceId: String,
-                        withPrices: Boolean = false): (Int, Option[vo.ext.Space]) =
+                        withPrices: Boolean = false): (ApiCode, Option[vo.ext.Space]) =
     restGet[vo.ext.Space](s"$placesBaseUrl/places/$placeId/spaces/$spaceId?deep=false&deep_prices=$withPrices")
 }
 
@@ -37,31 +40,31 @@ trait SlotsMsRestCalls extends SystemRestCalls {
 
   /** Get a slot from the "slots" micro service */
   def slotFromMsSlots(slotId: String,
-                      withPrices: Boolean = false, withBookings: Boolean = false, withBooked: Boolean = false): (Int, Option[vo.ext.Slot]) =
+                      withPrices: Boolean = false, withBookings: Boolean = false, withBooked: Boolean = false): (ApiCode, Option[vo.ext.Slot]) =
     restGet[vo.ext.Slot](s"$slotsBaseUrl/slots/$slotId?deep=false&deep_prices=$withPrices&deep_bookings=$withBookings&deep_booked=$withBooked")
 
   /** Get Booking from the "slots" micro service */
-  def getBookingFromMsSlots(slotId: String, bookingId: String): (Int, Option[vo.ext.Booking]) =
+  def getBookingFromMsSlots(slotId: String, bookingId: String): (ApiCode, Option[vo.ext.Booking]) =
     restGet[vo.ext.Booking](s"$slotsBaseUrl/slots/$slotId/bookings/$bookingId")
 
   /** Create Booking in the "slots" micro service */
-  def createBookingWithMsSlots(slotId: String, profileId: String, name: String): (Int, Option[vo.ext.Booking]) =
+  def createBookingWithMsSlots(slotId: String, profileId: String, name: String): (ApiCode, Option[vo.ext.Booking]) =
     restPost[vo.ext.Booking](s"$slotsBaseUrl/slots/$slotId/bookings", vo.ext.CreateSlotBooking(profileId, name))
 
   /** Create Booked in the "slots" micro service */
-  def createBookedWithMsSlots(slotIds: Seq[String], profileId: String): (Int, Option[vo.ext.Booked]) =
+  def createBookedWithMsSlots(slotIds: Seq[String], profileId: String): (ApiCode, Option[vo.ext.Booked]) =
     restPost[vo.ext.Booked](s"$slotsBaseUrl/slots/booked", vo.ext.CreateSlotBooked(profileId, slotIds))
 
   /** Update Booked in the "slots" micro service */
-  def updateBookedWithMsSlots(bookedId: String, bookingIds: Option[Seq[String]], status: Option[Int], profileId: String): (Int, Option[vo.ext.Booked]) =
+  def updateBookedWithMsSlots(bookedId: String, bookingIds: Option[Seq[String]], status: Option[Int], profileId: String): (ApiCode, Option[vo.ext.Booked]) =
     restPatch[vo.ext.Booked](s"$slotsBaseUrl/slots/booked/$bookedId", vo.ext.UpdateSlotBooked(profileId, status, bookingIds))
 
   /** Update Hold on a slot in the "slots" micro service */
-  def updateHoldWithMsSlots(slotId: String, bookedId: String, status: Int): Int =
+  def updateHoldWithMsSlots(slotId: String, bookedId: String, status: Int): ApiCode =
     restPatch[StringEntity](s"$slotsBaseUrl/slots/$slotId/hold", vo.ext.UpdateSlotHold(bookedId, status))._1
 
   /** Update Booking in the "slots" micro service */
-  def updateBookingWithMsSlots(bookingId: String, slotId: String, status: Option[Int], attributes: Option[Attributes], profileId: Option[String]): (Int, Option[vo.ext.Booking]) =
+  def updateBookingWithMsSlots(bookingId: String, slotId: String, status: Option[Int], attributes: Option[Attributes], profileId: Option[String]): (ApiCode, Option[vo.ext.Booking]) =
     restPatch[vo.ext.Booking](s"$slotsBaseUrl/slots/$slotId/bookings/$bookingId", vo.ext.UpdateSlotBooking(status, attributes, profileId))
 
 }
@@ -80,10 +83,10 @@ trait VoFactory {
 
 trait CollectSlots {
 
-  type SlotProviderFnType = String => (Int, Option[vo.ext.Slot])
+  type SlotProviderFnType = String => (ApiCode, Option[vo.ext.Slot])
 
   /** Get slots, fails if some slot cannot be collected. */
-  def collectSlots(slotIds: Seq[String], providerFn: SlotProviderFnType): Either[Int, Seq[vo.ext.Slot]] = {
+  def collectSlots(slotIds: Seq[String], providerFn: SlotProviderFnType): Either[ApiCode, Seq[vo.ext.Slot]] = {
     val codesAndSlots = slotIds.map(providerFn)
     codesAndSlots.collectFirst { case (code, None) => code } match {
       case Some(errorCode) => Left(errorCode)
@@ -97,19 +100,19 @@ trait CollectSlots {
 
 trait CollectSpaces {
 
-  type SpaceProviderFnType = String => (Int, Option[vo.ext.Space])
+  type SpaceProviderFnType = String => (ApiCode, Option[vo.ext.Space])
 
   /** Get a space with its prices set or try its parent space and so on. */
-  def collectPricedSpace(spaceId: String, providerFn: SpaceProviderFnType): (Int, Option[vo.ext.Space]) = {
+  def collectPricedSpace(spaceId: String, providerFn: SpaceProviderFnType): (ApiCode, Option[vo.ext.Space]) = {
     val (code, space) = providerFn(spaceId)
-    if (code != SC_OK) (code, None)
+    if (code not SC_OK) (code, None)
     else if (space.get.prices.isDefined) (SC_OK, space)
     else if (space.get.parent_space_id.isEmpty) (SC_OK, space) // space without a price
     else collectPricedSpace(space.get.parent_space_id.get, providerFn)
   }
 
   /** Get spaces with its prices set (uses the "collectPricedSpace" method), fails if some slot cannot be collected. */
-  def collectPricedSpaces(spaceIds: Seq[String], providerFn: SpaceProviderFnType): Either[Int, Seq[vo.ext.Space]] = {
+  def collectPricedSpaces(spaceIds: Seq[String], providerFn: SpaceProviderFnType): Either[ApiCode, Seq[vo.ext.Space]] = {
     val codesAndSpaces = spaceIds.map(collectPricedSpace(_, providerFn))
     codesAndSpaces.collectFirst { case (code, None) => code } match {
       case Some(errorCode) => Left(errorCode)
@@ -122,19 +125,19 @@ trait CollectSpaces {
 }
 
 trait BookingService {
-  def placeById(placeId: String): (Int, Option[vo.ext.Place])
-  def slotById(slotId: String): (Int, Option[vo.ext.Slot])
+  def placeById(placeId: String): (ApiCode, Option[vo.ext.Place])
+  def slotById(slotId: String): (ApiCode, Option[vo.ext.Slot])
   def quoteById(quoteId: String): Option[vo.Quote]
   def refundById(refundId: String): Option[vo.Refund]
   def referenceByRef(ref: String, profileId: String): Option[vo.Reference]
   def referencePaid(ref: String, profileId: String): Boolean
   def nextExpiredReference(): Option[vo.Reference]
 
-  def quoteSlots(selected: Seq[vo.SelectedPrice], profileId: String): (Int, Option[vo.Quote])
-  def refundSlots(slotsIds: Seq[String], profileId: String): (Int, Option[vo.Refund])
-  def bookSlots(obj: vo.BookSlots, profileId: String): (Int, Option[vo.Reference])
-  def cancelSlots(obj: vo.CancelSlots, profileId: String): (Int, Option[vo.Reference])
-  def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): Int
+  def quoteSlots(selected: Seq[vo.SelectedPrice], profileId: String): (ApiCode, Option[vo.Quote])
+  def refundSlots(slotsIds: Seq[String], profileId: String): (ApiCode, Option[vo.Refund])
+  def bookSlots(obj: vo.BookSlots, profileId: String): (ApiCode, Option[vo.Reference])
+  def cancelSlots(obj: vo.CancelSlots, profileId: String): (ApiCode, Option[vo.Reference])
+  def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): ApiCode
 
   val slotBookStatus = Map('bookable -> 0, 'booked -> 1, 'being_booked -> 2, 'being_released -> 3)
   val bookedStatus = Map('being_booked -> 1, 'booked -> 2, 'other -> 3)
@@ -148,7 +151,7 @@ class BookingServiceImpl(val bookingDb: BookingDb, val placesBaseUrl: String, va
     extends BookingService with PlacesMsRestCalls with SlotsMsRestCalls with CollectSlots with CollectSpaces with VoFactory
     with Auxiliary with QuoteSlots with RefundSlots with BookSlots {
 
-  def resolveSlotPrices(slots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.ext.Slot]] = {
+  def resolveSlotPrices(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = {
     val (pricedSlots, notPricedSlots) = slots.partition(_.prices.isDefined)
     val either =
       if (notPricedSlots.isEmpty) Right(Seq.empty[vo.ext.Space])
@@ -167,10 +170,10 @@ class BookingServiceImpl(val bookingDb: BookingDb, val placesBaseUrl: String, va
 trait Auxiliary {
   self: BookingServiceImpl =>
 
-  override def placeById(placeId: String): (Int, Option[vo.ext.Place]) =
+  override def placeById(placeId: String): (ApiCode, Option[vo.ext.Place]) =
     placeFromMsPlaces(placeId)
 
-  override def slotById(slotId: String): (Int, Option[vo.ext.Slot]) =
+  override def slotById(slotId: String): (ApiCode, Option[vo.ext.Slot]) =
     slotFromMsSlots(slotId)
 
   override def quoteById(quoteId: String): Option[vo.Quote] =
@@ -222,17 +225,37 @@ trait QuoteSlots {
   self: BookingServiceImpl =>
 
   /** Generate a new Quote for selected slots and prices without saving it to a database. */
-  private def getQuote(selected: Seq[vo.SelectedPrice], profileId: String): (Int, Option[vo.Quote]) = {
-    def step1(): Either[Int, Seq[vo.ext.Slot]] = // get all slots, Prices object filled
+  private def getQuote(selected: Seq[vo.SelectedPrice], profileId: String): (ApiCode, Option[vo.Quote]) = {
+    def step1(): Either[ApiCode, Seq[vo.ext.Slot]] = // get all slots, Prices object filled
       collectSlots(selected.map(_.slot_id), slotId => slotFromMsSlots(slotId, withPrices = true))
 
-    def step2(slots: Seq[vo.ext.Slot]): Either[Int, _] = // check slots status
+    def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(SC_CONFLICT) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.ext.Slot]] = // resolve slot prices
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
+      val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
+      if (place.isEmpty) Left(codeA)
+      else {
+        val offsetMinutes = place.get.datetime.flatMap(_.offset_minutes).getOrElse(0)
+        val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
+
+        val past = (f: vo.ext.Slot => (Int, Int)) =>
+          slots
+            .map(f)
+            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time)) }
+            .exists(localAsLong >=)
+
+        val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
+        val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
+
+        if (fromPast || toPast) Left(SC_CONFLICT) else Right(SC_OK)
+      }
+    }
+
+    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot prices
       resolveSlotPrices(slots)
 
-    def step4(resolvedSlots: Seq[vo.ext.Slot]): Either[Int, _] = { // check prices validity
+    def step5(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check prices validity
       val valid =
         resolvedSlots.map { slot =>
           selected.exists { sp =>
@@ -243,7 +266,7 @@ trait QuoteSlots {
       if (valid.contains(false)) Left(SC_CONFLICT) else Right(SC_OK)
     }
 
-    def step5(resolvedSlots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.SlotPrice]] = { // convert selected into objects
+    def step6(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
       val pairs =
         selected.map { sp =>
           resolvedSlots
@@ -254,13 +277,14 @@ trait QuoteSlots {
       Right(pairs.flatMap { case (slot, price) => Some(asSlotPrice(slot.slot_id, price)) })
     }
 
-    val eitherA: Either[Int,vo.Quote] =
+    val eitherA: Either[ApiCode,vo.Quote] =
       for {
         slots         <- step1().right
         _             <- step2(slots).right
-        resolvedSlots <- step3(slots).right
-        _             <- step4(resolvedSlots).right
-        prices        <- step5(resolvedSlots).right
+        _             <- step3(slots).right
+        resolvedSlots <- step4(slots).right
+        _             <- step5(resolvedSlots).right
+        prices        <- step6(resolvedSlots).right
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Quote(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),
@@ -272,17 +296,17 @@ trait QuoteSlots {
   }
 
   /** Generate a new Quote for selected slots and prices. */
-  override def quoteSlots(selected: Seq[vo.SelectedPrice], profileId: String): (Int, Option[vo.Quote]) = {
+  override def quoteSlots(selected: Seq[vo.SelectedPrice], profileId: String): (ApiCode, Option[vo.Quote]) = {
     val (code, quote) = getQuote(selected, profileId)
     (code, quote.map(bookingDb.createQuote))
   }
 
   /** Generate a new Quote for selected slots, slots should not require payment. */
-  def quoteSlotsNoPayment(slotIds: Seq[String], profileId: String): (Int, Option[vo.Quote]) =
+  def quoteSlotsNoPayment(slotIds: Seq[String], profileId: String): (ApiCode, Option[vo.Quote]) =
     quoteSlots(slotIds.map(SelectedPrice(_, None)), profileId)
 
   /** Verify that existing Quote is valid by comparing it with a newly generated one. */
-  def verifyQuote(quoteId: String, profileId: String): (Int, Option[vo.Quote]) = {
+  def verifyQuote(quoteId: String, profileId: String): (ApiCode, Option[vo.Quote]) = {
     val existing = bookingDb.quoteById(quoteId)
     if (existing.isEmpty) (SC_NOT_FOUND, None)
     else {
@@ -299,25 +323,45 @@ trait RefundSlots {
   self: BookingServiceImpl =>
 
   /** Generate a new Refund for selected slots without saving it to a database. */
-  private def getRefund(slotIds: Seq[String], profileId: String): (Int, Option[vo.Refund]) = {
-    def step1(): Either[Int, Seq[vo.ext.Slot]] = // get all slots
-      collectSlots(slotIds, slotId => slotFromMsSlots(slotId))
+  private def getRefund(slotIds: Seq[String], profileId: String): (ApiCode, Option[vo.Refund]) = {
+    def step1(): Either[ApiCode, Seq[vo.ext.Slot]] = // get all slots, Booked objects filled
+      collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
 
-    def step2(slots: Seq[vo.ext.Slot]): Either[Int, _] = // check slots status
-      if (slots.exists(_.book_status.get == slotBookStatus('bookable))) Left(SC_CONFLICT) else Right(SC_OK)
+    def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
+      if (slots.exists(_.book_status.get == slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slots_contain_bookable)) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.Reference]] = { // get references for slots
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
+    val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
+      if (place.isEmpty) Left(codeA)
+      else {
+        val offsetMinutes = place.get.datetime.flatMap(_.offset_minutes).getOrElse(0)
+        val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
+
+        val past = (f: vo.ext.Slot => (Int, Int)) =>
+          slots
+            .map(f)
+            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time)) }
+            .exists(localAsLong >=)
+
+        val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
+        val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
+
+        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slots_contain_expired)) else Right(SC_OK)
+      }
+    }
+
+    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.Reference]] = { // get references for slots
       val references = slots.flatMap(_.booked).flatMap(booked => bookingDb.referenceByBookedId(booked.booked_id, quote = true))
-      if (references.size != slots.size) Left(SC_CONFLICT)
-      else if (references.map(_.place_id).exists(slots.head.place_id !=)) Left(SC_CONFLICT)
-      else if (references.map(_.profile_id.get).exists(profileId !=)) Left(SC_CONFLICT)
+      if (references.size != slots.size) Left(ApiCode(SC_CONFLICT, 'refs_slots_mismatch))
+      else if (references.map(_.place_id).exists(slots.head.place_id !=)) Left(ApiCode(SC_CONFLICT, 'refs_place_mismatch))
+      else if (references.map(_.profile_id.get).exists(profileId !=)) Left(ApiCode(SC_CONFLICT, 'refs_profile_mismatch))
       else Right(references.distinct)
     }
 
-    def step4(references: Seq[vo.Reference]): Either[Int, Seq[vo.Quote]] = // get quotes from references
+    def step5(references: Seq[vo.Reference]): Either[ApiCode, Seq[vo.Quote]] = // get quotes from references
       Right(references.map(_.quote.get))
 
-    def step5(quotes: Seq[vo.Quote]): Either[Int, Seq[vo.SlotPrice]] = { // collect cancellable prices
+    def step6(quotes: Seq[vo.Quote]): Either[ApiCode, Seq[vo.SlotPrice]] = { // collect cancellable prices
       val prices = quotes.flatMap(_.prices).flatten
       val incomplete =
         quotes
@@ -334,16 +378,19 @@ trait RefundSlots {
 
       val conflictedA = !incomplete.forall(slotIds.contains)
       val conflictedB = !promoted.forall(slotIds.contains)
-      if (conflictedA || conflictedB) Left(SC_CONFLICT) else Right(cancellable)
+      if (conflictedA) Left(ApiCode(SC_CONFLICT, 'quotes_complete_not_all))
+      else if (conflictedB) Left(ApiCode(SC_CONFLICT, 'quotes_deal_not_all))
+      else Right(cancellable)
     }
 
-    val eitherA: Either[Int,vo.Refund] =
+    val eitherA: Either[ApiCode, vo.Refund] =
       for {
         slots      <- step1().right
         _          <- step2(slots).right
-        references <- step3(slots).right
-        quotes     <- step4(references).right
-        prices     <- step5(quotes).right
+        _          <- step3(slots).right
+        references <- step4(slots).right
+        quotes     <- step5(references).right
+        prices     <- step6(quotes).right
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Refund(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),
@@ -355,27 +402,27 @@ trait RefundSlots {
   }
 
   /** Generate a new Refund for selected slots. */
-  override def refundSlots(slotIds: Seq[String], profileId: String): (Int, Option[vo.Refund]) = {
+  override def refundSlots(slotIds: Seq[String], profileId: String): (ApiCode, Option[vo.Refund]) = {
     val (code, refund) = getRefund(slotIds, profileId)
     (code, refund.map(bookingDb.createRefund))
   }
 
   /** Generate a new Refund for selected slots, slots should not require payment. */
-  def refundSlotsNoPayment(slotIds: Seq[String], profileId: String): (Int, Option[vo.Refund]) = {
+  def refundSlotsNoPayment(slotIds: Seq[String], profileId: String): (ApiCode, Option[vo.Refund]) = {
     val (code, refund) = getRefund(slotIds, profileId)
-    if (refund.isDefined && refund.get.amount.getOrElse(0) != 0) (SC_CONFLICT, None)
+    if (refund.isDefined && refund.get.amount.getOrElse(0) != 0) (ApiCode(SC_CONFLICT, 'refund_requires_payment), None)
     else (code, refund.map(bookingDb.createRefund))
   }
 
   /** Verify that existing Refund is valid by comparing it with a newly generated one. */
-  def verifyRefund(refundId: String, profileId: String): (Int, Option[vo.Refund]) = {
+  def verifyRefund(refundId: String, profileId: String): (ApiCode, Option[vo.Refund]) = {
     val existing = bookingDb.refundById(refundId)
-    if (existing.isEmpty) (SC_NOT_FOUND, None)
+    if (existing.isEmpty) (ApiCode(SC_NOT_FOUND), None)
     else {
       val slotIds = existing.get.prices.getOrElse(Nil).map(_.slot_id)
       val (code, refund) = getRefund(slotIds, profileId)
       if (refund.isEmpty) (code, None)
-      else if (existing.get != refund.get.copy(refund_id = refundId, status = existing.get.status)) (SC_CONFLICT, None)
+      else if (existing.get != refund.get.copy(refund_id = refundId, status = existing.get.status)) (ApiCode(SC_CONFLICT, 'generated_refund_mismatch), None)
       else (SC_OK, existing)
     }
   }
@@ -384,28 +431,28 @@ trait RefundSlots {
 trait BookSlots {
   self: BookingServiceImpl =>
 
-  private def bookSlots(quoteId: String, profileId: String): (Int, Option[vo.Reference]) = {
+  private def bookSlots(quoteId: String, profileId: String): (ApiCode, Option[vo.Reference]) = {
     val rollbacks = new ListBuffer[() => Unit]
 
-    def step0(): Either[Int, vo.Quote] = { // check quote
+    def step0(): Either[ApiCode, vo.Quote] = { // check quote
       val (code, quote) = verifyQuote(quoteId, profileId)
       if (quote.isEmpty) Left(code)
       else if (quote.get.status.get != quoteStatus('inactive)) Left(SC_CONFLICT)
       else Right(quote.get)
     }
 
-    def step1(quote: vo.Quote): Either[Int, Seq[vo.ext.Slot]] = { // get all slots
+    def step1(quote: vo.Quote): Either[ApiCode, Seq[vo.ext.Slot]] = { // get all slots
       val slotIds = quote.prices.getOrElse(Nil).map(_.slot_id)
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId))
     }
 
-    def step2(slots: Seq[vo.ext.Slot]): Either[Int, _] = // check slots status
+    def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(SC_CONFLICT) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[Int, vo.ext.Booked] = { // create Booked object
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Booked] = { // create Booked object
       val slotIds = slots.map(_.slot_id)
       val (code, booked) = createBookedWithMsSlots(slotIds, profileId)
-      val either = if (code != SC_CREATED) Left(code) else Right(booked.get)
+      val either = if (code not SC_CREATED) Left(code) else Right(booked.get)
 
       val rollback = () => booked.foreach(_ => updateBookedWithMsSlots(booked.get.booked_id, bookingIds = None, Some(bookedStatus('other)), profileId)): Unit
       rollback +=: rollbacks
@@ -413,10 +460,10 @@ trait BookSlots {
       either
     }
 
-    def step4(slots: Seq[vo.ext.Slot], booked: vo.ext.Booked): Either[Int, _] = { // acquire slots
+    def step4(slots: Seq[vo.ext.Slot], booked: vo.ext.Booked): Either[ApiCode, _] = { // acquire slots
       val slotIds = slots.map(_.slot_id)
       val codes = slotIds.map(slotId => updateHoldWithMsSlots(slotId, booked.booked_id, slotBookStatus('being_booked)))
-      val either = codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      val either = codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
 
       val rollback = () => slotIds.foreach(slotId => updateHoldWithMsSlots(slotId, booked.booked_id, slotBookStatus('being_released)))
       rollback +=: rollbacks
@@ -424,13 +471,13 @@ trait BookSlots {
       either
     }
 
-    def step5(slots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.ext.Booking]] = { // create bookings
+    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Booking]] = { // create bookings
       val slotIds = slots.map(_.slot_id)
       val (codes, bookings) =
         slotIds.map(slotId => createBookingWithMsSlots(slotId, profileId, "Booking")) match {
           case cb => (cb.map(_._1), cb.map(_._2))
         }
-      val either = codes.find(SC_CREATED !=).map(Left(_)).getOrElse(Right(bookings.map(_.get)))
+      val either = codes.find(_ not SC_CREATED).map(Left(_)).getOrElse(Right(bookings.map(_.get)))
 
       val rollback = () => bookings.flatten.foreach(booking => updateBookingWithMsSlots(booking.booking_id, booking.slot_id, Some(bookingStatus('inactive)), attributes = None, profileId = None))
       rollback +=: rollbacks
@@ -438,26 +485,32 @@ trait BookSlots {
       either
     }
 
-    def step6(booked: vo.ext.Booked, bookings: Seq[vo.ext.Booking]): Either[Int, _] = { // update Booked object
+    def step6(booked: vo.ext.Booked, bookings: Seq[vo.ext.Booking]): Either[ApiCode, _] = { // update Booked object
       val (code, _) = updateBookedWithMsSlots(booked.booked_id, Some(bookings.map(_.booking_id)), Some(bookedStatus('booked)), profileId)
-      if (code != SC_OK) Left(code) else Right(SC_OK)
+      if (code not SC_OK) Left(code) else Right(SC_OK)
     }
 
-    def step7(slots: Seq[vo.ext.Slot], booked: vo.ext.Booked): Either[Int, _] = { // confirm slots
+    def step7(slots: Seq[vo.ext.Slot], booked: vo.ext.Booked): Either[ApiCode, _] = { // confirm slots
       val slotIds = slots.map(_.slot_id)
       val codes = slotIds.map(slotId => updateHoldWithMsSlots(slotId, booked.booked_id, slotBookStatus('booked)))
-      codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
     }
 
-    def step8(bookings: Seq[vo.ext.Booking]): Either[Int, _] = { // update bookings as active
+    def step8(bookings: Seq[vo.ext.Booking], quote: vo.Quote): Either[ApiCode, _] = { // update bookings as active and set attributes
+      val attrs = (booking: vo.ext.Booking) => {
+        val sp = quote.prices.getOrElse(Nil).filter(_.slot_id == booking.slot_id)
+        val value = sp.head.price_id.map("price_id" -> JsString(_)).toList
+        Attributes(value: _*)
+      }
+
       val codes =
-        bookings.map(booking => updateBookingWithMsSlots(booking.booking_id, booking.slot_id, Some(bookingStatus('active)), attributes = None, profileId = None)) match {
+        bookings.map(booking => updateBookingWithMsSlots(booking.booking_id, booking.slot_id, Some(bookingStatus('active)), Some(attrs(booking)), profileId = None)) match {
           case cb => cb.map(_._1)
         }
-      codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
     }
 
-    val eitherA: Either[Int,vo.Reference] =
+    val eitherA: Either[ApiCode,vo.Reference] =
       for {
         quote    <- step0().right
         slots    <- step1(quote).right
@@ -467,7 +520,7 @@ trait BookSlots {
         bookings <- step5(slots).right
         _        <- step6(booked, bookings).right
         _        <- step7(slots, booked).right
-        _        <- step8(bookings).right
+        _        <- step8(bookings, quote).right
       } yield {
         val reference = Reference(null, slots.head.place_id, Some(generateRef(profileId)), Some(profileId), Some(Seq(booked.booked_id)),
                                   quote = Some(quote), refund = None)
@@ -481,36 +534,36 @@ trait BookSlots {
     }
   }
 
-  private def cancelSlots(refundId: String, profileId: String): (Int, Option[vo.Reference]) = {
-    def step0(): Either[Int, vo.Refund] = { // check refund
+  private def cancelSlots(refundId: String, profileId: String): (ApiCode, Option[vo.Reference]) = {
+    def step0(): Either[ApiCode, vo.Refund] = { // check refund
       val (code, refund) = verifyRefund(refundId, profileId)
       if (refund.isEmpty) Left(code)
       else if (refund.get.status.get != quoteStatus('inactive)) Left(SC_CONFLICT)
       else Right(refund.get)
     }
 
-    def step1(refund: vo.Refund): Either[Int, Seq[vo.ext.Slot]] = { // get all slots, Booked objects filled
+    def step1(refund: vo.Refund): Either[ApiCode, Seq[vo.ext.Slot]] = { // get all slots, Booked objects filled
       val slotIds = refund.prices.getOrElse(Nil).map(_.slot_id)
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
     }
 
-    def step2(slots: Seq[vo.ext.Slot]): Either[Int, _] = // check slots status
+    def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(SC_CONFLICT) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[Int, Seq[vo.ext.Booked]] = { // check slots Booked objects belong to a user and have proper status
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Booked]] = { // check slots Booked objects belong to a user and have proper status
       val booked = slots.map(_.booked.get).distinct
       if (booked.exists(_.profile_id.get != profileId)) Left(SC_FORBIDDEN)
       else if (booked.exists(_.status.get != bookedStatus('booked))) Left(SC_CONFLICT)
       else Right(booked)
     }
 
-    def step4(slots: Seq[vo.ext.Slot]): Either[Int, _] = { // release slots
+    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // release slots
       val ids = slots.groupBy(slot => slot.booked.get.booked_id).map { case (bookedId, slotSeq) => bookedId -> slotSeq.map(_.slot_id) }
       val codes = ids.flatMap { case (bookedId, slotIdSeq) => slotIdSeq.map(slotId => updateHoldWithMsSlots(slotId, bookedId, slotBookStatus('being_released))) }
-      codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
     }
 
-    def step5(slots: Seq[vo.ext.Slot]): Either[Int, _] = { // update Bookings as inactive
+    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // update Bookings as inactive
       val codes =
         slots.map { slot =>
           val b = slot.booked.get
@@ -518,10 +571,10 @@ trait BookSlots {
           val bookingId = b.booking_ids.get.apply(i)
           updateBookingWithMsSlots(bookingId, slot.slot_id, Some(bookingStatus('inactive)), attributes = None, profileId = None)._1
         }
-      codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
     }
 
-    val eitherA: Either[Int,vo.Reference] =
+    val eitherA: Either[ApiCode,vo.Reference] =
       for {
         refund   <- step0().right
         slots    <- step1(refund).right
@@ -539,9 +592,9 @@ trait BookSlots {
     else (eitherA.left.get, None)
   }
 
-  override def bookSlots(obj: vo.BookSlots, profileId: String): (Int, Option[vo.Reference]) = {
-    val (codeQ, quoteId) = // if no quote supplied then try to create one for slot IDs
-      obj.quote_id.map(SC_OK -> Some(_)).getOrElse {
+  override def bookSlots(obj: vo.BookSlots, profileId: String): (ApiCode, Option[vo.Reference]) = {
+    val (codeQ: ApiCode, quoteId) = // if no quote supplied then try to create one for slot IDs
+      obj.quote_id.map(ApiCode.OK -> Some(_)).getOrElse {
         val (c, q) = quoteSlotsNoPayment(obj.slot_ids.get, profileId)
         (c, q.map(_.quote_id))
       }
@@ -551,16 +604,21 @@ trait BookSlots {
       val (codeR, reference) = bookSlots(quoteId.get, profileId)
       reference.foreach(r => updateQuoteAfterBookSlots(r.reference_id))
 
+      val systemAttrs = Attributes(JsObject(
+        "ref" -> JsString(reference.get.ref.get)
+      ))
+
       val slotIds = slotIdsByQuote(quoteId.get).get
       val codeU = updateSlots(slotIds, profileId, obj.attributes) //todo check codeU
+      val codeX = updateSlots(slotIds, "*", Some(systemAttrs)) //todo check codeX
 
       if (reference.isEmpty) (codeR, None) else (SC_CREATED, referenceById(reference.get.reference_id))
     }
   }
 
-  override def cancelSlots(obj: vo.CancelSlots, profileId: String): (Int, Option[vo.Reference]) = {
-    val (codeQ, refundId) = // if no refund supplied then try to create one for slot IDs
-      obj.refund_id.map(SC_OK -> Some(_)).getOrElse {
+  override def cancelSlots(obj: vo.CancelSlots, profileId: String): (ApiCode, Option[vo.Reference]) = {
+    val (codeQ: ApiCode, refundId) = // if no refund supplied then try to create one for slot IDs
+      obj.refund_id.map(ApiCode.OK -> Some(_)).getOrElse {
         val (c, r) = refundSlotsNoPayment(obj.slot_ids.get, profileId)
         (c, r.map(_.refund_id))
       }
@@ -577,32 +635,32 @@ trait BookSlots {
     }
   }
 
-  override def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): Int = {
-    def step1(): Either[Int, Seq[vo.ext.Slot]] =  // get all slots, Booked objects filled
+  override def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): ApiCode = {
+    def step1(): Either[ApiCode, Seq[vo.ext.Slot]] =  // get all slots, Booked objects filled
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
 
-    def step2(slots: Seq[vo.ext.Slot]): Either[Int, _] = // check slots status
+    def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(SC_CONFLICT) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[Int, _] = { // check slots Booked objects belong to a user and have proper status
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots Booked objects belong to a user and have proper status
       val booked = slots.map(_.booked.get)
-      if (booked.exists(_.profile_id.get != profileId)) Left(SC_FORBIDDEN)
+      if (booked.exists(_.profile_id.get != profileId) && profileId != "*") Left(SC_FORBIDDEN)
       else if (booked.exists(_.status.get != bookedStatus('booked))) Left(SC_CONFLICT)
       else Right(SC_OK)
     }
 
-    def step4(slots: Seq[vo.ext.Slot]): Either[Int, _] = { // update Bookings attributes (apply profile permissions)
+    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // update Bookings attributes (apply profile permissions)
       val codes =
         slots.map { slot =>
           val b = slot.booked.get
           val i = b.slot_ids.get.indexOf(slot.slot_id)
           val bookingId = b.booking_ids.get.apply(i)
-          updateBookingWithMsSlots(bookingId, slot.slot_id, status = None, attributes, Some(profileId))._1
+          updateBookingWithMsSlots(bookingId, slot.slot_id, status = None, attributes, if (profileId != "*") Some(profileId) else None)._1
         }
-      codes.find(SC_OK !=).map(Left(_)).getOrElse(Right(SC_OK))
+      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
     }
 
-    val eitherA: Either[Int, Int] =
+    val eitherA: Either[ApiCode, ApiCode] =
       for {
         slots    <- step1().right
         _        <- step2(slots).right

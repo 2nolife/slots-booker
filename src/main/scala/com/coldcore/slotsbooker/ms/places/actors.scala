@@ -31,7 +31,9 @@ trait SpaceCommands {
   case class GetSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote,
                         deepSpaces: Boolean, deepPrices: Boolean)
   case class GetSpacesIN(placeId: String, profile: ProfileRemote,
-                         deepSpaces: Boolean, deepPrices: Boolean)
+                         deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int])
+  case class GetInnerSpacesIN(placeId: String, spaceId: String, profile: ProfileRemote,
+                              deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int])
   case class DeleteSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote)
 }
 
@@ -59,6 +61,12 @@ class PlacesActor(val placesDb: PlacesDb, val voAttributes: VoAttributes) extend
 
   def permitAttributes(obj: vo.UpdatePlace, place: vo.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("place"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
+  def permitAttributes(obj: vo.UpdateSpace, place: vo.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("space"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
+  def permitAttributes(obj: vo.UpdatePrice, place: vo.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("price"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
 
 }
 
@@ -128,22 +136,24 @@ trait AmendSpace {
         else if (canCreate) (SC_CREATED, create())
         else (SC_FORBIDDEN, None)
 
-      reply ! CodeEntityOUT(code, space)
+      reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
     case UpdateSpaceIN(placeId, spaceId, obj, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
       lazy val mySpace = placesDb.spaceById(spaceId)
       lazy val spaceNotFound = myPlace.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canUpdate = profile.isSuper || placeModerator(myPlace.get, profile)
 
       def update(): Option[vo.Space] = placesDb.updateSpace(spaceId, obj)
 
       val (code, space) =
         if (spaceNotFound) (SC_NOT_FOUND, None)
+        else if (forbidAttributes) (SC_FORBIDDEN, None)
         else if (canUpdate) (SC_OK, update())
         else (SC_FORBIDDEN, None)
 
-      reply ! CodeEntityOUT(code, space)
+      reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
     case CreateInnerSpaceIN(placeId, spaceId, obj, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
@@ -158,7 +168,7 @@ trait AmendSpace {
         else if (canCreate) (SC_CREATED, create())
         else (SC_FORBIDDEN, None)
 
-      reply ! CodeEntityOUT(code, space)
+      reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
     case DeleteSpaceIN(placeId, spaceId, profile) => //todo bookings may exist
       lazy val myPlace = placesDb.placeById(placeId)
@@ -200,26 +210,28 @@ trait AmendPrice {
         else if (canCreate) (SC_CREATED, create())
         else (SC_FORBIDDEN, None)
 
-      reply ! CodeEntityOUT(code, price)
+      reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
     case UpdatePriceIN(placeId, spaceId, priceId, obj, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
-      lazy val mySpace = placesDb.spaceById(spaceId)
+      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = true))
       lazy val priceNotFound = myPlace.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId || !mySpace.get.hasPriceId(priceId)
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canUpdate = profile.isSuper || placeModerator(myPlace.get, profile)
 
       def update(): Option[vo.Price] = placesDb.updatePrice(priceId, obj)
 
       val (code, price) =
         if (priceNotFound) (SC_NOT_FOUND, None)
+        else if (forbidAttributes) (SC_FORBIDDEN, None)
         else if (canUpdate) (SC_OK, update())
         else (SC_FORBIDDEN, None)
 
-      reply ! CodeEntityOUT(code, price)
+      reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
     case DeletePriceIN(placeId, spaceId, priceId, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
-      lazy val mySpace = placesDb.spaceById(spaceId)
+      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = true))
       lazy val priceNotFound = myPlace.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId || !mySpace.get.hasPriceId(priceId)
       lazy val canDelete = profile.isSuper || placeModerator(myPlace.get, profile)
 
@@ -258,10 +270,10 @@ trait GetPlace {
 
     case GetPlacesIN(byAttributes, joinOR, profile, deepSpaces, deepPrices) =>
       val fields = customPlaceFields(deepSpaces, deepPrices)
-      val unprivileged =
+      val privileged =
         byAttributes.nonEmpty && !byAttributes.exists { case (_, value) => value.endsWith("*") && value.size < 3+1 }
 
-      lazy val canRead = profile.isSuper || unprivileged
+      lazy val canRead = profile.isSuper || privileged
 
       def read: Option[Seq[vo.Place]] = Some(placesDb.searchPlaces(byAttributes, joinOR, fields))
 
@@ -284,6 +296,7 @@ trait GetSpace {
     case GetSpaceIN(placeId, spaceId, profile, deepSpaces, deepPrices) =>
       val fields = customSpaceFields(deepSpaces, deepPrices)
 
+      lazy val myPlace = placesDb.placeById(placeId)
       lazy val mySpace = placesDb.spaceById(spaceId, fields)
       lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
 
@@ -291,21 +304,36 @@ trait GetSpace {
         if (spaceNotFound) (SC_NOT_FOUND, None)
         else (SC_OK, mySpace)
 
-      reply ! CodeEntityOUT(code, space)
+      reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
-    case GetSpacesIN(placeId, profile, deepSpaces, deepPrices) =>
-      val fields = customPlaceFields(deepSpaces, deepPrices)
+    case GetSpacesIN(placeId, profile, deepSpaces, deepPrices, limit) =>
+      val fields = customSpaceFields(deepSpaces, deepPrices)
 
-      lazy val myPlace = placesDb.placeById(placeId, fields)
+      lazy val myPlace = placesDb.placeById(placeId)
       lazy val placeNotFound = myPlace.isEmpty
 
-      def read: Option[Seq[vo.Space]] = Some(myPlace.get.spaces.getOrElse(Nil))
+      def read: Option[Seq[vo.Space]] = Some(placesDb.immediateSpacesByPlaceId(placeId, fields).take(limit.getOrElse(Int.MaxValue)))
 
       val (code, spaces) =
         if (placeNotFound) (SC_NOT_FOUND, None)
         else (SC_OK, read)
 
-      reply ! CodeEntityOUT(code, spaces)
+      reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
+
+    case GetInnerSpacesIN(placeId, spaceId, profile, deepSpaces, deepPrices, limit) =>
+      val fields = customSpaceFields(deepSpaces, deepPrices)
+
+      lazy val myPlace = placesDb.placeById(placeId)
+      lazy val mySpace = placesDb.spaceById(spaceId, fields)
+      lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
+
+      def read: Option[Seq[vo.Space]] = Some(placesDb.immediateSpacesByParentId(spaceId, fields).take(limit.getOrElse(Int.MaxValue)))
+
+      val (code, spaces) =
+        if (spaceNotFound) (SC_NOT_FOUND, None)
+        else (SC_OK, read)
+
+      reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
 
   }
 
@@ -318,9 +346,8 @@ trait GetPrice {
   val getPriceReceive: Actor.Receive = {
 
     case GetPriceIN(placeId, spaceId, priceId, profile) =>
-      val fields = customSpaceFields(deep_spaces = false, deep_prices = false)
-
-      lazy val mySpace = placesDb.spaceById(spaceId, fields)
+      lazy val myPlace = placesDb.placeById(placeId)
+      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = true))
       lazy val myPrice = placesDb.priceById(priceId)
       lazy val priceNotFound = myPrice.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId || !mySpace.get.hasPriceId(priceId)
 
@@ -328,12 +355,11 @@ trait GetPrice {
         if (priceNotFound) (SC_NOT_FOUND, None)
         else (SC_OK, myPrice)
 
-      reply ! CodeEntityOUT(code, price)
+      reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
     case GetPricesIN(placeId, spaceId, profile) =>
-      val fields = customSpaceFields(deep_spaces = false, deep_prices = true)
-
-      lazy val mySpace = placesDb.spaceById(spaceId, fields)
+      lazy val myPlace = placesDb.placeById(placeId)
+      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = true))
       lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
 
       def read: Option[Seq[vo.Price]] = Some(mySpace.get.prices.getOrElse(Nil))
@@ -342,7 +368,7 @@ trait GetPrice {
         if (spaceNotFound) (SC_NOT_FOUND, None)
         else (SC_OK, read)
 
-      reply ! CodeEntityOUT(code, prices)
+      reply ! CodeEntityOUT(code, exposePrices(prices, myPlace, profile))
 
   }
 
@@ -358,6 +384,7 @@ trait VoExpose {
   def expose(obj: vo.Place, profile: ProfileRemote): vo.Place =
     Some(obj)
       .map(p => au.exposeClass(p, voAttributes("place"), ap.defaultRead(profile, _ => placeModerator(p, profile))))
+      .map { p => exposeSpaces(p.spaces, Some(p), profile); p }
       .map(p => p.copy(attributes = p.attributes.noneIfEmpty))
       .get
 
@@ -365,7 +392,33 @@ trait VoExpose {
     obj.map(expose(_, profile))
 
   def exposeSeq(obj: Option[Seq[vo.Place]], profile: ProfileRemote): Option[Seq[vo.Place]] =
-    obj.map(_.map(expose(_, profile)))
+    obj.map(_.map(expose(_, profile)).toList)
+
+  def expose(obj: vo.Space, place: vo.Place, profile: ProfileRemote): vo.Space =
+    Some(obj)
+      .map(p => au.exposeClass(p, voAttributes("space"), ap.defaultRead(profile, _ => placeModerator(place, profile))))
+      .map { p => exposePrices(p.prices, Some(place), profile); p }
+      .map { p => exposeSpaces(p.spaces, Some(place), profile); p }
+      .map(p => p.copy(attributes = p.attributes.noneIfEmpty))
+      .get
+
+  def exposeSpace(obj: Option[vo.Space], place: Option[vo.Place], profile: ProfileRemote): Option[vo.Space] =
+    obj.map(expose(_, place.get, profile))
+
+  def exposeSpaces(obj: Option[Seq[vo.Space]], place: Option[vo.Place], profile: ProfileRemote): Option[Seq[vo.Space]] =
+    obj.map(_.map(expose(_, place.get, profile)).toList)
+
+  def expose(obj: vo.Price, place: vo.Place, profile: ProfileRemote): vo.Price =
+    Some(obj)
+      .map(p => au.exposeClass(p, voAttributes("price"), ap.defaultRead(profile, _ => placeModerator(place, profile))))
+      .map(p => p.copy(attributes = p.attributes.noneIfEmpty))
+      .get
+
+  def exposePrice(obj: Option[vo.Price], place: Option[vo.Place], profile: ProfileRemote): Option[vo.Price] =
+    obj.map(expose(_, place.get, profile))
+
+  def exposePrices(obj: Option[Seq[vo.Price]], place: Option[vo.Place], profile: ProfileRemote): Option[Seq[vo.Price]] =
+    obj.map(_.map(expose(_, place.get, profile)).toList)
 
 }
 

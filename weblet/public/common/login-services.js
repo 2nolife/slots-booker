@@ -9,8 +9,13 @@ app.service('authInterceptor', function($q, $rootScope) {
 
 })
 
-app.service('loginService', function($rootScope, $cookies, $http, state) {
+app.service('loginService', function($rootScope, $cookies, $http, state, notifyService) {
   var service = this
+
+  function notifyResponseError(/*obj*/ response) {
+    var apiCode = apiCodeFromResponse(response)
+    notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
+  }
 
   service.setHttpAuthHeader = function() {
     service.removeHttpAuthHeader()
@@ -33,7 +38,7 @@ app.service('loginService', function($rootScope, $cookies, $http, state) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (statusCallback) statusCallback('error', response)
+          if (!statusCallback || !statusCallback('error', response)) notifyResponseError(response)
         })
   }
 
@@ -47,7 +52,7 @@ app.service('loginService', function($rootScope, $cookies, $http, state) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (statusCallback) statusCallback('error', response)
+          if (!statusCallback || !statusCallback('error', response)) notifyResponseError(response)
         })
   }
 

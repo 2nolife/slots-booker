@@ -79,7 +79,7 @@ trait ProfilesRoute {
 
         get {
           parameterSeq { attributes =>
-            completeByActor[Seq[vo.Profile]](profilesActor, GetProfilesIN(attributes.filterNot(p => Seq("and", "or").contains(p._1)), joinOR = attributes.exists(p => p._1 == "or"), profile))
+            completeByActor[Seq[vo.Profile]](profilesActor, SearchProfilesIN(attributes.filterNot(p => Seq("and", "or").contains(p._1)), joinOR = attributes.exists(p => p._1 == "or"), profile))
           }
         }
 

@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import ms.booking.db.BookingDb
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.booking.service.{BookingService, BookingServiceImpl}
-import ms.http.RestClient
+import ms.http.{ApiCode, RestClient}
 import ms.vo.ProfileRemote
 import ms.actors.MsgInterceptor
 import ms.booking.vo
@@ -64,14 +64,14 @@ trait QuoteReceive {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canCreate = obj.as_profile_id.isEmpty || profile.isSuper || placeModerator(myPlace.get, profile)
 
-      def create(): (Int, Option[vo.Quote]) = bookingService.quoteSlots(obj.selected, obj.as_profile_id.getOrElse(profile.profile_id))
+      def create(): (ApiCode, Option[vo.Quote]) = bookingService.quoteSlots(obj.selected, obj.as_profile_id.getOrElse(profile.profile_id))
 
       val (code, quote) =
-        if (invalidEntity) (SC_BAD_REQUEST, None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
         else if (slotNotFound) (codeA, None)
         else if (placeNotFound) (codeB, None)
         else if (canCreate) create()
-        else (SC_FORBIDDEN, None)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, quote)
 
@@ -94,14 +94,14 @@ trait RefundReceive {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canCreate = obj.as_profile_id.isEmpty || profile.isSuper || placeModerator(myPlace.get, profile)
 
-      def create(): (Int, Option[vo.Refund]) = bookingService.refundSlots(obj.slot_ids, obj.as_profile_id.getOrElse(profile.profile_id))
+      def create(): (ApiCode, Option[vo.Refund]) = bookingService.refundSlots(obj.slot_ids, obj.as_profile_id.getOrElse(profile.profile_id))
 
       val (code, refund) =
-        if (invalidEntity) (SC_BAD_REQUEST, None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
         else if (slotNotFound) (codeA, None)
         else if (placeNotFound) (codeB, None)
         else if (canCreate) create()
-        else (SC_FORBIDDEN, None)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, refund)
 
@@ -120,7 +120,7 @@ trait SlotsReceive {
         obj.slot_ids.getOrElse(Nil).isEmpty && obj.quote_id.isEmpty ||
         obj.slot_ids.isDefined && obj.quote_id.isDefined
 
-      lazy val (codeA, mySlot) = {
+      lazy val (codeA: ApiCode, mySlot) = {
         val slotId = // get slot ID from supplied quote or slot IDs
           obj.quote_id.flatMap(bookingService.quoteById).map(_.prices.get.head.slot_id)
           .orElse(obj.slot_ids.getOrElse(Nil).headOption)
@@ -132,14 +132,14 @@ trait SlotsReceive {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canBook = obj.as_profile_id.isEmpty || profile.isSuper || placeModerator(myPlace.get, profile)
 
-      def book(): (Int, Option[vo.Reference]) = bookingService.bookSlots(obj, obj.as_profile_id.getOrElse(profile.profile_id))
+      def book(): (ApiCode, Option[vo.Reference]) = bookingService.bookSlots(obj, obj.as_profile_id.getOrElse(profile.profile_id))
 
       val (code, reference) =
-        if (invalidEntity) (SC_BAD_REQUEST, None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
         else if (slotNotFound) (codeA, None)
         else if (placeNotFound) (codeB, None)
         else if (canBook) book()
-        else (SC_FORBIDDEN, None)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, reference)
 
@@ -148,7 +148,7 @@ trait SlotsReceive {
         obj.slot_ids.getOrElse(Nil).isEmpty && obj.refund_id.isEmpty ||
         obj.slot_ids.isDefined && obj.refund_id.isDefined
 
-      lazy val (codeA, mySlot) = {
+      lazy val (codeA: ApiCode, mySlot) = {
         val slotId = // get slot ID from supplied refund or slot IDs
           obj.refund_id.flatMap(bookingService.refundById).map(_.prices.get.head.slot_id)
           .orElse(obj.slot_ids.getOrElse(Nil).headOption)
@@ -160,14 +160,14 @@ trait SlotsReceive {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canCancel = obj.as_profile_id.isEmpty || profile.isSuper || placeModerator(myPlace.get, profile)
 
-      def cancel(): (Int, Option[vo.Reference]) = bookingService.cancelSlots(obj, obj.as_profile_id.getOrElse(profile.profile_id))
+      def cancel(): (ApiCode, Option[vo.Reference]) = bookingService.cancelSlots(obj, obj.as_profile_id.getOrElse(profile.profile_id))
 
       val (code, reference) =
-        if (invalidEntity) (SC_BAD_REQUEST, None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
         else if (slotNotFound) (codeA, None)
         else if (placeNotFound) (codeB, None)
         else if (canCancel) cancel()
-        else (SC_FORBIDDEN, None)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, reference)
 
@@ -180,10 +180,9 @@ trait SlotsReceive {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canUpdate = obj.as_profile_id.isEmpty || profile.isSuper || placeModerator(myPlace.get, profile)
 
-      def update(): Int =
-        bookingService.updateSlots(obj.slot_ids, obj.as_profile_id.getOrElse(profile.profile_id), obj.attributes)
+      def update(): ApiCode = bookingService.updateSlots(obj.slot_ids, obj.as_profile_id.getOrElse(profile.profile_id), obj.attributes)
 
-      val code =
+      val code: ApiCode =
         if (invalidEntity) SC_BAD_REQUEST
         else if (slotNotFound) codeA
         else if (placeNotFound) codeB
@@ -207,8 +206,8 @@ trait ReferenceReceive {
       lazy val referenceNotFound = myReference.isEmpty
 
       val (code, reference) =
-        if (referenceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, myReference)
+        if (referenceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, myReference)
 
       reply ! CodeEntityOUT(code, reference)
 
@@ -223,7 +222,7 @@ trait ReferenceReceive {
       reply ! CodeEntityOUT(code, reference)
 
     case ReferencePaidIN(obj, profile) =>
-      val code =
+      val code: ApiCode =
         if (bookingService.referencePaid(obj.ref, obj.profile_id)) SC_OK
         else SC_NOT_FOUND
 

@@ -3,6 +3,7 @@ package ms.db
 
 import java.util.regex.Pattern
 
+import ms.Timestamp
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.util.JSON
@@ -52,6 +53,15 @@ trait MongoQueries {
       .findAndModify(finder, $set(propertyName -> asDBObject(nvalue)))
   }
 
+  def softDelete(finder: DBObject, collection: MongoCollection): Unit =
+    collection
+      .update(finder ++ notDeleted, $set("deleted" -> true, "entry.updated" -> Timestamp.asLong), multi = true)
+
+  def softDeleteOne(finder: DBObject, collection: MongoCollection): Boolean =
+    collection
+      .findAndModify(finder ++ notDeleted, $set("deleted" -> true, "entry.updated" -> Timestamp.asLong))
+      .isDefined
+
   def notDeleted: DBObject =
     "deleted" $ne true
 
@@ -77,11 +87,11 @@ trait MongoQueries {
 
   def entryCreated(id: String, collection: MongoCollection) {
     collection
-      .update(finderById(id), $currentDate("entry.created" -> "date"))
+      .update(finderById(id), $set("entry.created" -> Timestamp.asLong))
     entryUpdated(id, collection)
   }
 
   def entryUpdated(id: String, collection: MongoCollection) =
     collection
-      .update(finderById(id), $currentDate("entry.updated" -> "date"))
+      .update(finderById(id), $set("entry.updated" -> Timestamp.asLong))
 }

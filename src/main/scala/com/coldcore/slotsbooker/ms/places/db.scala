@@ -1,6 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.places.db
 
+import ms.{Timestamp => ts}
 import ms.db.MongoQueries
 import ms.places.Constants._
 import com.mongodb.casbah.Imports._
@@ -57,22 +58,25 @@ trait PlaceCRUD {
   def placeById(placeId: String, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
   def createPlace(profileId: String, obj: vo.CreatePlace, fields: PlaceFields = defaultPlaceFields): vo.Place
   def updatePlace(placeId: String, obj: vo.UpdatePlace, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
-  def deletePlace(placeId: String)
+  def deletePlace(placeId: String): Boolean
 }
 
 trait SpaceCRUD {
   def spaceById(spaceId: String, fields: SpaceFields = defaultSpaceFields): Option[vo.Space]
+  def immediateSpacesByPlaceId(placeId: String, fields: SpaceFields = defaultSpaceFields): Seq[vo.Space]
+  def immediateSpacesByParentId(parentSpaceId: String, fields: SpaceFields = defaultSpaceFields): Seq[vo.Space]
   def createSpace(parentPlaceId: String, obj: vo.CreateSpace, fields: SpaceFields = defaultSpaceFields): vo.Space
   def createInnerSpace(parentSpaceId: String, obj: vo.CreateSpace, fields: SpaceFields = defaultSpaceFields): vo.Space
   def updateSpace(spaceId: String, obj: vo.UpdateSpace, fields: SpaceFields = defaultSpaceFields): Option[vo.Space]
-  def deleteSpace(spaceId: String)
+  def deleteSpace(spaceId: String): Boolean
 }
 
 trait PriceCRUD {
   def priceById(priceId: String): Option[vo.Price]
+  def pricesBySpaceId(spaceId: String): Seq[vo.Price]
   def createPrice(parentSpaceId: String, obj: vo.CreatePrice): vo.Price
   def updatePrice(priceId: String, obj: vo.UpdatePrice): Option[vo.Price]
-  def deletePrice(priceId: String)
+  def deletePrice(priceId: String): Boolean
 }
 
 trait PlaceSearch {
@@ -92,12 +96,32 @@ class MongoPlacesDb(client: MongoClient, dbName: String) extends PlacesDb with V
 trait VoFactory {
   self: MongoPlacesDb =>
 
+  private def datetime(timezone: Option[String], offsetMinutes: Option[Int]): vo.DateTime = {
+    import ts._
+    val utc = asCalendar
+    val local = timezone.map(copyTz(utc, _)) orElse offsetMinutes.map(addMinutes(copy(utc), _)) getOrElse utc
+    val offset = timezone.map(_ => offsetInMinutes(local, utc)) orElse offsetMinutes getOrElse 0
+
+    vo.DateTime(
+      timezone = timezone,
+      offset_minutes = Some(offset),
+      date = Some(dateString(local).toInt),
+      time = Some(timeString(local).toInt),
+      utc_date = Some(dateString(utc).toInt),
+      utc_time = Some(timeString(utc).toInt)
+    )
+  }
+
   def asPlace(data: MongoDBObject, fields: PlaceFields): vo.Place = {
     import data._
     val placeId = as[ObjectId]("_id").toString
 
-    def fakeSpace(spaceId: String): Option[vo.Space] =
-      Some(vo.Space(spaceId, placeId))
+    val dt =
+      getAs[DBObject]("datetime")
+        .map(asDateTime(_)) match {
+          case Some(d) => datetime(d.timezone, d.offset_minutes)
+          case None => datetime(None, Some(0))
+        }
 
     vo.Place(
       place_id = placeId,
@@ -108,16 +132,22 @@ trait VoFactory {
       address =
         getAs[DBObject]("address")
         .map(asAddress(_)),
-      spaces =
-        getAs[Seq[String]]("spaces")
-        .map(_.flatMap(id => if (fields.deepSpaces) spaceById(id, fields.spaceFields) else fakeSpace(id)))
-        .noneIfEmpty,
+      spaces = if (fields.deepSpaces) Some(immediateSpacesByPlaceId(placeId, fields.spaceFields)).noneIfEmpty else None,
       moderators =
         getAs[Seq[String]]("moderators")
         .noneIfEmpty,
       attributes =
         getAs[AnyRef]("attributes")
-        .map(json => Attributes(json.toString))
+        .map(json => Attributes(json.toString)),
+      datetime = Some(dt)
+    )
+  }
+
+  def asDateTime(data: MongoDBObject): vo.DateTime = {
+    import data._
+    vo.DateTime(
+      timezone = getAs[String]("timezone"),
+      offset_minutes = getAs[Int]("offset_minutes")
     )
   }
 
@@ -137,28 +167,19 @@ trait VoFactory {
     val placeId = as[String]("place_id")
     val spaceId = as[ObjectId]("_id").toString
 
-    def fakeSpace(spaceId: String): Option[vo.Space] =
-      Some(vo.Space(spaceId, placeId))
-
-    def fakePrice(priceId: String): Option[vo.Price] =
-      Some(vo.Price(priceId, placeId, spaceId))
-
     vo.Space(
       space_id = spaceId,
       place_id = placeId,
       parent_space_id = getAs[String]("parent_space_id"),
       name = getAs[String]("name"),
-      spaces =
-        getAs[Seq[String]]("spaces")
-        .map(_.flatMap(id => if (fields.deepSpaces) spaceById(id, fields) else fakeSpace(id)))
-        .noneIfEmpty,
-      prices =
-        getAs[Seq[String]]("prices")
-        .map(_.flatMap(id => if (fields.deepPrices) priceById(id) else fakePrice(id)))
-        .noneIfEmpty,
+      spaces = if (fields.deepSpaces) Some(immediateSpacesByParentId(spaceId, fields)).noneIfEmpty else None,
+      prices = if (fields.deepPrices) Some(pricesBySpaceId(spaceId)).noneIfEmpty else None,
       metadata =
         getAs[AnyRef]("metadata")
-        .map(_.toString.parseJson.asJsObject)
+        .map(_.toString.parseJson.asJsObject),
+      attributes =
+        getAs[AnyRef]("attributes")
+          .map(json => Attributes(json.toString))
     )
   }
 
@@ -171,7 +192,12 @@ trait VoFactory {
       name = getAs[String]("name"),
       amount = getAs[Int]("amount"),
       currency = getAs[String]("currency"),
-      roles = getAs[Seq[String]]("roles").noneIfEmpty
+      roles =
+        getAs[Seq[String]]("roles")
+          .noneIfEmpty,
+      attributes =
+        getAs[AnyRef]("attributes")
+          .map(json => Attributes(json.toString))
     )
   }
 
@@ -194,8 +220,9 @@ trait PlaceCrudImpl {
     places.
       insert(place)
 
-    val placeId = place.idString
-    placeById(placeId, fields).get
+    entryCreated(place.idString, places)
+
+    placeById(place.idString, fields).get
   }
 
   override def updatePlace(placeId: String, obj: vo.UpdatePlace, fields: PlaceFields): Option[vo.Place] = {
@@ -210,19 +237,25 @@ trait PlaceCrudImpl {
 
     attributes.foreach(a => mergeJsObject(finderById(placeId), places, "attributes", a.value))
 
+    datetime.foreach { dt =>
+      Map(
+        "datetime.timezone" -> dt.timezone,
+        "datetime.offset_minutes" -> dt.offset_minutes
+      ).foreach { case (key, value) =>
+        update(finderById(placeId), places, key, value)
+      }
+    }
+
+    entryUpdated(placeId, places)
+
     placeById(placeId, fields)
   }
 
-  override def deletePlace(placeId: String) =
-    placeById(placeId, defaultPlaceFields).foreach { _ =>
-      prices
-        .remove("place_id" $eq placeId)
-
-      spaces
-        .remove("place_id" $eq placeId)
-
-      places
-        .findAndRemove(finderById(placeId))
+  override def deletePlace(placeId: String): Boolean =
+    placeById(placeId, defaultPlaceFields).exists { _ =>
+      softDelete("place_id" $eq placeId, prices)
+      softDelete("place_id" $eq placeId, spaces)
+      softDeleteOne(finderById(placeId), places)
     }
 
 }
@@ -235,6 +268,18 @@ trait SpaceCrudImpl {
       .findOne(finderById(spaceId))
       .map(asSpace(_, fields))
 
+  override def immediateSpacesByParentId(parentSpaceId: String, fields: SpaceFields): Seq[vo.Space] =
+    spaces
+      .find(finder("parent_space_id" $eq parentSpaceId))
+      .map(asSpace(_, fields))
+      .toSeq
+
+  override def immediateSpacesByPlaceId(placeId: String, fields: SpaceFields): Seq[vo.Space] =
+    spaces
+      .find(finder() ++ ("place_id" $eq placeId) ++ ("parent_space_id" $exists false))
+      .map(asSpace(_, fields))
+      .toSeq
+
   override def createSpace(parentPlaceId: String, obj: vo.CreateSpace, fields: SpaceFields): vo.Space = {
     import obj._
     val space = MongoDBObject(
@@ -244,7 +289,9 @@ trait SpaceCrudImpl {
     spaces.
       insert(space)
 
-    addToArray(finderById(parentPlaceId), places, "spaces", space.idString)
+    //addToArray(finderById(parentPlaceId), places, "spaces", space.idString)
+
+    entryCreated(space.idString, spaces)
 
     spaceById(space.idString, fields).get
   }
@@ -261,7 +308,9 @@ trait SpaceCrudImpl {
     spaces.
       insert(space)
 
-    addToArray(finderById(parentSpaceId), spaces, "spaces", space.idString)
+    //addToArray(finderById(parentSpaceId), spaces, "spaces", space.idString)
+
+    entryCreated(space.idString, spaces)
 
     spaceById(space.idString, fields).get
   }
@@ -275,26 +324,23 @@ trait SpaceCrudImpl {
       update(finderById(spaceId), spaces, key, value)
     }
 
+    attributes.foreach(a => mergeJsObject(finderById(spaceId), spaces, "attributes", a.value))
+
+    entryUpdated(spaceId, spaces)
+
     spaceById(spaceId, fields)
   }
 
-  override def deleteSpace(spaceId: String) {
-    val space = spaceById(spaceId, defaultSpaceFields)
+  override def deleteSpace(spaceId: String): Boolean = {
+    val space = spaceById(spaceId, customSpaceFields(deep_spaces = true, deep_prices = false))
 
     // delete inner spaces
-    space.foreach(
-      _.flatSpaces.foreach { inner =>
-        spaces
-          .findAndRemove(finderById(inner.space_id))
+    space.foreach(_.flatSpaces.foreach { inner =>
+      softDelete("space_id" $eq inner.space_id, prices)
+      softDelete(finderById(inner.space_id), spaces)
     })
 
-    // delete the space from its parent Place / Space array
-    space.map(_.place_id).foreach(placeId => removeFromArray(finderById(placeId), places, "spaces", spaceId))
-    space.flatMap(_.parent_space_id).foreach(parentSpaceId => removeFromArray(finderById(parentSpaceId), spaces, "spaces", spaceId))
-
-    spaces
-      .findAndRemove(finderById(spaceId))
-
+    softDeleteOne(finderById(spaceId), spaces)
   }
 
 }
@@ -308,14 +354,14 @@ trait PriceCrudImpl {
       .map(asPrice(_))
 
 
-  override def deletePrice(priceId: String): Unit = {
-    val price = priceById(priceId)
-
-    price.map(_.space_id).foreach(spaceId => removeFromArray(finderById(spaceId), spaces, "prices", priceId))
-
+  override def pricesBySpaceId(spaceId: String): Seq[vo.Price] =
     prices
-      .findAndRemove(finderById(priceId))
-  }
+      .find(finder("space_id" $eq spaceId))
+      .map(asPrice(_))
+      .toSeq
+
+  override def deletePrice(priceId: String) =
+    softDeleteOne(finderById(priceId), prices)
 
   override def updatePrice(priceId: String, obj: vo.UpdatePrice): Option[vo.Price] = {
     import obj._
@@ -327,6 +373,10 @@ trait PriceCrudImpl {
     ).foreach { case (key, value) =>
       update(finderById(priceId), prices, key, value)
     }
+
+    attributes.foreach(a => mergeJsObject(finderById(priceId), prices, "attributes", a.value))
+
+    entryUpdated(priceId, prices)
 
     priceById(priceId)
   }
@@ -345,7 +395,7 @@ trait PriceCrudImpl {
     prices.
       insert(price)
 
-    addToArray(finderById(parentSpaceId), spaces, "prices", price.idString)
+    entryCreated(price.idString, prices)
 
     priceById(price.idString).get
   }

@@ -1,8 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.booking.db
 
-import java.util.{Calendar, GregorianCalendar}
-
+import ms.{Timestamp => ts}
 import ms.db.MongoQueries
 import ms.booking.Constants._
 import com.mongodb.casbah.Imports._
@@ -286,11 +285,7 @@ trait ReferenceCrudImpl {
   }
 
   override def nextExpiredReference(minutes: Int): Option[vo.Reference] = {
-    val timeout = (decMinutes: Int) => {
-      val cal = new GregorianCalendar()
-      cal.add(Calendar.MINUTE, -decMinutes)
-      cal.getTime
-    }
+    def timeout(decMinutes: Int): Long = ts.asLong(ts.addMinutes(ts.asCalendar, -decMinutes))
 
     val quoteId = // quote which is not in-flight and expired and unpaid
       quotes
@@ -304,7 +299,7 @@ trait ReferenceCrudImpl {
 
     quoteId.flatMap { id =>
       quotes // mark as in-flight before someone else grabs it
-        .update(finderById(id), $currentDate("entry.inflight" -> "date"))
+        .update(finderById(id), $set("entry.inflight" -> ts.asLong))
 
       val refunded =
         refunds // check if already refunded

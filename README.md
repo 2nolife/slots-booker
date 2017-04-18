@@ -41,15 +41,18 @@ This code is open source software licensed under the [GNU Lesser General Public 
 
 ## Available features ##
 * Authentication with OAuth2 token
-* Multiple club owners and multiple clubs per owner
+* Multi tenancy and multiple clubs per user
 * Hierarchy of spaces (e.g. halls, parking lots) and time slots per club
 * Hierarchy of prices across spaces and slots
 * Bookings which do or do not require payment
-* Cancellation and refunds for bookings
+* Cancellation and full refunds for bookings
 * Users balance per club in multiple currencies
 * Expiration of unpaid bookings
 * References for successful bookings and refunds
-* A simple UI example to demo basic features
+* Local timezone support per club
+* Responses with full and partial JSON graph
+* Genius Bar: the simple UI example to demo basic bookings
+* Westfield Cinema: the advanced UI example to demo a cinema
 
 ## Outstanding work ##
 
@@ -70,4 +73,4 @@ This code is open source software licensed under the [GNU Lesser General Public 
 ### Other features ###
 * Read only anonymous users support
 * Better error responses with custom codes
-* Local timezone support per club
+

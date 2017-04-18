@@ -1,6 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.payments.db
 
+import ms.Timestamp
 import ms.db.MongoQueries
 import ms.payments.Constants._
 import com.mongodb.casbah.Imports._
@@ -74,7 +75,8 @@ trait BalanceCrudImpl {
         recordFinder,
         $setOnInsert(
           "place_id" -> placeId,
-          "profile_id" -> profileId),
+          "profile_id" -> profileId,
+          "entry.created" -> Timestamp.asLong),
         upsert = true)
 
     balances
@@ -122,6 +124,8 @@ trait BalanceCrudImpl {
     balances
       .update(finderById(balanceId), $set("credit" -> ncredit.map(asMongoObject)))
 
+    entryUpdated(balanceId, balances)
+    
     balances
       .findOne(finderById(balanceId))
       .map(asBalance(_))

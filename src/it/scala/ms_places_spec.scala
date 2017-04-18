@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package test
 
 import akka.http.scaladsl.model.headers.Authorization
+import ms.{Timestamp => ts}
 import org.apache.http.HttpStatus._
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FlatSpec, Matchers}
 import ms.places.vo
@@ -76,6 +77,32 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
     placeB.address should not be None
   }
 
+  "PATCH to /places/{id}" should "update place local date and time" in {
+    val placeId = mongoCreatePlace()
+
+    val url = s"$placesBaseUrl/places/$placeId"
+    val jsonA = """{"datetime": { "offset_minutes": 180 }}"""
+    val placeA = (When patchTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Place]
+
+    {
+      placeA.datetime.map(dt => (dt.timezone, dt.offset_minutes.get)).get shouldBe (None, 180)
+      val (date, time, utc_date, utc_time) = placeA.datetime.map(dt => (dt.date.get, dt.time.get, dt.utc_date.get, dt.utc_time.get)).get
+      val (local, utc) = (ts.asCalendar(date, time), ts.asCalendar(utc_date, utc_time))
+      local shouldBe ts.addMinutes(utc, 180)
+    }
+
+    val jsonB = """{"datetime": { "timezone": "CET", "offset_minutes": 180 }}""" // CET +1:00, offset_minutes not used
+    val placeB = (When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Place]
+
+    {
+      placeB.datetime.map(dt => (dt.timezone.get, dt.offset_minutes.get)).get shouldBe ("CET", 60)
+      val (date, time, utc_date, utc_time) = placeB.datetime.map(dt => (dt.date.get, dt.time.get, dt.utc_date.get, dt.utc_time.get)).get
+      val (local, utc) = (ts.asCalendar(date, time), ts.asCalendar(utc_date, utc_time))
+      local shouldBe ts.addMinutes(utc, 60)
+    }
+
+  }
+
   "PATCH to /places/{id}" should "give 403 if not place moderator" in {
     val placeId = mongoCreatePlace()
 
@@ -113,12 +140,7 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
 
     placeB.name.get shouldBe "My Place Name"
     placeB.address.get.line1.get shouldBe "Village road"
-
-    {
-      val (spaces, space) = (placeB.spaces.get, placeB.spaces.get.head)
-      spaces.size shouldBe 1
-      (space.name, space.spaces, space.prices) shouldBe (None, None, None)
-    }
+    placeB.spaces shouldBe None
 
     val urlC = s"$baseurl?deep_prices=false" // all spaces with shallow prices
     val placeC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Place]
@@ -128,12 +150,10 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
 
     {
       val (spaces, space_A) = (placeC.spaces.get, placeC.spaces.get.head)
-      spaces.size shouldBe 1
-      (space_A.name.get, space_A.spaces.get.size, space_A.prices.get.size) shouldBe ("Space A", 2, 1)
+      (space_A.name.get, space_A.spaces.get.size, space_A.prices) shouldBe ("Space A", 2, None)
       val (space_A1, space_A2) = (space_A.spaces.get(0), space_A.spaces.get(1))
       (space_A1.name.get, space_A2.name.get) shouldBe ("Space A1", "Space A2")
-      val (price_A, price_A1, price_A2) = (space_A.prices.get.head, space_A1.prices.get.head, space_A2.prices.get.head)
-      (price_A.name, price_A1.name, price_A2.name) shouldBe (None, None, None)
+      (space_A.prices, space_A1.prices, space_A2.prices) shouldBe (None, None, None)
     }
   }
 
@@ -260,6 +280,23 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
     placesC.map(_.place_id) should contain only placeIdB
   }
 
+  "GET to /places/{id}" should "return a place and space and price with attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val priceId = mongoCreateSpacePrice(placeId, spaceId)
+    mongoSetPlaceAttributes(placeId, """ {"key_rw": "value_a", "key_rwp": "value_b"} """)
+    mongoSetSpaceAttributes(spaceId, """ {"kez_rw": "value_a", "kez_rwp": "value_b"} """)
+    mongoSetSpacePriceAttributes(priceId, """ {"kex_rw": "value_a", "kex_rwp": "value_b"} """)
+
+    val url = s"$placesBaseUrl/places/$placeId"
+    val place = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Place]
+
+    val (placeAttrs, spaceAttrs, priceAttrs) = (place.attributes.get.value, place.spaces.get.head.attributes.get.value, place.spaces.get.head.prices.get.head.attributes.get.value)
+    placeAttrs shouldBe JsObject(Map("key_rw" -> JsString("value_a"), "key_rwp" -> JsString("value_b")))
+    spaceAttrs shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
+    priceAttrs shouldBe JsObject(Map("kex_rw" -> JsString("value_a"), "kex_rwp" -> JsString("value_b")))
+  }
+
 }
 
 class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
@@ -341,25 +378,17 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
 
     placeB.spaces.get.size shouldBe 2
     placeB.spaces.get.head.name.get shouldBe "Space 1"
-
-    val urlC = s"$placesBaseUrl/places/$placeId?deep=false"
-    val placeC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Place]
-
-    placeC.spaces.get.size shouldBe 2
-    placeC.spaces.get.head.name shouldBe None
   }
 
   "GET to /places/{id}/spaces" should "list spaces within a place" in {
     val placeId = mongoCreatePlace()
-    val spaceIdA = mongoCreateSpace(placeId, "Parking A")
-    val spaceIdB = mongoCreateSpace(placeId, "Parking B")
+    val spaceIdA = mongoCreateSpace(placeId)
+    val spaceIdB = mongoCreateSpace(placeId)
 
     val url = s"$placesBaseUrl/places/$placeId/spaces"
     val spaces = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Space]]
 
-    spaces.size shouldBe 2
-    spaces(0).name.get shouldBe "Parking A"
-    spaces(1).name.get shouldBe "Parking B"
+    spaces.map(_.space_id) should contain only (spaceIdA, spaceIdB)
   }
 
   "GET to /places/{id}/spaces" should "list spaces within a place with selected fields" in {
@@ -379,10 +408,9 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
     spacesA.size shouldBe 1
 
     {
-      val (space_A, spaces_A, prices_A) = (spacesA.head, spacesA.head.spaces, spacesA.head.prices)
-      (space_A.name, spaces_A, prices_A) shouldBe (None, None, None)
+      val (space_A, inner_spaces, inner_prices) = (spacesA.head, spacesA.head.spaces, spacesA.head.prices)
+      (space_A.name.get, inner_spaces, inner_prices) shouldBe ("Space A", None, None)
     }
-
 
     val urlB = s"$baseurl?deep_prices=false" // all spaces with shallow prices
     val spacesB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Space]]
@@ -392,9 +420,21 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
     {
       val (space_A, space_A1, space_A2) = (spacesB.head, spacesB.head.spaces.get(0), spacesB.head.spaces.get(1))
       (space_A.name.get, space_A1.name.get, space_A2.name.get) shouldBe ("Space A", "Space A1", "Space A2")
-      val (price_A, price_A1, price_A2) = (space_A.prices.get.head, space_A1.prices.get.head, space_A2.prices.get.head)
-      (price_A.name, price_A1.name, price_A2.name) shouldBe (None, None, None)
+      val (prices_A, prices_A1, prices_A2) = (space_A.prices, space_A1.prices, space_A2.prices)
+      (prices_A, prices_A1, prices_A2) shouldBe (None, None, None)
     }
+  }
+
+  "GET to /places/{id}/spaces/{id}/spaces" should "list spaces within a space" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId)
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+
+    val url = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/spaces"
+    val spaces = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spaces.map(_.space_id) should contain only (spaceIdA, spaceIdB)
   }
 
   "GET to /places/{id}/spaces/{id}" should "return a space" in {
@@ -421,25 +461,18 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
     val urlB = s"$baseurl?deep=false" // shallow
     val spaceB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Space]
 
-    (spaceB.name.get, spaceB.spaces.get.size, spaceB.prices.get.size) shouldBe ("Space A", 2, 1)
-
-    {
-      val (space_A1, space_A2) = (spaceB.spaces.get(0), spaceB.spaces.get(1))
-      (space_A1.name, space_A2.name) shouldBe (None, None)
-      val (price_A, prices_A1, prices_A2) = (spaceB.prices.get.head, space_A1.prices, space_A2.prices)
-      (price_A.name, prices_A1, prices_A2) shouldBe (None, None, None)
-    }
+    (spaceB.name.get, spaceB.spaces, spaceB.prices) shouldBe ("Space A", None, None)
 
     val urlC = s"$baseurl?deep_prices=false" // all spaces with shallow prices
     val spaceC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Space]
 
-    (spaceC.name.get, spaceC.spaces.get.size, spaceC.prices.get.size) shouldBe ("Space A", 2, 1)
+    (spaceC.name.get, spaceC.spaces.get.size, spaceC.prices) shouldBe ("Space A", 2, None)
 
     {
       val (space_A1, space_A2) = (spaceC.spaces.get(0), spaceC.spaces.get(1))
       (space_A1.name.get, space_A2.name.get) shouldBe ("Space A1", "Space A2")
-      val (price_A, price_A1, price_A2) = (spaceC.prices.get.head, space_A1.prices.get.head, space_A2.prices.get.head)
-      (price_A.name, price_A1.name, price_A2.name) shouldBe (None, None, None)
+      val (prices_A, prices_A1, prices_A2) = (spaceC.prices, space_A1.prices, space_A2.prices)
+      (prices_A, prices_A1, prices_A2) shouldBe (None, None, None)
     }
   }
 
@@ -479,12 +512,42 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
 
     spaceB.spaces.get.size shouldBe 2
     spaceB.spaces.get.head.name.get shouldBe "Space 1"
+  }
 
-    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceId?deep=false"
-    val spaceC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Space]
+  "PATCH to /places/{id}/spaces/{id}" should "update writeable attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    mongoSetSpaceAttributes(spaceId, "{}")
 
-    spaceC.spaces.get.size shouldBe 2
-    spaceC.spaces.get.head.name shouldBe None
+    val url = s"$placesBaseUrl/places/$placeId/spaces/$spaceId"
+    val json = """{"attributes": {"kez_rw": "value_a", "kez_rwp": "value_b"} }"""
+    val space = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Space]
+
+    space.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
+
+    val jsonB = """{"attributes": {"kez_r": "value_a"} }"""
+    When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
+  }
+
+  "GET to /places/{id}/spaces/{id}" should "return a space and inner spaces with attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val priceId = mongoCreateSpacePrice(placeId, spaceId)
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId)
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+    mongoSetSpaceAttributes(spaceId, """ {"kez_rw": "value_a", "kez_rwp": "value_b"} """)
+    mongoSetSpaceAttributes(spaceIdA, """ {"kez_rw": "value_c", "kez_rwp": "value_d"} """)
+    mongoSetSpaceAttributes(spaceIdB, """ {"kez_rw": "value_e", "kez_rwp": "value_f"} """)
+
+    val url = s"$placesBaseUrl/places/$placeId/spaces/$spaceId"
+    val space = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Space]
+
+    val spaceAttrs = space.attributes.get.value
+    spaceAttrs shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
+
+    val (spaceAttrsA, spaceAttrsB) = (space.spaces.get.head.attributes.get.value, space.spaces.get.last.attributes.get.value)
+    spaceAttrsA shouldBe JsObject(Map("kez_rw" -> JsString("value_c"), "kez_rwp" -> JsString("value_d")))
+    spaceAttrsB shouldBe JsObject(Map("kez_rw" -> JsString("value_e"), "kez_rwp" -> JsString("value_f")))
   }
 
 }
@@ -600,6 +663,22 @@ class MsPlaceSpacePricesSpec extends BaseMsPlacesSpec {
 
     val url = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/prices/$priceId"
     When getTo url withHeaders testuserTokenHeader expect() code SC_NOT_FOUND
+  }
+
+  "PATCH to /places/{id}/spaces/{id}/prices/{id}" should "update writeable attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val priceId = mongoCreateSpacePrice(placeId, spaceId)
+    mongoSetSpacePriceAttributes(priceId, "{}")
+
+    val url = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/prices/$priceId"
+    val json = """{"attributes": {"kex_rw": "value_a", "kex_rwp": "value_b"} }"""
+    val price = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Price]
+
+    price.attributes.get.value shouldBe JsObject(Map("kex_rw" -> JsString("value_a"), "kex_rwp" -> JsString("value_b")))
+
+    val jsonB = """{"attributes": {"kex_r": "value_a"} }"""
+    When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
   }
 
 }

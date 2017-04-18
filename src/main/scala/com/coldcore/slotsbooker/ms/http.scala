@@ -91,7 +91,7 @@ trait SystemRestCalls {
   implicit def obj2json[T : JsonWriter](obj: T): JsObject = obj.toJson.asJsObject
 
   implicit class HttpCallX(call: HttpCall) {
-    def codeWithBody[T : JsonReader]: (Int, Option[T]) =
+    def codeWithBody[T : JsonReader]: (ApiCode, Option[T]) =
       call match {
         case HttpCallSuccessful(_, code @ (SC_OK | SC_CREATED), body, _) => (code, Some(body.convertTo[T]))
         case HttpCallSuccessful(_, code, _, _) => (code, None)
@@ -104,19 +104,32 @@ trait SystemRestCalls {
         case _ => SC_INTERNAL_SERVER_ERROR
       }
   }
-  def restGet[T : JsonReader](url: String): (Int, Option[T]) =
+  def restGet[T : JsonReader](url: String): (ApiCode, Option[T]) =
     restClient.get(url, header).codeWithBody
 
-  def restDelete[T : JsonReader](url: String): (Int, Option[T]) =
+  def restDelete[T : JsonReader](url: String): (ApiCode, Option[T]) =
     restClient.delete(url, header).codeWithBody
 
-  def restPost[T : JsonReader](url: String, obj: JsObject): (Int, Option[T]) =
+  def restPost[T : JsonReader](url: String, obj: JsObject): (ApiCode, Option[T]) =
     restClient.post(url, obj, header).codeWithBody
 
-  def restPut[T : JsonReader](url: String, obj: JsObject): (Int, Option[T]) =
+  def restPut[T : JsonReader](url: String, obj: JsObject): (ApiCode, Option[T]) =
     restClient.put(url, obj, header).codeWithBody
 
-  def restPatch[T : JsonReader](url: String, obj: JsObject): (Int, Option[T]) =
+  def restPatch[T : JsonReader](url: String, obj: JsObject): (ApiCode, Option[T]) =
     restClient.patch(url, obj, header).codeWithBody
 
+}
+
+case class ApiCode(code: Int, apiCode: Option[String]) {
+  def is(a: Int): Boolean = code == a
+  def not(a: Int): Boolean = code != a
+}
+
+object ApiCode {
+  implicit def toApiCode(code: Int): ApiCode = ApiCode(code)
+  def apply(code: Int): ApiCode = ApiCode(code, None)
+
+  val OK = ApiCode(SC_OK)
+  val CREATED = ApiCode(SC_CREATED)
 }

@@ -165,3 +165,41 @@ function datetimeCompare(/*str*/ value1, /*str*/ value2) {
       time2 = parseInt(value2.substr(8, 4))
   return date1 < date2 ? -1 : date1 > date2 ? 1 : time1 < time2 ? -1 : time1 > time2 ? 1 : 0
 }
+
+
+function apiCode(/*obj*/ response) {
+  var arr = (response.headers('x-api-code') || '').split(",")
+  return $.grep(arr, function(v) { return v })
+}
+
+function hasApiCode(/*obj*/ response, /*str*/ code) {
+  return apiCode(response).indexOf(code) != -1
+}
+
+function apiCodeText(/*str*/ code) {
+  var s = 'No description'
+  switch (code) {
+    case 'ms-auth-1': s = 'Invalid username or password'; break;
+    case 'ms-auth-2': s = 'Token has expired'; break;
+
+    case 'ms-profiles-1': s = 'Action forbidden'; break;
+    case 'ms-profiles-2': s = 'Profile not found'; break;
+    case 'ms-profiles-3': s = 'Trying to update forbidden attributes'; break;
+    case 'ms-profiles-4': s = 'Trying to update forbidden fields'; break;
+    case 'ms-profiles-5': s = 'Username already exists'; break;
+    case 'ms-profiles-6': s = 'Email already exists'; break;
+    case 'ms-profiles-7': s = 'External service failed'; break;
+  }
+  return s
+}
+
+function apiCodeFromResponse(/*obj*/ response) {
+  var arr = apiCode(response).map(function(code) {
+    return { code: code, text: apiCodeText(code) }
+  })
+  return {
+    code: arr.length ? arr[0].code : '',
+    text: arr.length ? arr[0].text : '',
+    codes: arr
+  }
+}

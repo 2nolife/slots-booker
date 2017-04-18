@@ -31,9 +31,13 @@ trait Constants {
   val MS = "ms-auth"
 
   private def toApiCodes(codes: (Symbol, Int) *): Map[Symbol, String] = codes.map { case (s, code) => (s, MS+"-"+code) }.toMap
+
   val apiCodes = toApiCodes(
-    'invalid_credentials -> 1
+    'invalid_credentials -> 1,
+    'expired_token -> 2
   )
+
+  implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)
 }
 
 object Constants extends Constants

@@ -3,7 +3,7 @@ package ms.payments.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
 import ms.payments.service.{PaymentsService, PaymentsServiceImpl}
-import ms.http.RestClient
+import ms.http.{ApiCode, RestClient}
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.actors.MsgInterceptor
 import ms.vo.ProfileRemote
@@ -11,6 +11,7 @@ import ms.payments.db.PaymentsDb
 import ms.payments.vo
 import ms.payments.vo.Implicits._
 import org.apache.http.HttpStatus._
+
 import scala.concurrent.duration.DurationInt
 
 trait BalanceCommands {
@@ -56,10 +57,10 @@ trait AmendBalance {
       def update(): Option[vo.Balance] = Some(paymentsService.addCredit(obj.place_id, obj.profile_id, obj))
 
       val (code, credit) =
-        if (invalidEntity) (SC_BAD_REQUEST, None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
         else if (placeNotFound) (codeA, None)
-        else if (canUpdate) (SC_OK, update())
-        else (SC_FORBIDDEN, None)
+        else if (canUpdate) (ApiCode.OK, update())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, credit)
 
@@ -82,8 +83,8 @@ trait GetBalance {
 
       val (code, credit) =
         if (placeNotFound) (codeA, None)
-        else if (canRead) (SC_OK, read())
-        else (SC_FORBIDDEN, None)
+        else if (canRead) (ApiCode.OK, read())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, credit)
 
@@ -106,9 +107,9 @@ trait ProcessReference {
       lazy val placeNotFound = myPlace.isEmpty
       lazy val canProcess = obj.as_profile_id.isEmpty || placeModerator(myPlace.get, profile) || profile.isSuper
 
-      def process(): Int = paymentsService.processReference(obj.ref, profileId)
+      def process(): ApiCode = paymentsService.processReference(obj.ref, profileId)
 
-      val code =
+      val code: ApiCode =
         if (referenceNotFound) codeR
         else if (placeNotFound) codeA
         else if (canProcess) process()
@@ -140,8 +141,8 @@ class ExpiredActor(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl
 
     case Tick =>
       paymentsService.expiredReference() match {
-        case (SC_OK, Some(reference)) => log.debug(s"Cancelled expired reference ${reference.ref.get}")
-        case (SC_NOT_FOUND, None) =>
+        case (code, Some(reference)) if code is SC_OK => log.debug(s"Cancelled expired reference ${reference.ref.get}")
+        case (code, None) if code is SC_NOT_FOUND =>
         case (code, Some(reference)) => log.warning(s"Code received $code for expired reference ${reference.ref.get}")
         case (code, None) => log.warning(s"Code received $code")
       }

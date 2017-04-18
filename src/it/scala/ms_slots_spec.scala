@@ -108,22 +108,13 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     val urlA = s"$baseurl?deep=false" // shallow
     val slotA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Slot]
 
-    (slotA.name.get, slotA.bookings.get.size, slotA.prices.get.size) shouldBe("Slot A", 1, 1)
-
-    {
-      val (booking, price) = (slotA.bookings.get.head, slotA.prices.get.head)
-      (booking.name, price.name) shouldBe (None, None)
-    }
+    (slotA.name.get, slotA.bookings, slotA.prices) shouldBe("Slot A", None, None)
 
     val urlB = s"$baseurl?deep_prices=false" // shallow prices
     val slotB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Slot]
 
-    (slotB.name.get, slotB.bookings.get.size, slotB.prices.get.size) shouldBe("Slot A", 1, 1)
-
-    {
-      val (booking, price) = (slotB.bookings.get.head, slotB.prices.get.head)
-      (booking.name.get, price.name) shouldBe ("Booking A", None)
-    }
+    (slotB.name.get, slotB.bookings.get.size, slotB.prices) shouldBe("Slot A", 1, None)
+    slotB.bookings.get.head.name.get shouldBe "Booking A"
   }
 
   "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&inner=false" should "list found slots by date for that space" in {
@@ -230,7 +221,7 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
 
     slots.size shouldBe 1
     slots.head.name.get shouldBe "Slot A"
-    slots.head.bookings.get(0).name shouldBe None
+    slots.head.bookings shouldBe None
   }
 
   "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&booked" should "list found slots with which were booked by a user" in {
@@ -268,6 +259,59 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     val slotsD = (When getTo urlD withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Slot]] // moderator: all booked
 
     slotsD.map(_.slot_id) should contain only (slotIdA, slotIdB)
+  }
+
+/*                 //todo not needed, remove
+  "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&group=date" should "list found slos distinct per date and time" in {
+    val placeId = mongoCreatePlace()
+    val parentSpaceId = mongoCreateSpace(placeId)
+    val spaceIdA = mongoCreateInnerSpace(placeId, parentSpaceId)
+    val (slotIdA1, slotIdA2, slotIdA3, slotIdA4) = (
+      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160112, dateTo = 20160113), // 2 days
+      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160112, dateTo = 20160113), // 2 days
+      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160114, dateTo = 20160115), // 2 days
+      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160114, dateTo = 20160115)) // 2 days
+
+    val urlA = s"$slotsBaseUrl/slots/search?place_id=$placeId&space_id=$spaceIdA&from=20160112&to=20160115&group=date"
+    val slotsA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Slot]]
+
+    slotsA.map(_.slot_id) should contain only (slotIdA1, slotIdA3)
+  }
+*/
+
+  "PATCH to /slots/{id}" should "update writeable attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    mongoSetSlotAttributes(slotId, "{}")
+
+    val url = s"$slotsBaseUrl/slots/$slotId"
+    val json = """{"attributes": {"key_rw": "value_a", "key_rwp": "value_b"} }"""
+    val slot = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Slot]
+
+    slot.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("value_a"), "key_rwp" -> JsString("value_b")))
+
+    val jsonB = """{"attributes": {"key_r": "value_a"} }"""
+    When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
+  }
+
+  "GET to /slots/{id}" should "return a slot and booking and price with attributes" in { //todo
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val bookingId = mongoCreateBooking(placeId, spaceId, slotId)
+    val priceId = mongoCreateSlotPrice(placeId, spaceId, slotId)
+    mongoSetSlotAttributes(slotId, """ {"key_rw": "value_a", "key_rwp": "value_b"} """)
+    mongoSetBookingAttributes(bookingId, """ {"kez_rw": "value_a", "kez_rwp": "value_b"} """)
+    mongoSetSlotPriceAttributes(priceId, """ {"kex_rw": "value_a", "kex_rwp": "value_b"} """)
+
+    val url = s"$slotsBaseUrl/slots/$slotId"
+    val slot = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Slot]
+
+    val (slotAttrs, bookingAttrs, priceAttrs) = (slot.attributes.get.value, slot.bookings.get.head.attributes.get.value, slot.prices.get.head.attributes.get.value)
+    slotAttrs shouldBe JsObject(Map("key_rw" -> JsString("value_a"), "key_rwp" -> JsString("value_b")))
+    bookingAttrs shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
+    priceAttrs shouldBe JsObject(Map("kex_rw" -> JsString("value_a"), "kex_rwp" -> JsString("value_b")))
   }
 
 }
@@ -519,6 +563,32 @@ class MsSlotsBookingsSpec extends BaseMsSlotsSpec {
     When postTo url entity json withHeaders systemTokenHeader expect() code SC_CONFLICT
   }
 
+  "GET to /slots/{id}/bookings" should "list bookings within a slot" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val bookingIdA = mongoCreateBooking(placeId, spaceId, slotId, status = 1)
+    val bookingIdB = mongoCreateBooking(placeId, spaceId, slotId, status = 0)
+
+    val url = s"$slotsBaseUrl/slots/$slotId/bookings"
+    val bookings = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Booking]]
+
+    bookings.map(_.booking_id) should contain only (bookingIdA, bookingIdB)
+  }
+
+  "GET to /slots/{id}/bookings?active" should "list active bookings within a slot" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val bookingIdA = mongoCreateBooking(placeId, spaceId, slotId, status = 1)
+    val bookingIdB = mongoCreateBooking(placeId, spaceId, slotId, status = 0)
+
+    val url = s"$slotsBaseUrl/slots/$slotId/bookings?active"
+    val bookings = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Booking]]
+
+    bookings.map(_.booking_id) should contain only bookingIdA
+  }
+
   "GET to /slots/{id}/bookings/{id}" should "return a booking" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)
@@ -602,13 +672,20 @@ class MsSlotsBookingsSpec extends BaseMsSlotsSpec {
     mongoSetBookingAttributes(bookingId, "{}")
 
     val url = s"$slotsBaseUrl/slots/$slotId/bookings/$bookingId"
-    val json = """{"attributes": {"key_rw": "value_a", "key_rwp": "value_b"} }"""
+    val json = """{"attributes": {"kez_rw": "value_a", "kez_rwp": "value_b"} }"""
     val booking = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Booking]
 
-    booking.attributes.get.value shouldBe JsObject(Map("key_rw" -> JsString("value_a"), "key_rwp" -> JsString("value_b")))
+    booking.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
 
-    val jsonB = """{"attributes": {"key_r": "value_a"} }"""
+    val jsonB = """{"attributes": {"kez_r": "value_a"} }"""
     When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
+
+    // write once
+    val jsonC = """{"attributes": {"kez_op": "value_a"} }"""
+    val headers = authHeaderSeq("testuser2")
+    When patchTo url entity jsonC withHeaders headers expect() code SC_OK
+    When patchTo url entity jsonC withHeaders headers expect() code SC_FORBIDDEN
+    When patchTo url entity jsonC withHeaders testuserTokenHeader expect() code SC_OK
   }
 
 }
@@ -736,4 +813,20 @@ class MsSlotsPricesSpec extends BaseMsSlotsSpec {
     When getTo url withHeaders testuserTokenHeader expect() code SC_NOT_FOUND
   }
 
+  "PATCH to /slots/{id}/prices/{id}" should "update writeable attributes" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val priceId = mongoCreateSlotPrice(placeId, spaceId, slotId)
+    mongoSetSlotPriceAttributes(priceId, "{}")
+
+    val url = s"$slotsBaseUrl/slots/$slotId/prices/$priceId"
+    val json = """{"attributes": {"kex_rw": "value_a", "kex_rwp": "value_b"} }"""
+    val price = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Price]
+
+    price.attributes.get.value shouldBe JsObject(Map("kex_rw" -> JsString("value_a"), "kex_rwp" -> JsString("value_b")))
+
+    val jsonB = """{"attributes": {"kex_r": "value_a"} }"""
+    When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
+  }
 }

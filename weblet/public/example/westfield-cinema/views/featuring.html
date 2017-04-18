@@ -1,0 +1,10 @@
+<div id="view-featuring">
+
+  <h1 class="top">Featuring Movies</h1>
+
+  <a href="#/movie/{{movie.key}}" class="movie" ng-repeat="movie in allMovies">
+    <img src="img/{{movie.cover}}" />
+    <p>{{movie.title}}</p>
+  </a>
+
+</div>

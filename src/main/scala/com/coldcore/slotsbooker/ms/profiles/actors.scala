@@ -5,9 +5,10 @@ import akka.actor.{Actor, ActorLogging, Props}
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.attributes.Types.VoAttributes
 import ms.actors.MsgInterceptor
-import ms.http.{RestClient, SystemRestCalls}
+import ms.http.{ApiCode, RestClient, SystemRestCalls}
 import ms.profiles.db.ProfilesDb
 import ms.profiles.vo
+import ms.profiles.Constants._
 import ms.vo.{ProfileRemote, StringEntity}
 import ms.attributes.{Permission => ap, Util => au}
 import ms.vo.Implicits._
@@ -21,16 +22,16 @@ trait AuthMsRestCalls extends SystemRestCalls {
     val restClient: RestClient
   } =>
 
-  def registerWithMsAuth(username: String, obj: JsObject): Int =
+  def registerWithMsAuth(username: String, obj: JsObject): ApiCode =
     restPut[StringEntity](s"$authBaseUrl/auth/users/$username", obj)._1
 
-  def updateUserInMsAuth(username: String, obj: JsObject): Int =
+  def updateUserInMsAuth(username: String, obj: JsObject): ApiCode =
     restPatch[StringEntity](s"$authBaseUrl/auth/users/$username", obj)._1
 
-  def deleteUserFromMsAuth(username: String): Int =
+  def deleteUserFromMsAuth(username: String): ApiCode =
     restDelete[StringEntity](s"$authBaseUrl/auth/users/$username")._1
 
-  def invalidateUserInMsAuth(username: String): Int =
+  def invalidateUserInMsAuth(username: String): ApiCode =
     restDelete[StringEntity](s"$authBaseUrl/auth/users/$username/token")._1
 }
 
@@ -40,7 +41,7 @@ object ProfilesActor {
 
   case class GetProfileByUsernameIN(username: String, profile: ProfileRemote)
   case class GetProfileByIdIN(profileId: String, profile: ProfileRemote)
-  case class GetProfilesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote)
+  case class SearchProfilesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote)
   case class UpdateProfileIN(profileId: String, obj: vo.UpdateProfile, profile: ProfileRemote)
   case class DeleteProfileIN(profileId: String, profile: ProfileRemote)
   case class InvalidateTokenByUsernameIN(profileId: String, profile: ProfileRemote)
@@ -48,10 +49,11 @@ object ProfilesActor {
 
 class ProfilesActor(val profilesDb: ProfilesDb, val authBaseUrl: String, val systemToken: String,
                     val restClient: RestClient, val voAttributes: VoAttributes)
-  extends Actor with ActorLogging with MsgInterceptor with AuthMsRestCalls with VoExpose with GetProfile with AmendProfile {
-                                                                 //todo refactor to lazy
+  extends Actor with ActorLogging with MsgInterceptor with AuthMsRestCalls with VoExpose
+    with GetProfile with AmendProfile with SearchProfiles {
+                                                                 
   def receive =
-    getProfileReceive orElse amendProfileReceive
+    getProfileReceive orElse amendProfileReceive orElse searchProfilesReceive
 
   val isProfileOwner = (profileId: String, profile: ProfileRemote) => profile.isMy(profileId)
 
@@ -79,17 +81,27 @@ trait GetProfile {
 
       reply ! CodeEntityOUT(code, expose(result, profile))
 
-    case GetProfilesIN(byAttributes, joinOR, profile) =>
-      val unprivileged =
+  }
+
+}
+
+trait SearchProfiles {
+  self: ProfilesActor =>
+  import ProfilesActor._
+
+  val searchProfilesReceive: Actor.Receive = {
+
+    case SearchProfilesIN(byAttributes, joinOR, profile) =>
+      val privileged =
         byAttributes.nonEmpty && !byAttributes.exists { case (_, value) => value.endsWith("*") && value.size < 3+1 }
 
+      lazy val canRead = profile.isSuper || privileged
+
+      def read: Option[Seq[vo.Profile]] = Some(profilesDb.searchProfiles(byAttributes, joinOR))
+
       val (code, profiles) =
-        if (unprivileged || profile.isSuper) {
-          val profiles = profilesDb.searchProfiles(byAttributes, joinOR)
-          (SC_OK, Some(profiles))
-        } else {
-          (SC_FORBIDDEN, None)
-        }
+        if (canRead) (ApiCode.OK, read)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSeq(profiles, profile))
 
@@ -104,16 +116,11 @@ trait AmendProfile {
   val amendProfileReceive: Actor.Receive = {
 
     case UpdateProfileIN(profileId, obj, profile) =>
-      val exists = (
-          obj.username.flatMap(profilesDb.profileByUsername(_).filter(_.profile_id != profileId)) orElse
-          obj.email.flatMap(profilesDb.profileByEmail(_).filter(_.profile_id != profileId))
-        ).isDefined
-
       def updateMsAuthOrRollback(originalUsername: String, p: vo.Profile): vo.Profile =
         Some(originalUsername != p.username.get || obj.password.isDefined)
           .filter(true ==)
           .map(_ => updateUserInMsAuth(originalUsername, obj.toJson.asJsObject))
-          .filter(SC_OK !=)
+          .filter(_ not SC_OK)
           .map { _ => // rollback profile username change in case if Auth micro service fails
             profilesDb.updateProfile(profileId, obj.copy(username = Some(originalUsername)))
             log.warning(s"MS Auth was unable to update user #$profileId")
@@ -121,56 +128,67 @@ trait AmendProfile {
           }
           .getOrElse(p)
 
+      lazy val usernameExists = obj.username.flatMap(profilesDb.profileByUsername(_).filter(_.profile_id != profileId)).isDefined
+      lazy val emailExists = obj.email.flatMap(profilesDb.profileByEmail(_).filter(_.profile_id != profileId)).isDefined
+      lazy val forbidFields = !profile.isSuper && (obj.roles.isDefined || obj.metadata.isDefined)
+      lazy val forbidAttributes = !permitAttributes(obj, profileId, profile)
+      lazy val myProfile = profilesDb.profileById(profileId)
+      lazy val profileNotFound = myProfile.isEmpty
+      lazy val canUpdate = profile.isSuper || profile.isMy(profileId)
+
+      def update(): Option[vo.Profile] = {
+        val p0 = profilesDb.updateProfile(profileId, obj)
+        val updated = updateMsAuthOrRollback(myProfile.get.username.get, p0.get)
+        Some(updated)
+      }
+
       val (code, updatedProfile) =
-        if (!profile.isSuper && (obj.roles.isDefined || obj.metadata.isDefined)) {
-          (SC_FORBIDDEN, None)
-        } else if ((profile.isSuper || profile.isMy(profileId)) && exists) {
-          (SC_CONFLICT, None)
-        } else if (!permitAttributes(obj, profileId, profile)) {
-          (SC_FORBIDDEN, None)
-        } else if (profile.isSuper || profile.isMy(profileId)) {
-          val original = profilesDb.profileById(profileId)
-          profilesDb.updateProfile(profileId, obj) match {
-            case Some(p0) =>
-              val p = updateMsAuthOrRollback(original.get.username.get, p0)
-              (SC_OK, Some(p))
-            case None =>
-              (SC_NOT_FOUND, None)
-          }
-        } else {
-          (SC_FORBIDDEN, None)
-        }
+        if (forbidFields) (ApiCode(SC_FORBIDDEN, 'update_forbidden_fields), None)
+        else if (profileNotFound) (ApiCode(SC_NOT_FOUND, 'profile_not_found), None)
+        else if (usernameExists) (ApiCode(SC_CONFLICT, 'username_exists), None)
+        else if (emailExists) (ApiCode(SC_CONFLICT, 'email_exists), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN, 'update_forbidden_attributes), None)
+        else if (canUpdate) (ApiCode.OK, update())
+        else (ApiCode(SC_FORBIDDEN, 'action_forbidden), None)
 
       reply ! CodeEntityOUT(code, expose(updatedProfile, profile))
 
     case DeleteProfileIN(profileId, profile) =>
+      lazy val myProfile = profilesDb.profileById(profileId)
+      lazy val profileNotFound = myProfile.isEmpty
+      lazy val canDelete = profile.isSuper || profile.isMy(profileId)
+
+      def delete() {
+        profilesDb.deleteProfile(profileId)
+        val codeA = deleteUserFromMsAuth(myProfile.get.username.get)
+        if (codeA not SC_OK) log.warning(s"MS Auth was unable to delete user #$profileId")
+      }
+
       val code =
-        if (profile.isSuper || profile.isMy(profileId)) {
-          val foundProfile = profilesDb.profileById(profileId)
-          profilesDb.softDeleteProfile(profileId) match {
-            case true =>
-              val codeA = foundProfile.map(p => deleteUserFromMsAuth(p.username.get)).getOrElse(SC_OK)
-              if (codeA != SC_OK) log.warning(s"MS Auth was unable to delete user #$profileId")
-              SC_OK
-            case false =>
-              SC_NOT_FOUND
-          }
-        } else {
-          SC_FORBIDDEN
-        }
+        if (profileNotFound) ApiCode(SC_NOT_FOUND, 'profile_not_found)
+        else if (canDelete) {
+          delete()
+          ApiCode.OK
+        } else ApiCode(SC_FORBIDDEN, 'action_forbidden)
 
       reply ! CodeOUT(code)
 
     case InvalidateTokenByUsernameIN(profileId, profile) =>
+      lazy val myProfile = profilesDb.profileById(profileId)
+      lazy val profileNotFound = myProfile.isEmpty
+      lazy val canUpdate = profile.isSuper || profile.isMy(profileId)
+
+      def update() = {
+        val codeA = invalidateUserInMsAuth(myProfile.get.username.get)
+        if (codeA not SC_OK) log.warning(s"MS Auth was unable to invalidate user #$profileId")
+      }
+
       val code =
-        if (profile.isSuper || profile.isMy(profileId)) {
-          val foundProfile = profilesDb.profileById(profileId)
-          val codeA = foundProfile.map(p => invalidateUserInMsAuth(p.username.get)).getOrElse(SC_OK)
-          if (codeA != SC_OK) log.warning(s"MS Auth was unable to invalidate user #$profileId")
-          SC_OK
-        } else {
-          SC_FORBIDDEN
-        }
+        if (profileNotFound) ApiCode(SC_NOT_FOUND, 'profile_not_found)
+        else if (canUpdate) {
+          update()
+          ApiCode.OK
+        } else ApiCode(SC_FORBIDDEN, 'action_forbidden)
 
       reply ! CodeOUT(code)
   }
@@ -182,7 +200,6 @@ object ProfilesRegisterActor {
     Props(new ProfilesRegisterActor(profilesDb, authBaseUrl, systemToken, restClient, voAttributes))
 
   case class RegisterIN(obj: vo.RegisterUser, profile: ProfileRemote)
-  case class RegisterOUT(code: Int, profile: Option[vo.Profile])
 }
 
 class ProfilesRegisterActor(profilesDb: ProfilesDb, val authBaseUrl: String, val systemToken: String,
@@ -195,22 +212,21 @@ class ProfilesRegisterActor(profilesDb: ProfilesDb, val authBaseUrl: String, val
   def receive = {
 
     case RegisterIN(obj, profile) =>
-      val exists = (
-          profilesDb.profileByUsername(obj.username) orElse
-          profilesDb.profileByEmail(obj.email)
-        ).isDefined
+      lazy val usernameExists = profilesDb.profileByUsername(obj.username).isDefined
+      lazy val emailExists = profilesDb.profileByEmail(obj.email).isDefined
 
       val (code, registeredProfile) =
-        if (exists) (SC_CONFLICT, None)
+        if (usernameExists) (ApiCode(SC_CONFLICT, 'username_exists), None)
+        else if (emailExists) (ApiCode(SC_CONFLICT, 'email_exists), None)
         else {
           val myProfile = profilesDb.createProfile(obj)
           val codeA = registerWithMsAuth(obj.username, obj.toJson.asJsObject)
-          if (codeA == SC_CREATED) {
-            (SC_CREATED, Some(myProfile))
+          if (codeA is SC_CREATED) {
+            (ApiCode.CREATED, Some(myProfile))
           } else { // rollback profile creation in case if Auth micro service fails
             log.warning(s"MS Auth was unable to register user #${myProfile.profile_id}")
-            profilesDb.deleteProfile(myProfile.profile_id)
-            (SC_SERVICE_UNAVAILABLE, None)
+            profilesDb.rollbackProfile(myProfile.profile_id)
+            (ApiCode(SC_SERVICE_UNAVAILABLE, 'external_service_failed), None)
           }
         }
 
@@ -237,6 +253,6 @@ trait VoExpose {
     obj.map(expose(_, profile))
 
   def exposeSeq(obj: Option[Seq[vo.Profile]], profile: ProfileRemote): Option[Seq[vo.Profile]] =
-    obj.map(_.map(expose(_, profile)))
+    obj.map(_.map(expose(_, profile)).toList)
 
 }

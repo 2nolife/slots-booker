@@ -11,7 +11,7 @@ case class ConfiguredAttribute(name: String, permissions: Seq[Permission] = Nil,
 object Permission {
 
   def apply(c: Char): Permission =
-    (ReadPermission :: WritePermission :: PublicPermission :: Nil).find(_.char == c).get
+    (ReadPermission :: WritePermission :: PublicPermission :: OncePermission :: Nil).find(_.char == c).get
 
   def defaultRead(profile: ProfileRemote, readCondition: HasPermission = _ => false): HasPermission =
     (attr: ConfiguredAttribute) => attr.permissions.contains(PublicPermission) || profile.isSuper ||
@@ -19,7 +19,7 @@ object Permission {
 
   def defaultWrite(profile: ProfileRemote, writeCondition: HasPermission = _ => false): HasPermission =
     (attr: ConfiguredAttribute) => profile.isSuper ||
-      (if (attr.permissions.contains(WritePermission)) writeCondition(attr) else false)
+      (if (attr.permissions.contains(WritePermission) || attr.permissions.contains(OncePermission)) writeCondition(attr) else false)
 
   def defaultPublic: HasPermission =
     (attr: ConfiguredAttribute) => attr.permissions.contains(PublicPermission)
@@ -35,10 +35,10 @@ case object ReadPermission extends Permission {
 case object WritePermission extends Permission {
   override val char = 'w'
 }
-case object PublicPermission extends Permission {
+case object PublicPermission extends Permission { // public read
   override val char = 'p'
 }
-case object OncePermission extends Permission {
+case object OncePermission extends Permission { // write once
   override val char = 'o'
 }
 
@@ -56,7 +56,7 @@ object Util {
       val name = parts.head
       val chunks = parts.tail
         .map {
-          case part if part.matches("[rwp]+") => 'permissions -> part
+          case part if part.matches("[rwpo]+") => 'permissions -> part
           case part => throw new IllegalArgumentException(s"Attribute $name argument $part")
         }.toMap
       ConfiguredAttribute(name, chunks.get('permissions).map(_.map(Permission.apply)).getOrElse(Nil))
@@ -71,17 +71,24 @@ object Util {
         case seq => seq.isEmpty -> seq.toSeq
       }
 
-  def expose[A <: AttributedObject](obj: A, configured: Seq[ConfiguredAttribute], readable: HasPermission): Option[Attributes] = {
-    val exposed = obj.attributes
+  def definedFields[A <: AttributedObject](obj: A, configured: Seq[ConfiguredAttribute]): Map[String, JsValue] =
+    obj.attributes
+      .map(_.value.fields)
+      .getOrElse(Nil)
+      .map { case (name, value) => configured.find(_.name == name).getOrElse(ConfiguredAttribute(name)).copy(value = Some(value)) }
+      .collect { case attr if attr.value.isDefined => attr.name -> attr.value.get }
+      .toMap
+
+  def expose[A <: AttributedObject](obj: A, configured: Seq[ConfiguredAttribute], readable: HasPermission): Option[Attributes] =
+    obj.attributes
       .map(_.value.fields)
       .getOrElse(Nil)
       .map { case (name, value) => configured.find(_.name == name).getOrElse(ConfiguredAttribute(name)).copy(value = Some(value)) }
       .filter(readable)
-    exposed.collect { case attr if attr.value.isDefined => attr.name -> attr.value.get }.toList match {
-      case Nil => None
-      case values => Some(Attributes(values: _*))
-    }
-  }
+      .collect { case attr if attr.value.isDefined => attr.name -> attr.value.get }.toList match {
+        case Nil => None
+        case values => Some(Attributes(values: _*))
+      }
 
   /** Returns the same object after setting exposed attributes */
   def exposeClass[A <: AttributedObject](obj: A, configured: Seq[ConfiguredAttribute], readable: HasPermission): A = {
@@ -100,6 +107,11 @@ object Util {
         if (noAccess) f.setAccessible(true)
         try {
           f.get(c) match {
+            case v if v.isInstanceOf[Seq[_]] =>
+              v.asInstanceOf[Seq[_]] match {
+                case Seq(x, _*) if x.isInstanceOf[Product] => v.asInstanceOf[Seq[Product]].flatMap(extractAttributedMembers)
+                case _ => Nil
+              }
             case v if v.isInstanceOf[Attributes] => v.asInstanceOf[Attributes] :: Nil
             case v if v.isInstanceOf[Product] => extractAttributedMembers(v.asInstanceOf[Product])
             case _ => Nil
@@ -111,7 +123,7 @@ object Util {
     }
 
   def assertExposed(p: Product) =
-    if (!extractAttributedMembers(p).forall(_.exposed)) throw new IllegalStateException("Attributes exposed check failed: "+p)
+    extractAttributedMembers(p).find(!_.exposed).map(a => throw new IllegalStateException(s"Attributes exposed check failed: $a in $p"))
 
 }
 

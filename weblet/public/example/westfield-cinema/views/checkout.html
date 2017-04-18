@@ -1,0 +1,34 @@
+<div id="view-checkout">
+
+  <h1 class="top">Checkout</h1>
+
+  <h4 class="alert alert-warning" ng-show="status == 'progress'">Booking, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Booking complete</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Something went wrong, please try with different seats</h4>
+
+  <div class="tickets" ng-show="basket.amount > 0">
+
+    <p class="title">{{cinemaSlot.movie.title}}</p>
+    <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | numberAsTime}}</p>
+
+    <p class="ticket" ng-repeat="price in basket.prices">
+      <span class="type">{{price.cinemaSlot.cinemaSeat.type}}</span>
+      <span class="age">{{price.age}}</span>
+      <span class="seat">Seat {{price.cinemaSlot.cinemaSeat.seatN}}</span>
+      <span class="price">{{price.sign}} {{price.amount | numberX100 : true}}</span>
+    </p>
+
+    <p class="total">{{basket.sign}} {{basket.amount | numberX100 : true}}</p>
+
+  </div>
+
+  <div class="pay" ng-show="basket.amount > 0 && (!status || status == 'failed')">
+    <button class="btn btn-primary" ng-click="book()">Pay now</button>
+  </div>
+
+  <p class="ref" ng-show="reference">Reference &nbsp; {{reference.ref}}</p>
+
+  <a href="#" class="empty" ng-show="!basket.amount">No tickets in your basket, start over?</a>
+  <a href="#" class="empty" ng-show="status == 'failed'">Start over?</a>
+
+</div>

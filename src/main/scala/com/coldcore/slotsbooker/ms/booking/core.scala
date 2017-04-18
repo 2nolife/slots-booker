@@ -30,6 +30,22 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
 trait Constants {
   val MS = "ms-booking"
+
+  private def toApiCodes(codes: (Symbol, Int) *): Map[Symbol, String] = codes.map { case (s, code) => (s, MS+"-"+code) }.toMap
+
+  val apiCodes = toApiCodes(
+    'slots_contain_bookable -> 1,
+    'slots_contain_expired -> 2,
+    'refs_slots_mismatch -> 3,
+    'refs_place_mismatch -> 4,
+    'refs_profile_mismatch -> 5,
+    'quotes_complete_not_all -> 6,
+    'quotes_deal_not_all -> 7,
+    'refund_requires_payment -> 8,
+    'generated_refund_mismatch -> 9
+  )
+
+  implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)
 }
 
 object Constants extends Constants
