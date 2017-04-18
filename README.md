@@ -59,6 +59,7 @@ This code is open source software licensed under the [GNU Lesser General Public 
 ### Major topics ###
 * Control panel for users, admins and moderators
 * Users must be able to credit clubs through PayPal
+* 3rd party payment support
 * Deals and promotions on slots (get 3 for the price of 2)
 * Discount for club members and membership types
 * Queue for booked slots in case if cancelled
