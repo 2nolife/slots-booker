@@ -1,12 +1,20 @@
 package com.coldcore.slotsbooker
 package ms.config
 
-import akka.actor.ExtendedActorSystem
+import akka.actor.{ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException.Missing
 import Constants._
 import ms.attributes.Types.VoAttributes
 import ms.attributes.{Util => au}
+
+import scala.reflect.ClassTag
+
+abstract class ExtensionKey[T <: Extension](implicit m: ClassTag[T]) extends ExtensionId[T] with ExtensionIdProvider {
+  def this(clazz: Class[T]) = this()(ClassTag(clazz))
+  override def lookup(): ExtensionId[T] = this
+  def createExtension(system: ExtendedActorSystem): T = system.dynamicAccess.createInstanceFor[T](m.runtimeClass, List(classOf[ExtendedActorSystem] → system)).get
+}
 
 trait DefaultSettingsReader {
   self: {
@@ -59,6 +67,8 @@ trait CommonSettings extends DefaultSettingsReader {
     names.map(name => name -> au.parse(readString(s"vo_attributes_$name"))).toMap
 
   val getDeepFields: Boolean = readBoolean("get_deep_fields")
+
+  val sandboxMode: Boolean = readBoolean("sandbox_mode")
 }
 
 object Constants {

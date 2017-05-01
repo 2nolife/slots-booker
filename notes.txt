@@ -1,7 +1,7 @@
-========================================
-Slots Booker - A flexible booking system
-Inception: 27 Aug 2016 by Sergei Abramov
-========================================
+==========================================
+Slots Booker - The flexible booking system
+Inception:   27 Aug 2016 by Sergei Abramov
+==========================================
 
 
 Model diagram
@@ -187,4 +187,53 @@ TODO
 Maximum bookings per day
 Expiry actor every minute while no refs and then pull all refs one by one without delay
 prm# attribute (expands to prm1, prm2 etc)
-create and update timestamps on all of the mongo entries
+NS in angular classes and utils or package (sb_, sb)
+Login with facebook
+Add client IP to the rest on the commands AND replies
+Add generated X header to requests to track
+See if weblet sets proper X-Forwarded-For header
+
+PayPal sandbox instructions:
+1) Login to "https://developer.paypal.com/developer/accounts/"
+2) Sandbox -> Accounts then create a test sandbox Business account
+3) Create REST API application "https://developer.paypal.com/developer/applications/"
+   name it "slotsbooker" and link to the sandbox account
+4) Create a web hook for "Payment sale completed" event pointing to SB (eg. "https://sb.coldcore.com/api/paypal/events")
+5) Use simulator to fire events "https://developer.paypal.com/developer/webhooksSimulator/"
+5) TODO configure place attributes
+6) TODO sample transactions from test accounts
+7) TODO go to live
+
+Java SDK: https://github.com/paypal/PayPal-Java-SDK/wiki/Making-First-Call
+Dashboard with all the options: https://developer.paypal.com/
+
+
+Running in the background
+=========================
+
+NODE
+  https://blog.nodejitsu.com/keep-a-nodejs-server-up-with-forever/
+  npm install forever -g
+
+  start:
+    forever start -l weblet.log --append weblet.js
+    tail -f  ~/.forever/weblet.log
+
+  stop:
+    forever list
+    forever stop #process
+
+SBT
+  http://stackoverflow.com/questions/40643208/how-to-run-sbt-as-daemon
+  FreeBSD/Mac/Unix make "setsid" command using "https://github.com/jerrykuch/ersatz-setsid"
+
+  start:
+    setsid nohup sbt run &
+    tail -f hohup.out
+
+  stop:
+    ps -ax | grep sbt
+    22326  -  Is      0:00.01 bash /usr/local/bin/sbt run
+    22409  -  I       0:35.39 /usr/local/openjdk8/bin/java ... -jar /usr/local/share/sbt/sbt-launch.jar run
+    kill 22326 22409
+    "cat nohup.out" should read "Shutting down ..."

@@ -22,33 +22,35 @@ trait TokenRoute {
   self: AuthRestService =>
 
   def tokenRoute =
-    path("auth" / "token") {
+    clientIpHost { iphost =>
+      path("auth" / "token") {
 
-      post {
-        entity(as[vo.Credentials]) { credentials =>
-          completeByActor[vo.Token](tokenActor, LoginIN(credentials.username, credentials.password))
+        post {
+          entity(as[vo.Credentials]) { credentials =>
+            completeByActor[vo.Token](tokenActor, LoginIN(credentials.username, credentials.password).withIpHost(iphost))
+          }
+        } ~
+        delete {
+          entity(as[vo.AccessToken]) { token =>
+            completeByActor[EmptyEntity](tokenActor, InvalidateTokenIN(token.access_token).withIpHost(iphost))
+          }
+        } ~
+        get {
+          parameter('access_token) { token =>
+            completeByActor[vo.Token](tokenActor, ValidateTokenIN(token).withIpHost(iphost))
+          }
         }
+
       } ~
-      delete {
-        entity(as[vo.AccessToken]) { token =>
-          completeByActor[EmptyEntity](tokenActor, InvalidateTokenIN(token.access_token))
+      path("auth" / "refresh_token") {
+
+        post {
+          entity(as[vo.AccessToken]) { token =>
+            completeByActor[vo.Token](tokenActor, RefreshTokenIN(token.access_token).withIpHost(iphost))
+          }
         }
-      } ~
-      get {
-        parameter('access_token) { token =>
-          completeByActor[vo.Token](tokenActor, ValidateTokenIN(token))
-        }
+
       }
-
-    } ~
-    path("auth" / "refresh_token") {
-
-      post {
-        entity(as[vo.AccessToken]) { token =>
-          completeByActor[vo.Token](tokenActor, RefreshTokenIN(token.access_token))
-        }
-      }
-
     }
 
 }
@@ -57,30 +59,36 @@ trait UsersRoute {
   self: AuthRestService =>
 
   def usersRoute =
-    authenticateSystemToken(systemToken) { _ =>
-      path("auth" / "users" / Segment) { username =>
+    clientIpHost { iphost =>
+      pathPrefix("auth" / "users") {
+        authenticateSystemToken(systemToken) { _ =>
 
-        put {
-          entity(as[vo.AmendUser]) { entity =>
-            completeByActor[EmptyEntity](usersActor, CreateUserIN(username, entity))
+          path(Segment) { username =>
+
+            put {
+              entity(as[vo.AmendUser]) { entity =>
+                completeByActor[EmptyEntity](usersActor, CreateUserIN(username, entity).withIpHost(iphost))
+              }
+            } ~
+            patch {
+              entity(as[vo.AmendUser]) { entity =>
+                completeByActor[EmptyEntity](usersActor, UpdateUserIN(username, entity).withIpHost(iphost))
+              }
+            } ~
+            delete {
+              completeByActor[EmptyEntity](usersActor, DeleteUserIN(username).withIpHost(iphost))
+            }
+
+          } ~
+          path(Segment / "token") { username =>
+
+            delete {
+              completeByActor[EmptyEntity](usersActor, InvalidateTokenByUsernameIN(username).withIpHost(iphost))
+            }
+
           }
-        } ~
-        patch {
-          entity(as[vo.AmendUser]) { entity =>
-            completeByActor[EmptyEntity](usersActor, UpdateUserIN(username, entity))
-          }
-        } ~
-        delete {
-          completeByActor[EmptyEntity](usersActor, DeleteUserIN(username))
+
         }
-
-      } ~
-      path("auth" / "users" / Segment / "token") { username =>
-
-        delete {
-          completeByActor[EmptyEntity](usersActor, InvalidateTokenByUsernameIN(username))
-        }
-
       }
     }
 

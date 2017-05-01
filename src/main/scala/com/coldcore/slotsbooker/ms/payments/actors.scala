@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package ms.payments.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.rest.RequestInfo
 import ms.payments.service.{PaymentsService, PaymentsServiceImpl}
 import ms.http.{ApiCode, RestClient}
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
@@ -10,17 +11,18 @@ import ms.vo.ProfileRemote
 import ms.payments.db.PaymentsDb
 import ms.payments.vo
 import ms.payments.vo.Implicits._
+import ms.payments.Constants._
 import org.apache.http.HttpStatus._
 
 import scala.concurrent.duration.DurationInt
 
 trait BalanceCommands {
-  case class UpdateCreditIN(obj: vo.UpdateCredit, profile: ProfileRemote)
-  case class GetBalanceIN(placeId: String, profileId: Option[String], profile: ProfileRemote)
+  case class UpdateCreditIN(obj: vo.UpdateCredit, profile: ProfileRemote) extends RequestInfo
+  case class GetBalanceIN(placeId: String, profileId: Option[String], profile: ProfileRemote) extends RequestInfo
 }
 
 trait ReferenceCommands {
-  case class ProcessReferenceIN(obj: vo.ProcessReference, profile: ProfileRemote)
+  case class ProcessReferenceIN(obj: vo.ProcessReference, profile: ProfileRemote) extends RequestInfo
 }
 
 object PaymentsActor extends BalanceCommands with ReferenceCommands {
@@ -57,7 +59,7 @@ trait AmendBalance {
       def update(): Option[vo.Balance] = Some(paymentsService.addCredit(obj.place_id, obj.profile_id, obj))
 
       val (code, credit) =
-        if (invalidEntity) (ApiCode(SC_BAD_REQUEST), None)
+        if (invalidEntity) (ApiCode(SC_BAD_REQUEST, 'reason_missing), None)
         else if (placeNotFound) (codeA, None)
         else if (canUpdate) (ApiCode.OK, update())
         else (ApiCode(SC_FORBIDDEN), None)

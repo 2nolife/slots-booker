@@ -4,7 +4,7 @@ package ms.profiles.rest
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
-import com.coldcore.slotsbooker.ms.actors.Common.CodeEntityOUT
+import ms.actors.Common.CodeEntityOUT
 import ms.profiles.actors.ProfilesActor._
 import ms.profiles.actors.ProfilesRegisterActor._
 import ms.profiles.vo
@@ -38,18 +38,18 @@ trait RegisterRoute {
   self: ProfilesRestService =>
 
   def registerRoute =
-    authenticateTokenAsync(makeTokenFn(systemToken), makeLocalProfileFn, default = Some(anonymousProfileRemote)) { profile =>
-
+    clientIpHost { iphost =>
       path("profiles" / "register") {
+        authenticateTokenAsync(makeTokenFn(systemToken), makeLocalProfileFn, default = Some(anonymousProfileRemote)) { profile =>
 
-        post {
-          entity(as[vo.RegisterUser]) { entity =>
-            completeByActor[vo.Profile](profilesRegisterActor, RegisterIN(entity, profile))
+          post {
+            entity(as[vo.RegisterUser]) { entity =>
+              completeByActor[vo.Profile](profilesRegisterActor, RegisterIN(entity, profile).withIpHost(iphost))
+            }
           }
+
         }
-
       }
-
     }
 
 }
@@ -58,55 +58,59 @@ trait ProfilesRoute {
   self: ProfilesRestService =>
 
   def profilesRoute =
-    authenticateTokenAsync(makeTokenFn(systemToken), makeLocalProfileFn) { profile =>
+    clientIpHost { iphost =>
+      pathPrefix("profiles") {
+        authenticateTokenAsync(makeTokenFn(systemToken), makeLocalProfileFn) { profile =>
 
-      path("profiles" / "me") {
+          path("me") {
 
-        get {
-          completeByActor[vo.Profile](profilesActor, GetProfileByIdIN(profile.profile_id, profile))
-        } ~
-        patch {
-          entity(as[vo.UpdateProfile]) { entity =>
-            completeByActor[vo.Profile](profilesActor, UpdateProfileIN(profile.profile_id, entity, profile))
+            get {
+              completeByActor[vo.Profile](profilesActor, GetProfileByIdIN(profile.profile_id, profile).withIpHost(iphost))
+            } ~
+            patch {
+              entity(as[vo.UpdateProfile]) { entity =>
+                completeByActor[vo.Profile](profilesActor, UpdateProfileIN(profile.profile_id, entity, profile).withIpHost(iphost))
+              }
+            } ~
+            delete {
+              completeByActor[EmptyEntity](profilesActor, DeleteProfileIN(profile.profile_id, profile).withIpHost(iphost))
+            }
+
+          } ~
+          path("search") {
+
+            get {
+              parameterSeq { attributes =>
+                completeByActor[Seq[vo.Profile]](profilesActor, SearchProfilesIN(attributes.filterNot(p => Seq("and", "or").contains(p._1)), joinOR = attributes.exists(p => p._1 == "or"), profile).withIpHost(iphost))
+              }
+            }
+
+          } ~
+          path(Segment) { profileId =>
+
+            get {
+              completeByActor[vo.Profile](profilesActor, GetProfileByIdIN(profileId, profile).withIpHost(iphost))
+            } ~
+            patch {
+              entity(as[vo.UpdateProfile]) { entity =>
+                completeByActor[vo.Profile](profilesActor, UpdateProfileIN(profileId, entity, profile).withIpHost(iphost))
+              }
+            } ~
+            delete {
+              completeByActor[EmptyEntity](profilesActor, DeleteProfileIN(profileId, profile).withIpHost(iphost))
+            }
+
+          } ~
+          path(Segment / "token") { profileId =>
+
+            delete {
+              completeByActor[EmptyEntity](profilesActor, InvalidateTokenByUsernameIN(profileId, profile).withIpHost(iphost))
+            }
+
           }
-        } ~
-        delete {
-          completeByActor[EmptyEntity](profilesActor, DeleteProfileIN(profile.profile_id, profile))
+
         }
-
-      } ~
-      path("profiles" / "search") {
-
-        get {
-          parameterSeq { attributes =>
-            completeByActor[Seq[vo.Profile]](profilesActor, SearchProfilesIN(attributes.filterNot(p => Seq("and", "or").contains(p._1)), joinOR = attributes.exists(p => p._1 == "or"), profile))
-          }
-        }
-
-      } ~
-      path("profiles" / Segment) { profileId =>
-
-        get {
-          completeByActor[vo.Profile](profilesActor, GetProfileByIdIN(profileId, profile))
-        } ~
-        patch {
-          entity(as[vo.UpdateProfile]) { entity =>
-            completeByActor[vo.Profile](profilesActor, UpdateProfileIN(profileId, entity, profile))
-          }
-        } ~
-        delete {
-          completeByActor[EmptyEntity](profilesActor, DeleteProfileIN(profileId, profile))
-        }
-
-      } ~
-      path("profiles" / Segment / "token") { profileId =>
-
-        delete {
-          completeByActor[EmptyEntity](profilesActor, InvalidateTokenByUsernameIN(profileId, profile))
-        }
-
       }
-
     }
 
 }

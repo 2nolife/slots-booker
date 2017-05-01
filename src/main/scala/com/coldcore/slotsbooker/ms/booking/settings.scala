@@ -1,7 +1,8 @@
-package com.coldcore.slotsbooker.ms.booking
+package com.coldcore.slotsbooker
+package ms.booking
 
-import akka.actor.{ExtendedActorSystem, Extension, ExtensionKey}
-import com.coldcore.slotsbooker.ms.config.CommonSettings
+import akka.actor.{ExtendedActorSystem, Extension}
+import ms.config.{CommonSettings, ExtensionKey}
 
 object Settings extends ExtensionKey[Settings]
 

@@ -240,7 +240,7 @@ function CinemaSlot(/*Slot*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*/
       var prices = (source.prices || []).map(function(price) { return new CinemaPrice(price, _this) })
       prices.sort(function(a, b) { return a.amount < b.amount })
       _this.prices = prices
-      _this.selectedPriceId = prices ? prices[0].id : null
+      _this.selectedPriceId = prices.length ? prices[0].id : null
       _this.onChangeCallback.trigger('prices-created', _this)
     }
     if (callback) callback()
@@ -277,6 +277,7 @@ function CinemaPrice(/*Price*/ source, /*CinemaSlot*/ cinemaSlot) {
 
   function applyChangesFromSource() {
     _this.id = source.id
+    _this.placeId = source.placeId
     _this.name = source.name
     _this.amount = source.amount
     _this.currency = source.currency

@@ -80,6 +80,7 @@ trait SystemStart extends BaseURLs {
     places.start.run
     booking.start.run
     payments.start.run
+    paypal.start.run
 
     // wait till all micro services start
     val restClient = new RestClient
@@ -110,9 +111,10 @@ trait BaseURLs {
   val slotsBaseUrl = "http://localhost:8023"
   val bookingBaseUrl = "http://localhost:8025"
   val paymentsBaseUrl = "http://localhost:8026"
+  val paypalBaseUrl = "http://localhost:8027"
 
   val baseUrls =
-    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: paymentsBaseUrl :: Nil
+    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: paymentsBaseUrl :: paypalBaseUrl :: Nil
 }
 
 /** MongoDB client and operations. */
@@ -518,11 +520,11 @@ trait MongoCreate {
   }
 
   def mongoEntryDates(id: String, collection: MongoCollection,
-                      created: Option[Long] = None, updated: Option[Long] = None, inflight: Option[Long] = None) {
+                      created: Option[Long] = None, updated: Option[Long] = None, locked: Option[Long] = None) {
     Map(
       "entry.created" -> created,
       "entry.updated" -> updated,
-      "entry.inflight" -> inflight
+      "entry.locked" -> locked
     ).foreach { case (key, value) =>
       update(finderById(id), collection, key, value)
     }

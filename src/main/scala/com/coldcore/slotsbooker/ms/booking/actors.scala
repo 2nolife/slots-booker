@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package ms.booking.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.rest.RequestInfo
 import ms.booking.db.BookingDb
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.booking.service.{BookingService, BookingServiceImpl}
@@ -13,20 +14,20 @@ import ms.booking.vo.Implicits._
 import org.apache.http.HttpStatus._
 
 trait QuoteCommands {
-  case class GetQuoteIN(obj: vo.QuoteSlots, profile: ProfileRemote)
-  case class GetRefundIN(obj: vo.RefundSlots, profile: ProfileRemote)
+  case class GetQuoteIN(obj: vo.QuoteSlots, profile: ProfileRemote) extends RequestInfo
+  case class GetRefundIN(obj: vo.RefundSlots, profile: ProfileRemote) extends RequestInfo
 }
 
 trait SlotsCommands {
-  case class BookSlotsIN(obj: vo.BookSlots, profile: ProfileRemote)
-  case class CancelSlotsIN(obj: vo.CancelSlots, profile: ProfileRemote)
-  case class UpdateSlotsIN(obj: vo.UpdateSlots, profile: ProfileRemote)
+  case class BookSlotsIN(obj: vo.BookSlots, profile: ProfileRemote) extends RequestInfo
+  case class CancelSlotsIN(obj: vo.CancelSlots, profile: ProfileRemote) extends RequestInfo
+  case class UpdateSlotsIN(obj: vo.UpdateSlots, profile: ProfileRemote) extends RequestInfo
 }
 
 trait ReferenceCommands {
-  case class GetReferenceIN(ref: String, profile: ProfileRemote)
-  case class NextExpiredReferenceIN(profile: ProfileRemote)
-  case class ReferencePaidIN(obj: vo.ReferencePaid, profile: ProfileRemote)
+  case class GetReferenceIN(ref: String, profile: ProfileRemote) extends RequestInfo
+  case class NextExpiredReferenceIN(profile: ProfileRemote) extends RequestInfo
+  case class ReferencePaidIN(obj: vo.ReferencePaid, profile: ProfileRemote) extends RequestInfo
 }
 
 object BookingActor extends QuoteCommands with SlotsCommands with ReferenceCommands {

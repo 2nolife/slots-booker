@@ -1,7 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.places.vo
 
-import com.coldcore.slotsbooker.ms.vo.Attributes
+import ms.vo.Attributes
 import spray.json.{DefaultJsonProtocol, JsObject, RootJsonFormat}
 
 case class Address(line1: Option[String], line2: Option[String], line3: Option[String],
@@ -16,7 +16,7 @@ case class Space(space_id: String, place_id: String, parent_space_id: Option[Str
                  spaces: Option[Seq[Space]], prices: Option[Seq[Price]], metadata: Option[JsObject], attributes: Option[Attributes])
 object Space extends DefaultJsonProtocol {
   implicit val format: RootJsonFormat[Space] =
-    rootFormat(lazyFormat(jsonFormat(Space.apply, "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes")))
+    rootFormat(lazyFormat(jsonFormat(apply, "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes")))
 }
 
 case class DateTime(timezone: Option[String], offset_minutes: Option[Int],
@@ -34,7 +34,7 @@ case class Place(place_id: String, profile_id: String,
                  datetime: Option[DateTime])
 object Place extends DefaultJsonProtocol {
   implicit val placeFormat: RootJsonFormat[Place] =
-    jsonFormat(Place.apply, "place_id", "profile_id", "name", "url", "email", "address", "spaces", "moderators", "attributes", "datetime")
+    jsonFormat(apply, "place_id", "profile_id", "name", "url", "email", "address", "spaces", "moderators", "attributes", "datetime")
 }
 
 case class CreatePlace(name: String)

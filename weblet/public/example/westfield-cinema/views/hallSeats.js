@@ -85,9 +85,8 @@ app.controller('hallSeatsController', function($scope, $routeParams, placesServi
   })
 
   $scope.$on('$destroy', function() {
-    var cinemaPlace = $scope.cinemaPlace
-    cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
-    cinemaPlace.onChangeCallback.remove(handles.cinemaHallChange)
+    if ($scope.cinemaPlace) $scope.cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
+    if ($scope.cinemaHall) $scope.cinemaHall.onChangeCallback.remove(handles.cinemaHallChange)
   })
 
   $scope.selectedSeats = []

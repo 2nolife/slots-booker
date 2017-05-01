@@ -58,11 +58,16 @@ object SystemTokenAndProfile {
 
 }
 
-case class StringEntity(content: String)
-object StringEntity extends DefaultJsonProtocol { implicit val format = jsonFormat1(apply) }
+case class ContentEntity(content: String)
+object ContentEntity extends DefaultJsonProtocol { implicit val format = jsonFormat1(apply) }
 
 case class EmptyEntity()
-object EmptyEntity extends DefaultJsonProtocol { implicit val format = jsonFormat0(apply) }
+object EmptyEntity {
+  implicit object JsonFormat extends DefaultJsonProtocol with RootJsonFormat[EmptyEntity] {
+    override def read(v: JsValue): EmptyEntity = EmptyEntity()
+    override def write(p: EmptyEntity): JsValue = JsObject()
+  }
+}
 
 case class Attributes(var value: JsObject) {
   def set(value: JsObject) = this.value = value

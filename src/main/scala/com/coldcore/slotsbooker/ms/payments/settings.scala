@@ -1,9 +1,8 @@
 package com.coldcore.slotsbooker
 package ms.payments
 
-import akka.actor.{ExtendedActorSystem, Extension, ExtensionKey}
-import ms.attributes.Types.VoAttributes
-import ms.config.CommonSettings
+import akka.actor.{ExtendedActorSystem, Extension}
+import ms.config.{CommonSettings, ExtensionKey}
 
 object Settings extends ExtensionKey[Settings]
 

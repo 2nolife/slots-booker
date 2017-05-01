@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package ms.slots.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.rest.RequestInfo
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.actors.MsgInterceptor
 import ms.vo.ProfileRemote
@@ -16,32 +17,32 @@ import ms.attributes.{OncePermission, WritePermission, Permission => ap, Util =>
 import org.apache.http.HttpStatus._
 
 trait SlotsCommands {
-  case class CreateSlotIN(obj: vo.CreateSlot, profile: ProfileRemote)
-  case class UpdateSlotIN(slotId: String, obj: vo.UpdateSlot, profile: ProfileRemote)
+  case class CreateSlotIN(obj: vo.CreateSlot, profile: ProfileRemote) extends RequestInfo
+  case class UpdateSlotIN(slotId: String, obj: vo.UpdateSlot, profile: ProfileRemote) extends RequestInfo
   case class GetSlotIN(slotId: String, profile: ProfileRemote,
-                       deepBookings: Boolean, deepPrices: Boolean, deepBooked: Boolean)
-  case class DeleteSlotIN(slotId: String, profile: ProfileRemote)
-  case class UpdateHoldIN(slotId: String, obj: vo.UpdateHold, profile: ProfileRemote)
+                       deepBookings: Boolean, deepPrices: Boolean, deepBooked: Boolean) extends RequestInfo
+  case class DeleteSlotIN(slotId: String, profile: ProfileRemote) extends RequestInfo
+  case class UpdateHoldIN(slotId: String, obj: vo.UpdateHold, profile: ProfileRemote) extends RequestInfo
 }
 
 trait BookedCommands {
-  case class CreateBookedIN(obj: vo.CreateBooked, profile: ProfileRemote)
-  case class UpdateBookedIN(bookedId: String, obj: vo.UpdateBooked, profile: ProfileRemote)
+  case class CreateBookedIN(obj: vo.CreateBooked, profile: ProfileRemote) extends RequestInfo
+  case class UpdateBookedIN(bookedId: String, obj: vo.UpdateBooked, profile: ProfileRemote) extends RequestInfo
 }
 
 trait BookingsCommands {
-  case class CreateBookingIN(slotId: String, obj: vo.CreateBooking, profile: ProfileRemote)
-  case class UpdateBookingIN(slotId: String, bookingId: String, obj: vo.UpdateBooking, profile: ProfileRemote)
-  case class GetBookingIN(slotId: String, bookingId: String, profile: ProfileRemote)
-  case class GetBookingsIN(slotId: String, active: Option[String], profile: ProfileRemote)
+  case class CreateBookingIN(slotId: String, obj: vo.CreateBooking, profile: ProfileRemote) extends RequestInfo
+  case class UpdateBookingIN(slotId: String, bookingId: String, obj: vo.UpdateBooking, profile: ProfileRemote) extends RequestInfo
+  case class GetBookingIN(slotId: String, bookingId: String, profile: ProfileRemote) extends RequestInfo
+  case class GetBookingsIN(slotId: String, active: Option[String], profile: ProfileRemote) extends RequestInfo
 }
 
 trait PricesCommands {
-  case class CreatePriceIN(slotId: String, obj: vo.CreatePrice, profile: ProfileRemote)
-  case class UpdatePriceIN(slotId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote)
-  case class GetPriceIN(slotId: String, priceId: String, profile: ProfileRemote)
-  case class GetPricesIN(slotId: String, profile: ProfileRemote)
-  case class DeletePriceIN(slotId: String, priceId: String, profile: ProfileRemote)
+  case class CreatePriceIN(slotId: String, obj: vo.CreatePrice, profile: ProfileRemote) extends RequestInfo
+  case class UpdatePriceIN(slotId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote) extends RequestInfo
+  case class GetPriceIN(slotId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
+  case class GetPricesIN(slotId: String, profile: ProfileRemote) extends RequestInfo
+  case class DeletePriceIN(slotId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
 trait SearchCommands {

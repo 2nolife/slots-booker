@@ -6,7 +6,8 @@ module.exports = {
   find_forEach: find_forEach,
   insert_n: insert_n,
   insert_one: insert_one,
-  findAndModify_byId: findAndModify_byId
+  findAndModify_byId: findAndModify_byId,
+  sequentialPromise: sequentialPromise
 }
 
 function finderById(/*str*/ id) {
@@ -66,4 +67,13 @@ function findAndModify_byId(collection, /*str*/ id, update, /*fn*/ callback, /*b
       if (assertExists) assert(result.value != null, 'Item not found')
       if (callback) callback(result)
     })
+}
+
+/** Use instead of "Q.all" to avoid DB hammering when executing too mary concurrent inserts / updates */
+function sequentialPromise(/*[fn]*/ fs) {
+  var promise = null
+  fs.forEach(function(f) {
+    promise = promise ? promise.then(f) : f()
+  })
+  return promise
 }

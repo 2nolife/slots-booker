@@ -66,16 +66,6 @@ function addPrice(/*str*/ placeId, /*str*/ spaceId, /*str*/ slotId, /*str*/ name
       assert.equal(null, err)
       var priceId = ''+item.ops[0]._id.valueOf()
       deferred.resolve()
-
-//      _slots.findAndModify(
-//        finderById(slotId),
-//        sortById(),
-//        { $addToSet: { prices: priceId }},
-//        function(err, result) {
-//          assert.equal(null, err)
-//          assert(result.value != null, 'Slot not found')
-//          deferred.resolve()
-//        })
     })
 
   return deferred.promise

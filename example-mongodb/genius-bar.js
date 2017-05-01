@@ -38,7 +38,7 @@ function addSlots() {
   var deferred = Q.defer()
   var times = [0900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700],
       days = 14
-  console.log('Genius Bar has '+(times.length)+' slots per day of 60 minutes each, '+days+' days from now')
+  console.log('Has '+(times.length)+' slots per day of 60 minutes each, '+days+' days from now')
 
   _spaces.find({ place_id: _placeId }).toArray(function(err, items) {
     assert.equal(null, err)
@@ -68,7 +68,7 @@ function bookRandom() {
   var deferred = Q.defer()
   su.bookRandomSlots(_placeId, _profileIds['customer'], 30)
     .then(function() {
-      console.log('Random slots booked in Genius Bar')
+      console.log('Random slots booked')
       deferred.resolve()
     })
   return deferred.promise
@@ -79,7 +79,7 @@ function addSpaces() {
   var names = ['Regent Street', 'White City', 'Leicester Square', 'Canary Wharf', 'Covent Garden'],
       n = names.length,
       spaceIds = []
-  console.log('Genius Bar has '+n+' branches')
+  console.log('Has '+n+' branches')
 
   names.map(function(name) {
     _spaces.insert(
@@ -92,21 +92,9 @@ function addSpaces() {
         spaceIds.push(''+item.ops[0]._id.valueOf())
 
         if (--n == 0) {
-          console.log('Genius Bar branches added')
+          console.log('Branches added')
           deferred.resolve()
         }
-        
-//        if (--n == 0)
-//          _places.findAndModify(
-//            finderById(_placeId),
-//            sortById(),
-//            { $set: { spaces: spaceIds }},
-//            function(err, result) {
-//              assert.equal(null, err)
-//              assert(result.value != null, 'Place not found')
-//              console.log('Genius Bar branches added')
-//              deferred.resolve()
-//            })
       })
   })
 
@@ -126,7 +114,7 @@ function addPlace() {
       assert.equal(null, err)
       _placeId = ''+item.ops[0]._id.valueOf()
       _placeIds['genius-bar'] = _placeId
-      console.log('Genius Bar place created')
+      console.log('Place created')
       deferred.resolve()
     })
 

@@ -332,6 +332,10 @@ header nav li a:hover {
   text-align: center;
 }
 
+#view-checkout .pay button {
+  margin: 0 10px;
+}
+
 #view-checkout h4 {
   text-align: center;
   margin:10px;

@@ -128,7 +128,7 @@ function addHallSeats(/*str*/ hallName) {
   for (var n = 0; n < layout.length; n++)
     makeSeat(layout[n])
 
-  console.log('Westfield Cinema '+hallName+' has '+(seats.length)+' seats')
+  console.log(hallName+' has '+(seats.length)+' seats')
 
   var deferred = Q.defer()
 
@@ -156,14 +156,8 @@ function addHallSeats(/*str*/ hallName) {
         function after(items) {
           _hallSeatIds[hallName] = seatIds
 
-          console.log('Westfield Cinema '+hallName+' seats added')
+          console.log(hallName+' seats added')
           deferred.resolve()
-
-//          qu.findAndModify_byId(_spaces, hallId, { $set: { spaces: seatIds }}, function callback() {
-//            console.log('Westfield Cinema '+hallName+' seats added')
-//            deferred.resolve()
-//          }, true)
-
         })
     },
     function after() {})
@@ -178,7 +172,7 @@ function addHallSlots(/*str*/ hallName) {
       timesWE = hallShowTimes(hallName, true),
       arr = []
 
-  console.log('Westfield Cinema '+hallName+' has '+(timesWD.length)+'/'+(timesWE.length)+' shows per day, '+days+' days from now')
+  console.log(hallName+' has '+(timesWD.length)+'/'+(timesWE.length)+' shows per day, '+days+' days from now')
 
   for (var day = 0; day < days; day++) {
     var date = parseInt(du.addDaysDate(today, day)),
@@ -191,14 +185,12 @@ function addHallSlots(/*str*/ hallName) {
           timeTo = timeFrom+100-60+movie.time // 1000 -> 1145
 
       _hallSeatIds[hallName].map(function(seatId) {
-        arr.push(su.addSlot(_placeId, seatId, 'Slot', date, date, timeFrom, timeTo, { prm1: { movie_key: movie.key } }))
+        arr.push(su.addSlot.bind(null, _placeId, seatId, 'Slot', date, date, timeFrom, timeTo, { prm1: { movie_key: movie.key } }))
       })
     }
   }
 
-  var promises = [].concat.apply([], arr)
-  return Q.all(promises)
-
+  return qu.sequentialPromise(arr)
 }
 
 function addSeatSlotPrices(/*json*/ movie, /*num*/ price_add, /*[str]*/ seatIds) {
@@ -214,13 +206,13 @@ function addSeatSlotPrices(/*json*/ movie, /*num*/ price_add, /*[str]*/ seatIds)
           price2 = _defaultPrices[seatType+'_adult'],
           price3 = _defaultPrices[seatType+'_child']
 
-      if (price1) arr.push(su.addPrice(_placeId, seatId, slotId, seatType+': '+movie.title,       price1+price_add+movie.price_add, 'GBP', { prm1: { age: 'none' } }))
-      if (price2) arr.push(su.addPrice(_placeId, seatId, slotId, seatType+' Adult: '+movie.title, price2+price_add+movie.price_add, 'GBP', { prm1: { age: 'adult' } }))
-      if (price3) arr.push(su.addPrice(_placeId, seatId, slotId, seatType+' Child: '+movie.title, price3+price_add+movie.price_add, 'GBP', { prm1: { age: 'child' } }))
+      if (price1) arr.push(su.addPrice.bind(null, _placeId, seatId, slotId, seatType+': '+movie.title,       price1+price_add+movie.price_add, 'GBP', { prm1: { age: 'none' } }))
+      if (price2) arr.push(su.addPrice.bind(null, _placeId, seatId, slotId, seatType+' Adult: '+movie.title, price2+price_add+movie.price_add, 'GBP', { prm1: { age: 'adult' } }))
+      if (price3) arr.push(su.addPrice.bind(null, _placeId, seatId, slotId, seatType+' Child: '+movie.title, price3+price_add+movie.price_add, 'GBP', { prm1: { age: 'child' } }))
     },
     function after(slots) {
-      var promises = [].concat.apply([], arr)
-      Q.all(promises).then(deferred.resolve)
+      var promise = qu.sequentialPromise(arr)
+      promise.then(deferred.resolve)
     }
   )
 
@@ -231,45 +223,37 @@ function addHallSeatPrices(/*str*/ hallName) {
   var price_add = hallName == _hallNames[0] || hallName == _hallNames[1] ? 0 : -100, // smaller screen is cheaper
       seatIds = _hallSeatIds[hallName]
 
-  console.log('Westfield Cinema '+hallName+' pricing movies and seats')
+  console.log(hallName+' pricing movies and seats')
 
   var arr =
     _movies.map(function(movie) {
-      return addSeatSlotPrices(movie, price_add, seatIds)
+      return addSeatSlotPrices.bind(null, movie, price_add, seatIds)
     })
-
-  var promises = [].concat.apply([], arr)
-  return Q.all(promises)
+  return qu.sequentialPromise(arr)
 }
 
 function addSlots() {
   var arr =
     _hallNames.map(function(hallName) {
-      return addHallSlots(hallName)
+      return addHallSlots.bind(null, hallName)
     })
-
-  var promises = [].concat.apply([], arr)
-  return Q.all(promises)
+  return qu.sequentialPromise(arr)
 }
 
 function addSeats() {
   var arr =
     _hallNames.map(function(hallName) {
-      return addHallSeats(hallName)
+      return addHallSeats.bind(null, hallName)
     })
-
-  var promises = [].concat.apply([], arr)
-  return Q.all(promises)
+  return qu.sequentialPromise(arr)
 }
 
 function addPrices() {
   var arr =
     _hallNames.map(function(hallName) {
-      return addHallSeatPrices(hallName)
+      return addHallSeatPrices.bind(null, hallName)
     })
-
-  var promises = [].concat.apply([], arr)
-  return Q.all(promises)
+  return qu.sequentialPromise(arr)
 }
 
 function bookRandom() {
@@ -277,7 +261,7 @@ function bookRandom() {
 
   su.bookRandomSlots(_placeId, _profileIds['customer'], 30)
     .then(function() {
-      console.log('Random slots booked in Westfield Cinema')
+      console.log('Random slots booked')
       deferred.resolve()
     })
 
@@ -289,7 +273,7 @@ function addHalls() {
       n = _hallNames.length,
       spaceIds = []
 
-  console.log('Westfield Cinema has '+n+' halls')
+  console.log('Has '+n+' halls')
 
   qu.insert_n(_spaces, n,
     function newItem(i) {
@@ -299,14 +283,8 @@ function addHalls() {
       spaceIds.push(''+space._id.valueOf())
     },
     function after(spaces) {
-      console.log('Westfield Cinema halls added')
+      console.log('Halls added')
       deferred.resolve()
-
-//      qu.findAndModify_byId(_places, _placeId, { $set: { spaces: spaceIds }}, function callback() {
-//        console.log('Westfield Cinema halls added')
-//        deferred.resolve()
-//      }, true)
-
     }
   )
 
@@ -324,7 +302,7 @@ function addPlace() {
   qu.insert_one(_places, newPlace, function onItem(item) {
     _placeId = ''+item._id.valueOf()
     _placeIds['westfield-cinema'] = _placeId
-    console.log('Westfield Cinema place created')
+    console.log('Place created')
     deferred.resolve()
   })
 

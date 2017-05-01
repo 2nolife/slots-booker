@@ -416,8 +416,6 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     When postTo url entity json withHeaders headers expect() code SC_CONFLICT
   }
 
-  //todo change special instructions into write just once
-  //todo test write just once attribute after booking created
 }
 
 class MsBookingCancelSpec extends BaseMsBookingSpec {
@@ -827,7 +825,7 @@ class MsBookingReferenceSpec extends BaseMsBookingSpec {
     val urlB = s"$bookingBaseUrl/booking/reference/expired" // in-flight set
     When getTo urlB withHeaders systemTokenHeader expect() code SC_NOT_FOUND
 
-    mongoEntryDates(quoteId, mongoQuotes, inflight = Some(timeout(2)))
+    mongoEntryDates(quoteId, mongoQuotes, locked = Some(timeout(2)))
 
     val urlC = s"$bookingBaseUrl/booking/reference/expired" // in-flight expired
     val referenceC = (When getTo urlC withHeaders systemTokenHeader expect() code SC_OK).withBody[vo.Reference]
@@ -839,7 +837,7 @@ class MsBookingReferenceSpec extends BaseMsBookingSpec {
 
     // refunded
 
-    mongoEntryDates(quoteId, mongoQuotes, inflight = Some(timeout(2)))
+    mongoEntryDates(quoteId, mongoQuotes, locked = Some(timeout(2)))
 
     val refundId = mongoCreateFreeRefund(placeId, Seq(slotIdA, slotIdB), Seq(quoteId), status = 1, username = "testuser2")
     mongoCreateReference(placeId, Seq(bookedId), refundId = Some(refundId), username = "testuser2")

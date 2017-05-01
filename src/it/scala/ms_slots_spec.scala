@@ -4,7 +4,7 @@ package test
 import akka.http.scaladsl.model.headers.Authorization
 import org.apache.http.HttpStatus._
 import org.scalatest._
-import com.coldcore.slotsbooker.ms.slots.vo
+import ms.slots.vo
 import spray.json.{JsObject, JsString}
 
 abstract class BaseMsSlotsSpec extends FlatSpec with BeforeAndAfterAll with BeforeAndAfter with Matchers with HelperObjects {
@@ -295,7 +295,7 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
   }
 
-  "GET to /slots/{id}" should "return a slot and booking and price with attributes" in { //todo
+  "GET to /slots/{id}" should "return a slot and booking and price with attributes" in { 
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)
     val slotId = mongoCreateSlot(placeId, spaceId)

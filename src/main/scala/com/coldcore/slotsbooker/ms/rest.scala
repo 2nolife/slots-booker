@@ -5,7 +5,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.server._
@@ -178,10 +178,13 @@ class BaseRestService(val hostname: String, val port: Int,
   /** Actor provides a code and json entity */
   def completeByActor[T : RootJsonWriter : ClassTag](actor: ActorRef, in: AnyRef) =
     onSuccess(actor ? in) {
-      case CodeEntityOUT(code, Some(entity: T), apiCode) => completeWithHeaders((toStatusCode(code), entity), apiCode)
-      case CodeEntityOUT(code, None, apiCode) => completeWithHeaders(toStatusCode(code), apiCode)
-      case CodeOUT(code, apiCode) => completeWithHeaders(toStatusCode(code), apiCode)
+      case CodeEntityOUT(code, Some(entity: T), apiCode, _) => completeWithHeaders((toStatusCode(code), entity), apiCode)
+      case CodeEntityOUT(code, None, apiCode, _) => completeWithHeaders(toStatusCode(code), apiCode)
+      case CodeOUT(code, apiCode, _) => completeWithHeaders(toStatusCode(code), apiCode)
     }
+
+  val clientIpHost: Directive1[ClientIpHost] =
+    extractClientIP.flatMap(ip => extractHost.map(hostname => ClientIpHost(ip.toOption.map(_.getHostAddress).getOrElse("?"), hostname)))
 }
 
 /** CORS support: https://gist.github.com/evbruno/d173d3c111f8106061aa */
@@ -195,4 +198,14 @@ trait EnableCORSDirectives extends RespondWithDirectives {
       respondWithHeader(`Access-Control-Allow-Methods`(allowedCorsVerbs)) &
       respondWithHeader(`Access-Control-Allow-Headers`(allowedCorsHeaders)) &
       respondWithHeader(`Access-Control-Allow-Credentials`(true))
+}
+
+case class ClientIpHost(ip: String, hostname: String)
+
+trait RequestInfo {
+  var iphost: Option[ClientIpHost] = None
+  def withIpHost(ih: ClientIpHost): RequestInfo = {
+    iphost = Some(ih)
+    this
+  }
 }

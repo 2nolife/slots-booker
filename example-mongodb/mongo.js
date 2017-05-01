@@ -5,7 +5,8 @@ var MongoClient = require('mongodb').MongoClient,
 var config = require('./config.json'),
     moduleGeniusBar = require('./genius-bar'),
     moduleWestfieldCinema = require('./westfield-cinema'),
-    moduleUsers = require('./users')
+    moduleUsers = require('./users'),
+    qu = require('./query-utils')
 
 var _db, _profileIds = {}, _placeIds = {}
 
@@ -19,13 +20,14 @@ function drop() {
 }
 
 function setupPlaces() {
-  var promises = [
-    moduleGeniusBar.setupPlace(),   
-    moduleWestfieldCinema.setupPlace()
+  var arr = [
+    moduleGeniusBar.setupPlace,
+    moduleWestfieldCinema.setupPlace
   ]
 
-  var deferred = Q.defer()
-  Q.all(promises).then(function() {
+  var deferred = Q.defer(),
+      promise = qu.sequentialPromise(arr)
+  promise.then(function () {
     console.log('Places set up')
     deferred.resolve()
   })

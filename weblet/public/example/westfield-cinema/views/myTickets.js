@@ -42,8 +42,7 @@ app.controller('myTicketsController', function($scope, placesService, miscServic
   })
 
   $scope.$on('$destroy', function() {
-    var cinemaPlace = $scope.cinemaPlace
-    cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
+    if ($scope.cinemaPlace) $scope.cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
   })
 
   $scope.onCancelBooking = function() {

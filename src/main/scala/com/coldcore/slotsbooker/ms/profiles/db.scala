@@ -1,9 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.profiles.db
 
-import java.util.regex.Pattern
-
-import com.coldcore.slotsbooker.ms.vo.Attributes
+import ms.vo.Attributes
 import ms.profiles.Constants._
 import ms.profiles.vo
 import ms.db.MongoQueries

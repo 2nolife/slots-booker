@@ -6,7 +6,7 @@ import actors.{TokenActor, UsersActor}
 import akka.routing.FromConfig
 import db.MongoAuthDb
 import rest.AuthRestService
-import ms.{CreateMongoClient, StartSingle}
+import ms._
 
 object start extends StartSingle with Constants with CreateMongoClient {
 
@@ -20,8 +20,8 @@ object start extends StartSingle with Constants with CreateMongoClient {
     val mongoClient = createMongoClient(config)
     val authDb = new MongoAuthDb(mongoClient, config.mongoDbName)
 
-    val tokenActor = system.actorOf(TokenActor.props(authDb).withRouter(FromConfig), name = s"$MS-token-actor")
-    val usersActor = system.actorOf(UsersActor.props(authDb).withRouter(FromConfig), name = s"$MS-users-actor")
+    val tokenActor = system.actorOf(TokenActor.props(authDb).withRouter(FromConfig), name = s"$MS-token")
+    val usersActor = system.actorOf(UsersActor.props(authDb).withRouter(FromConfig), name = s"$MS-users")
 
     new AuthRestService(config.hostname, config.port, config.systemToken, tokenActor, usersActor)
   }

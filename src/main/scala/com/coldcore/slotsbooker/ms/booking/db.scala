@@ -1,7 +1,6 @@
 package com.coldcore.slotsbooker
 package ms.booking.db
 
-import ms.{Timestamp => ts}
 import ms.db.MongoQueries
 import ms.booking.Constants._
 import com.mongodb.casbah.Imports._
@@ -41,6 +40,7 @@ class MongoBookingDb(client: MongoClient, dbName: String) extends BookingDb with
   val quotes = db(MS+"-quotes")
   val refunds = db(MS+"-refunds")
   val references = db(MS+"-references")
+  val locks = db(MS+"-locks")
 
   val quoteStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2)
   val refundStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2)
@@ -284,39 +284,23 @@ trait ReferenceCrudImpl {
     }
   }
 
-  override def nextExpiredReference(minutes: Int): Option[vo.Reference] = {
-    def timeout(decMinutes: Int): Long = ts.asLong(ts.addMinutes(ts.asCalendar, -decMinutes))
+  override def nextExpiredReference(minutes: Int): Option[vo.Reference] = 
+    acquireEntryWithLock("status" $eq quoteStatus('pending_payment), quotes, locks, minutes)
+      .flatMap { id =>
+        val refunded =
+          refunds // check if already refunded
+            .findOne(("quote_ids" $eq id) ++ ("status" $ne refundStatus('inactive)))
+            .isDefined
 
-    val quoteId = // quote which is not in-flight and expired and unpaid
-      quotes
-        .findOne(
-          ("status" $eq quoteStatus('pending_payment)) ++
-          ("entry.created" $lt timeout(minutes)) ++
-          $or(
-            "entry.inflight" $lt timeout(1),
-            "entry.inflight" $exists false))
-        .map(_.idString)
+        if (refunded)
+          quotes // mask as refunded to eliminate from future searches
+            .findAndModify(finderById(id), $set("status" -> quoteStatus('complete)))
 
-    quoteId.flatMap { id =>
-      quotes // mark as in-flight before someone else grabs it
-        .update(finderById(id), $set("entry.inflight" -> ts.asLong))
-
-      val refunded =
-        refunds // check if already refunded
-          .findOne(("quote_ids" $eq id) ++ ("status" $ne refundStatus('inactive)))
-          .isDefined
-
-      if (refunded)
-        quotes // mask as refunded to eliminate from future searches
-          .findAndModify(finderById(id), $set("status" -> quoteStatus('complete)))
-
-      if (refunded) None
-      else
-        references
-          .findOne("quote_id" $eq id)
-          .map(asReference(_))
-    }
-
-  }
+        if (refunded) None
+        else
+          references
+            .findOne("quote_id" $eq id)
+            .map(asReference(_))
+      }
 
 }

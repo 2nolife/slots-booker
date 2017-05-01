@@ -7,7 +7,7 @@ import ms.booking.db.BookingDb
 import ms.booking.vo
 import ms.booking.Constants._
 import ms.http.{ApiCode, RestClient, SystemRestCalls}
-import ms.vo.{Attributes, StringEntity}
+import ms.vo.{Attributes, EmptyEntity}
 import org.apache.http.HttpStatus._
 import spray.json.{JsObject, JsString}
 
@@ -61,7 +61,7 @@ trait SlotsMsRestCalls extends SystemRestCalls {
 
   /** Update Hold on a slot in the "slots" micro service */
   def updateHoldWithMsSlots(slotId: String, bookedId: String, status: Int): ApiCode =
-    restPatch[StringEntity](s"$slotsBaseUrl/slots/$slotId/hold", vo.ext.UpdateSlotHold(bookedId, status))._1
+    restPatch[EmptyEntity](s"$slotsBaseUrl/slots/$slotId/hold", vo.ext.UpdateSlotHold(bookedId, status))._1
 
   /** Update Booking in the "slots" micro service */
   def updateBookingWithMsSlots(bookingId: String, slotId: String, status: Option[Int], attributes: Option[Attributes], profileId: Option[String]): (ApiCode, Option[vo.ext.Booking]) =

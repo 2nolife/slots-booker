@@ -1,6 +1,6 @@
 # Slots Booker #
 
-A flexible booking system for anything which can be thought of as a collection of time slots:
+The flexible booking system for anything which can be thought of as a collection of time slots:
 parking lots, hotel rooms, sport classes, restaurant tables, airplane seats, cinema seats, appointments etc.
 
 Feedback email cftp@coldcore.com

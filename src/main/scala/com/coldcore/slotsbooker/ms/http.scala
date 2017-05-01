@@ -34,7 +34,7 @@ class RestClient(connPerRoute: Int = 5, connMaxTotal: Int = 20) {
       val content = Source.fromInputStream(response.getEntity.getContent).mkString
       val json =
         try { content.parseJson } catch {
-          case _: Throwable => ms.vo.StringEntity(content).toJson
+          case _: Throwable => ms.vo.ContentEntity(content).toJson
         }
 
       HttpCallSuccessful(url, response.getStatusLine.getStatusCode, json,
@@ -80,30 +80,38 @@ class RestClient(connPerRoute: Int = 5, connMaxTotal: Int = 20) {
 
 }
 
+object CodeWithBody {
+
+  implicit class HttpCallX(call: HttpCall) {
+    private val apiCodeHeader = (rh: Seq[(String,String)]) => rh.find(_._1 == "X-Api-Code").map(_._2)
+
+    def codeWithBody[T : JsonReader]: (ApiCode, Option[T]) =
+      call match {
+        case HttpCallSuccessful(_, code @ (SC_OK | SC_CREATED), body, rh) => (ApiCode(code, apiCodeHeader(rh)), Some(body.convertTo[T]))
+        case HttpCallSuccessful(_, code, _, rh) => (ApiCode(code, apiCodeHeader(rh)), None)
+        case _ => (SC_INTERNAL_SERVER_ERROR, None)
+      }
+
+    def code: ApiCode =
+      call match {
+        case HttpCallSuccessful(_, code, _, rh) => ApiCode(code, apiCodeHeader(rh))
+        case _ => SC_INTERNAL_SERVER_ERROR
+      }
+  }
+}
+
 trait SystemRestCalls {
   self: {
     val systemToken: String
     val restClient: RestClient
   } =>
 
-  private val header = (Authorization.name, s"Bearer $systemToken")
+  import CodeWithBody._
 
   implicit def obj2json[T : JsonWriter](obj: T): JsObject = obj.toJson.asJsObject
 
-  implicit class HttpCallX(call: HttpCall) {
-    def codeWithBody[T : JsonReader]: (ApiCode, Option[T]) =
-      call match {
-        case HttpCallSuccessful(_, code @ (SC_OK | SC_CREATED), body, _) => (code, Some(body.convertTo[T]))
-        case HttpCallSuccessful(_, code, _, _) => (code, None)
-        case _ => (SC_INTERNAL_SERVER_ERROR, None)
-      }
+  private val header = (Authorization.name, s"Bearer $systemToken")
 
-    def code: Int =
-      call match {
-        case HttpCallSuccessful(_, code, _, _) => code
-        case _ => SC_INTERNAL_SERVER_ERROR
-      }
-  }
   def restGet[T : JsonReader](url: String): (ApiCode, Option[T]) =
     restClient.get(url, header).codeWithBody
 
@@ -124,6 +132,7 @@ trait SystemRestCalls {
 case class ApiCode(code: Int, apiCode: Option[String]) {
   def is(a: Int): Boolean = code == a
   def not(a: Int): Boolean = code != a
+  def csv: String = code+apiCode.map(","+_).mkString
 }
 
 object ApiCode {

@@ -2,7 +2,6 @@ package com.coldcore.slotsbooker
 package ms.payments.service
 
 import ms.payments.db.PaymentsDb
-import ms.payments.vo.UpdateCredit
 import ms.http.{ApiCode, RestClient, SystemRestCalls}
 import ms.payments.vo
 import ms.vo.{Attributes, EmptyEntity}
@@ -107,12 +106,12 @@ trait ProcessReference {
     def step4(reference: vo.ext.Reference): Either[ApiCode, _] = { // deduct or refund
       reference.quote.foreach { quote =>
         addCredit(reference.place_id, profileId,
-          UpdateCredit(profileId, reference.place_id, -quote.amount.get, quote.currency.get,
+          vo.UpdateCredit(profileId, reference.place_id, -quote.amount.get, quote.currency.get,
             source = JsObject("reason" -> JsString("Paid REF "+ref))))
       }
       reference.refund.foreach { refund =>
         addCredit(reference.place_id, profileId,
-          UpdateCredit(profileId, reference.place_id, refund.amount.get, refund.currency.get,
+          vo.UpdateCredit(profileId, reference.place_id, refund.amount.get, refund.currency.get,
             source = JsObject("reason" -> JsString("Refunded REF "+ref))))
       }
 

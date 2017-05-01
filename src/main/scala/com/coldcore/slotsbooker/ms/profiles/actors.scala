@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package ms.profiles.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.rest.RequestInfo
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.attributes.Types.VoAttributes
 import ms.actors.MsgInterceptor
@@ -9,7 +10,7 @@ import ms.http.{ApiCode, RestClient, SystemRestCalls}
 import ms.profiles.db.ProfilesDb
 import ms.profiles.vo
 import ms.profiles.Constants._
-import ms.vo.{ProfileRemote, StringEntity}
+import ms.vo.{EmptyEntity, ProfileRemote}
 import ms.attributes.{Permission => ap, Util => au}
 import ms.vo.Implicits._
 import org.apache.http.HttpStatus._
@@ -23,28 +24,28 @@ trait AuthMsRestCalls extends SystemRestCalls {
   } =>
 
   def registerWithMsAuth(username: String, obj: JsObject): ApiCode =
-    restPut[StringEntity](s"$authBaseUrl/auth/users/$username", obj)._1
+    restPut[EmptyEntity](s"$authBaseUrl/auth/users/$username", obj)._1
 
   def updateUserInMsAuth(username: String, obj: JsObject): ApiCode =
-    restPatch[StringEntity](s"$authBaseUrl/auth/users/$username", obj)._1
+    restPatch[EmptyEntity](s"$authBaseUrl/auth/users/$username", obj)._1
 
   def deleteUserFromMsAuth(username: String): ApiCode =
-    restDelete[StringEntity](s"$authBaseUrl/auth/users/$username")._1
+    restDelete[EmptyEntity](s"$authBaseUrl/auth/users/$username")._1
 
   def invalidateUserInMsAuth(username: String): ApiCode =
-    restDelete[StringEntity](s"$authBaseUrl/auth/users/$username/token")._1
+    restDelete[EmptyEntity](s"$authBaseUrl/auth/users/$username/token")._1
 }
 
 object ProfilesActor {
   def props(profilesDb: ProfilesDb, authBaseUrl: String, systemToken: String, restClient: RestClient, voAttributes: VoAttributes): Props =
     Props(new ProfilesActor(profilesDb, authBaseUrl, systemToken, restClient, voAttributes))
 
-  case class GetProfileByUsernameIN(username: String, profile: ProfileRemote)
-  case class GetProfileByIdIN(profileId: String, profile: ProfileRemote)
-  case class SearchProfilesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote)
-  case class UpdateProfileIN(profileId: String, obj: vo.UpdateProfile, profile: ProfileRemote)
-  case class DeleteProfileIN(profileId: String, profile: ProfileRemote)
-  case class InvalidateTokenByUsernameIN(profileId: String, profile: ProfileRemote)
+  case class GetProfileByUsernameIN(username: String, profile: ProfileRemote) extends RequestInfo
+  case class GetProfileByIdIN(profileId: String, profile: ProfileRemote) extends RequestInfo
+  case class SearchProfilesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote) extends RequestInfo
+  case class UpdateProfileIN(profileId: String, obj: vo.UpdateProfile, profile: ProfileRemote) extends RequestInfo
+  case class DeleteProfileIN(profileId: String, profile: ProfileRemote) extends RequestInfo
+  case class InvalidateTokenByUsernameIN(profileId: String, profile: ProfileRemote) extends RequestInfo
 }
 
 class ProfilesActor(val profilesDb: ProfilesDb, val authBaseUrl: String, val systemToken: String,
@@ -68,18 +69,18 @@ trait GetProfile {
 
   val getProfileReceive: Actor.Receive = {
 
-    case GetProfileByUsernameIN(username, profile) =>
+    case in @ GetProfileByUsernameIN(username, profile) =>
       val result = profilesDb.profileByUsername(username)
 
-      reply ! CodeEntityOUT(SC_OK, expose(result, profile))
+      reply ! CodeEntityOUT(SC_OK, expose(result, profile), in)
 
-    case GetProfileByIdIN(profileId, profile) =>
+    case in @ GetProfileByIdIN(profileId, profile) =>
       val result = profilesDb.profileById(profileId)
       val code =
         if (result.isDefined) SC_OK
         else SC_NOT_FOUND
 
-      reply ! CodeEntityOUT(code, expose(result, profile))
+      reply ! CodeEntityOUT(code, expose(result, profile), in)
 
   }
 
@@ -91,7 +92,7 @@ trait SearchProfiles {
 
   val searchProfilesReceive: Actor.Receive = {
 
-    case SearchProfilesIN(byAttributes, joinOR, profile) =>
+    case in @ SearchProfilesIN(byAttributes, joinOR, profile) =>
       val privileged =
         byAttributes.nonEmpty && !byAttributes.exists { case (_, value) => value.endsWith("*") && value.size < 3+1 }
 
@@ -103,7 +104,7 @@ trait SearchProfiles {
         if (canRead) (ApiCode.OK, read)
         else (ApiCode(SC_FORBIDDEN), None)
 
-      reply ! CodeEntityOUT(code, exposeSeq(profiles, profile))
+      reply ! CodeEntityOUT(code, exposeSeq(profiles, profile), in)
 
   }
 
@@ -115,7 +116,7 @@ trait AmendProfile {
 
   val amendProfileReceive: Actor.Receive = {
 
-    case UpdateProfileIN(profileId, obj, profile) =>
+    case in @ UpdateProfileIN(profileId, obj, profile) =>
       def updateMsAuthOrRollback(originalUsername: String, p: vo.Profile): vo.Profile =
         Some(originalUsername != p.username.get || obj.password.isDefined)
           .filter(true ==)
@@ -151,9 +152,9 @@ trait AmendProfile {
         else if (canUpdate) (ApiCode.OK, update())
         else (ApiCode(SC_FORBIDDEN, 'action_forbidden), None)
 
-      reply ! CodeEntityOUT(code, expose(updatedProfile, profile))
+      reply ! CodeEntityOUT(code, expose(updatedProfile, profile), in)
 
-    case DeleteProfileIN(profileId, profile) =>
+    case in @ DeleteProfileIN(profileId, profile) =>
       lazy val myProfile = profilesDb.profileById(profileId)
       lazy val profileNotFound = myProfile.isEmpty
       lazy val canDelete = profile.isSuper || profile.isMy(profileId)
@@ -171,9 +172,9 @@ trait AmendProfile {
           ApiCode.OK
         } else ApiCode(SC_FORBIDDEN, 'action_forbidden)
 
-      reply ! CodeOUT(code)
+      reply ! CodeOUT(code, in)
 
-    case InvalidateTokenByUsernameIN(profileId, profile) =>
+    case in @ InvalidateTokenByUsernameIN(profileId, profile) =>
       lazy val myProfile = profilesDb.profileById(profileId)
       lazy val profileNotFound = myProfile.isEmpty
       lazy val canUpdate = profile.isSuper || profile.isMy(profileId)
@@ -190,7 +191,7 @@ trait AmendProfile {
           ApiCode.OK
         } else ApiCode(SC_FORBIDDEN, 'action_forbidden)
 
-      reply ! CodeOUT(code)
+      reply ! CodeOUT(code, in)
   }
 
 }
@@ -199,7 +200,7 @@ object ProfilesRegisterActor {
   def props(profilesDb: ProfilesDb, authBaseUrl: String, systemToken: String, restClient: RestClient, voAttributes: VoAttributes): Props =
     Props(new ProfilesRegisterActor(profilesDb, authBaseUrl, systemToken, restClient, voAttributes))
 
-  case class RegisterIN(obj: vo.RegisterUser, profile: ProfileRemote)
+  case class RegisterIN(obj: vo.RegisterUser, profile: ProfileRemote) extends RequestInfo
 }
 
 class ProfilesRegisterActor(profilesDb: ProfilesDb, val authBaseUrl: String, val systemToken: String,
@@ -211,7 +212,7 @@ class ProfilesRegisterActor(profilesDb: ProfilesDb, val authBaseUrl: String, val
 
   def receive = {
 
-    case RegisterIN(obj, profile) =>
+    case in @ RegisterIN(obj, profile) =>
       lazy val usernameExists = profilesDb.profileByUsername(obj.username).isDefined
       lazy val emailExists = profilesDb.profileByEmail(obj.email).isDefined
 
@@ -230,7 +231,7 @@ class ProfilesRegisterActor(profilesDb: ProfilesDb, val authBaseUrl: String, val
           }
         }
 
-      reply ! CodeEntityOUT(code, expose(registeredProfile, profile))
+      reply ! CodeEntityOUT(code, expose(registeredProfile, profile), in)
 
   }
 

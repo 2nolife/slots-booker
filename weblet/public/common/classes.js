@@ -512,9 +512,9 @@ function Price(/*json*/ source, /*services*/ sc) {
 
   function applyChangesFromSource() {
     _this.id = source.price_id
+    _this.placeId = source.place_id
 
     // belongs to a Space
-    _this.placeId = source.place_id
     _this.spaceId = source.space_id
 
     // belongs to a Slot
@@ -799,9 +799,16 @@ function Reference(/*json*/ source, /*services*/ sc) { // read-only
 
 function Balance(/*json*/ source, /*services*/ sc) { // read-only
 
+  var _this = this
+
   this.sc = sc
   this.source = source
 
-  //todo credit
+  this.credit = source.credit || []
+
+  this.creditIn = function(/*str*/ currency) {
+    var arr = $.grep(_this.credit, function(c) { return c.currency == currency })
+    return arr.length ? arr[0] : { amount: 0, currency: currency }
+  }
 
 }

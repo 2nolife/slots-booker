@@ -2,7 +2,7 @@ package com.coldcore.slotsbooker
 package ms.profiles
 
 import akka.actor.ActorSystem
-import ms.{CreateAuthActors, CreateMongoClient, CreateRestClient, StartSingle}
+import ms._
 import actors.{ProfilesActor, ProfilesRegisterActor}
 import akka.routing.FromConfig
 import db.MongoProfilesDb
@@ -22,8 +22,8 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val profilesActor = system.actorOf(ProfilesActor.props(profilesDb, config.authBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = s"$MS-actor")
-    val profilesRegisterActor = system.actorOf(ProfilesRegisterActor.props(profilesDb, config.authBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = s"$MS-register-actor")
+    val profilesActor = system.actorOf(ProfilesActor.props(profilesDb, config.authBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = MS)
+    val profilesRegisterActor = system.actorOf(ProfilesRegisterActor.props(profilesDb, config.authBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = s"$MS-register")
 
     new ProfilesRestService(config.hostname, config.port, config.systemToken, profilesActor, profilesRegisterActor, externalAuthActor(config, restClient))
   }

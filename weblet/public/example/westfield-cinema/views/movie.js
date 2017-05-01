@@ -30,8 +30,7 @@ app.controller('movieController', function($scope, $routeParams, config, placesS
   })
 
   $scope.$on('$destroy', function() {
-    var cinemaPlace = $scope.cinemaPlace
-    cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
+    if ($scope.cinemaPlace) $scope.cinemaPlace.onChangeCallback.remove(handles.cinemaPlaceChange)
   })
 
   selectMovie()

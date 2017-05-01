@@ -1,10 +1,12 @@
-app.controller('checkoutController', function($scope, state, apiBookingService, apiPaymentsService) {
+app.controller('checkoutController', function($scope, state, apiBookingService, apiPaymentsService, notifyService) {
 
   if (state.checkout && !state.checkout.complete) {
     $scope.basket = state.checkout
     var price = state.checkout.prices[0]
     $scope.cinemaHall = price.cinemaSlot.cinemaSeat.cinemaHall
     $scope.cinemaSlot = price.cinemaSlot
+
+    getCredit(price.placeId, price.currency)
   }
 
   function bookingFailed() {
@@ -58,7 +60,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
       })
   }
 
-  $scope.book = function() {
+  $scope.bookWithCredit = function() {
     $scope.status = 'progress'
 
     getQuote(function(/*Quote*/ quote) {
@@ -66,7 +68,23 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
         payWithCredit(reference, bookingSuccess)
       })
     })
+  }
 
+  $scope.bookWithCard = function() {
+    notifyService.featureNotImplemented()
+//    $scope.status = 'progress'
+//
+//    getQuote(function(/*Quote*/ quote) {
+//      bookSlots(quote, function(/*Reference*/ reference) {
+//        todo update balance and payWithCredit
+//      })
+//    })
+  }
+
+  function getCredit(/*str*/ placeId, /*str*/ currency) {
+    apiPaymentsService.getUserBalance(placeId, null, function(/*Balance*/ balance) {
+      $scope.credit = balance.creditIn(currency)
+    })
   }
 
 })

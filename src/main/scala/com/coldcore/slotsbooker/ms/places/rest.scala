@@ -20,45 +20,20 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
   self: PlacesRestService =>
 
   def placesRoute =
-    authenticateToken { profile =>
+    pathPrefix("places") {
+      authenticateToken { profile =>
 
-      path("places") {
-
-        post {
-          entity(as[vo.CreatePlace]) { entity =>
-            completeByActor[vo.Place](placesActor, CreatePlaceIN(entity, profile))
-          }
-        }
-
-      } ~
-      pathPrefix("places" / "search") {
-
-        get {
-          parameters('deep ? getDeepFields,
-                     'deep_spaces.as[Boolean].?,
-                     'deep_prices.as[Boolean].?) {
-            (deep,
-             deep_spaces,
-             deep_prices) =>
-
-            parameterSeq { attributes =>
-              completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(attributes.filterNot(p => Seq("and", "or", "deep", "deep_spaces", "deep_prices").contains(p._1)),
-                                                                      joinOR = attributes.exists(p => p._1 == "or"),
-                                                                      profile,
-                                                                      deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
-            }
-          }
-        }
-
-      } ~
-      pathPrefix("places" / Segment) { placeId =>
         pathEnd {
 
-          patch {
-            entity(as[vo.UpdatePlace]) { entity =>
-              completeByActor[vo.Place](placesActor, UpdatePlaceIN(placeId, entity, profile))
+          post {
+            entity(as[vo.CreatePlace]) { entity =>
+              completeByActor[vo.Place](placesActor, CreatePlaceIN(entity, profile))
             }
-          } ~
+          }
+
+        } ~
+        pathPrefix("search") {
+
           get {
             parameters('deep ? getDeepFields,
                        'deep_spaces.as[Boolean].?,
@@ -67,19 +42,46 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
                deep_spaces,
                deep_prices) =>
 
-              completeByActor[vo.Place](placesActor, GetPlaceIN(placeId, profile,
-                                                                deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+              parameterSeq { attributes =>
+                completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(attributes.filterNot(p => Seq("and", "or", "deep", "deep_spaces", "deep_prices").contains(p._1)),
+                                                                        joinOR = attributes.exists(p => p._1 == "or"),
+                                                                        profile,
+                                                                        deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+              }
             }
-          } ~
-          delete {
-            completeByActor[EmptyEntity](placesActor, DeletePlaceIN(placeId, profile))
           }
 
         } ~
-        spacesRoute(profile, placeId)
+        pathPrefix(Segment) { placeId =>
+          pathEnd {
+
+            patch {
+              entity(as[vo.UpdatePlace]) { entity =>
+                completeByActor[vo.Place](placesActor, UpdatePlaceIN(placeId, entity, profile))
+              }
+            } ~
+            get {
+              parameters('deep ? getDeepFields,
+                         'deep_spaces.as[Boolean].?,
+                         'deep_prices.as[Boolean].?) {
+                (deep,
+                 deep_spaces,
+                 deep_prices) =>
+
+                completeByActor[vo.Place](placesActor, GetPlaceIN(placeId, profile,
+                                                                  deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+              }
+            } ~
+            delete {
+              completeByActor[EmptyEntity](placesActor, DeletePlaceIN(placeId, profile))
+            }
+
+          } ~
+          spacesRoute(profile, placeId)
+
+        }
 
       }
-
     }
 
 }

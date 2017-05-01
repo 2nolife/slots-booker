@@ -2,6 +2,8 @@ package com.coldcore.slotsbooker
 package ms.places.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.rest.RequestInfo
+import ms.http.ApiCode
 import ms.actors.Common.{CodeEntityOUT, CodeOUT}
 import ms.attributes.Types._
 import ms.attributes.{Permission => ap, Util => au}
@@ -15,34 +17,34 @@ import ms.vo.Implicits._
 import org.apache.http.HttpStatus._
 
 trait PlaceCommands {
-  case class CreatePlaceIN(obj: vo.CreatePlace, profile: ProfileRemote)
-  case class UpdatePlaceIN(placeId: String, obj: vo.UpdatePlace, profile: ProfileRemote)
+  case class CreatePlaceIN(obj: vo.CreatePlace, profile: ProfileRemote) extends RequestInfo
+  case class UpdatePlaceIN(placeId: String, obj: vo.UpdatePlace, profile: ProfileRemote) extends RequestInfo
   case class GetPlaceIN(placeId: String, profile: ProfileRemote,
-                        deepSpaces: Boolean, deepPrices: Boolean)
-  case class DeletePlaceIN(placeId: String, profile: ProfileRemote)
+                        deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
+  case class DeletePlaceIN(placeId: String, profile: ProfileRemote) extends RequestInfo
   case class GetPlacesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote,
-                         deepSpaces: Boolean, deepPrices: Boolean)
+                         deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
 }
 
 trait SpaceCommands {
-  case class CreateSpaceIN(placeId: String, obj: vo.CreateSpace, profile: ProfileRemote)
-  case class CreateInnerSpaceIN(placeId: String, spaceId: String, obj: vo.CreateSpace, profile: ProfileRemote)
-  case class UpdateSpaceIN(placeId: String, spaceId: String, obj: vo.UpdateSpace, profile: ProfileRemote)
+  case class CreateSpaceIN(placeId: String, obj: vo.CreateSpace, profile: ProfileRemote) extends RequestInfo
+  case class CreateInnerSpaceIN(placeId: String, spaceId: String, obj: vo.CreateSpace, profile: ProfileRemote) extends RequestInfo
+  case class UpdateSpaceIN(placeId: String, spaceId: String, obj: vo.UpdateSpace, profile: ProfileRemote) extends RequestInfo
   case class GetSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote,
-                        deepSpaces: Boolean, deepPrices: Boolean)
+                        deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
   case class GetSpacesIN(placeId: String, profile: ProfileRemote,
-                         deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int])
+                         deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int]) extends RequestInfo
   case class GetInnerSpacesIN(placeId: String, spaceId: String, profile: ProfileRemote,
-                              deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int])
-  case class DeleteSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote)
+                              deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int]) extends RequestInfo
+  case class DeleteSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
 trait PriceCommands {
-  case class CreatePriceIN(placeId: String, spaceId: String, obj: vo.CreatePrice, profile: ProfileRemote)
-  case class UpdatePriceIN(placeId: String, spaceId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote)
-  case class GetPriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote)
-  case class GetPricesIN(placeId: String, spaceId: String, profile: ProfileRemote)
-  case class DeletePriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote)
+  case class CreatePriceIN(placeId: String, spaceId: String, obj: vo.CreatePrice, profile: ProfileRemote) extends RequestInfo
+  case class UpdatePriceIN(placeId: String, spaceId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote) extends RequestInfo
+  case class GetPriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
+  case class GetPricesIN(placeId: String, spaceId: String, profile: ProfileRemote) extends RequestInfo
+  case class DeletePriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
 object PlacesActor extends PlaceCommands with SpaceCommands with PriceCommands {
@@ -78,7 +80,7 @@ trait AmendPlace {
 
     case CreatePlaceIN(obj, profile) =>
       val place = Some(placesDb.createPlace(profile.profile_id, obj))
-      reply ! CodeEntityOUT(SC_CREATED, expose(place, profile))
+      reply ! CodeEntityOUT(ApiCode.CREATED, expose(place, profile))
 
     case UpdatePlaceIN(placeId, obj, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
@@ -90,11 +92,11 @@ trait AmendPlace {
       def update(): Option[vo.Place] = placesDb.updatePlace(placeId, obj)
 
       val (code, place) =
-        if (placeNotFound) (SC_NOT_FOUND, None)
-        else if (forbidModerators) (SC_FORBIDDEN, None)
-        else if (forbidAttributes) (SC_FORBIDDEN, None)
-        else if (canUpdate) (SC_OK, update())
-        else (SC_FORBIDDEN, None)
+        if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidModerators) (ApiCode(SC_FORBIDDEN), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
+        else if (canUpdate) (ApiCode(SC_OK), update())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, expose(place, profile))
 
@@ -105,11 +107,11 @@ trait AmendPlace {
 
       def delete() = placesDb.deletePlace(placeId)
 
-      val code =
+      val code: ApiCode =
         if (placeNotFound) SC_NOT_FOUND
         else if (canDelete) {
           delete()
-          SC_OK
+          ApiCode.OK
         } else SC_FORBIDDEN
 
       reply ! CodeOUT(code)
@@ -132,9 +134,9 @@ trait AmendSpace {
       def create(): Option[vo.Space] = Some(placesDb.createSpace(placeId, obj))
 
       val (code, space) =
-        if (placeNotFound) (SC_NOT_FOUND, None)
-        else if (canCreate) (SC_CREATED, create())
-        else (SC_FORBIDDEN, None)
+        if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (canCreate) (ApiCode.CREATED, create())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
@@ -148,10 +150,10 @@ trait AmendSpace {
       def update(): Option[vo.Space] = placesDb.updateSpace(spaceId, obj)
 
       val (code, space) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else if (forbidAttributes) (SC_FORBIDDEN, None)
-        else if (canUpdate) (SC_OK, update())
-        else (SC_FORBIDDEN, None)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
+        else if (canUpdate) (ApiCode.OK, update())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
@@ -164,9 +166,9 @@ trait AmendSpace {
       def create(): Option[vo.Space] = Some(placesDb.createInnerSpace(spaceId, obj))
 
       val (code, space) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else if (canCreate) (SC_CREATED, create())
-        else (SC_FORBIDDEN, None)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (canCreate) (ApiCode.CREATED, create())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
@@ -178,11 +180,11 @@ trait AmendSpace {
 
       def delete() = placesDb.deleteSpace(spaceId)
 
-      val code =
+      val code: ApiCode =
         if (spaceNotFound) SC_NOT_FOUND
         else if (canDelete) {
           delete()
-          SC_OK
+          ApiCode.OK
         } else SC_FORBIDDEN
 
       reply ! CodeOUT(code)
@@ -206,9 +208,9 @@ trait AmendPrice {
       def create(): Option[vo.Price] = Some(placesDb.createPrice(spaceId, obj))
 
       val (code, price) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else if (canCreate) (SC_CREATED, create())
-        else (SC_FORBIDDEN, None)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (canCreate) (ApiCode.CREATED, create())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
@@ -222,10 +224,10 @@ trait AmendPrice {
       def update(): Option[vo.Price] = placesDb.updatePrice(priceId, obj)
 
       val (code, price) =
-        if (priceNotFound) (SC_NOT_FOUND, None)
-        else if (forbidAttributes) (SC_FORBIDDEN, None)
-        else if (canUpdate) (SC_OK, update())
-        else (SC_FORBIDDEN, None)
+        if (priceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
+        else if (canUpdate) (ApiCode.OK, update())
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
@@ -237,11 +239,11 @@ trait AmendPrice {
 
       def delete() = placesDb.deletePrice(priceId)
 
-      val code =
+      val code: ApiCode =
         if (priceNotFound) SC_NOT_FOUND
         else if (canDelete) {
           delete()
-          SC_OK
+          ApiCode.OK
         } else SC_FORBIDDEN
 
       reply ! CodeOUT(code)
@@ -263,8 +265,8 @@ trait GetPlace {
       lazy val placeNotFound = myPlace.isEmpty
 
       val (code, place) =
-        if (placeNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, myPlace)
+        if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, myPlace)
 
       reply ! CodeEntityOUT(code, expose(place, profile))
 
@@ -278,8 +280,8 @@ trait GetPlace {
       def read: Option[Seq[vo.Place]] = Some(placesDb.searchPlaces(byAttributes, joinOR, fields))
 
       val (code, places) =
-        if (canRead) (SC_OK, read)
-        else (SC_FORBIDDEN, None)
+        if (canRead) (ApiCode.OK, read)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSeq(places, profile))
 
@@ -301,8 +303,8 @@ trait GetSpace {
       lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
 
       val (code, space) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, mySpace)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, mySpace)
 
       reply ! CodeEntityOUT(code, exposeSpace(space, myPlace, profile))
 
@@ -315,8 +317,8 @@ trait GetSpace {
       def read: Option[Seq[vo.Space]] = Some(placesDb.immediateSpacesByPlaceId(placeId, fields).take(limit.getOrElse(Int.MaxValue)))
 
       val (code, spaces) =
-        if (placeNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, read)
+        if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, read)
 
       reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
 
@@ -330,8 +332,8 @@ trait GetSpace {
       def read: Option[Seq[vo.Space]] = Some(placesDb.immediateSpacesByParentId(spaceId, fields).take(limit.getOrElse(Int.MaxValue)))
 
       val (code, spaces) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, read)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, read)
 
       reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
 
@@ -352,8 +354,8 @@ trait GetPrice {
       lazy val priceNotFound = myPrice.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId || !mySpace.get.hasPriceId(priceId)
 
       val (code, price) =
-        if (priceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, myPrice)
+        if (priceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, myPrice)
 
       reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
@@ -365,8 +367,8 @@ trait GetPrice {
       def read: Option[Seq[vo.Price]] = Some(mySpace.get.prices.getOrElse(Nil))
 
       val (code, prices) =
-        if (spaceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, read)
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, read)
 
       reply ! CodeEntityOUT(code, exposePrices(prices, myPlace, profile))
 

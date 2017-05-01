@@ -22,7 +22,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val bookingActor = system.actorOf(BookingActor.props(bookingDb, config.placesBaseUrl, config.slotsBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-actor")
+    val bookingActor = system.actorOf(BookingActor.props(bookingDb, config.placesBaseUrl, config.slotsBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = MS)
 
     new BookingRestService(config.hostname, config.port, config.systemToken, bookingActor, externalAuthActor(config, restClient))
   }

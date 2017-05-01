@@ -22,10 +22,10 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val paymentsActor = system.actorOf(PaymentsActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-actor")
-    val expiredActor = system.actorOf(ExpiredActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-expired-actor")
+    val paymentsActor = system.actorOf(PaymentsActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = MS)
+    val expiredActor = system.actorOf(ExpiredActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-expired")
 
-    new PaymentsRestService(config.hostname, config.port, config.getDeepFields, paymentsActor, externalAuthActor(config, restClient))
+    new PaymentsRestService(config.hostname, config.port, paymentsActor, externalAuthActor(config, restClient))
   }
 }
 
@@ -37,7 +37,8 @@ trait Constants {
   val apiCodes = toApiCodes(
     'not_enough_credit -> 1,
     'invalid_quote_status -> 2,
-    'invalid_refund_status -> 3
+    'invalid_refund_status -> 3,
+    'reason_missing -> 4
   )
 
   implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)

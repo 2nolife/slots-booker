@@ -560,6 +560,19 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
         })
   }
 
+  service.getUserBalance = function(/*str*/ placeId, /*str|optional*/ profileId, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.get('/api/payments/balance?place_id='+placeId+(profileId ? '&profile_id='+profileId : ''))
+      .then(
+        function successCallback(response) {
+          var balance = response.data
+          callback(apiClassWrap.wrap(balance, 'balance'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  }
+
 })
 
 app.service('apiClassWrap', function($injector) {

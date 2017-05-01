@@ -22,7 +22,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val placesActor = system.actorOf(PlacesActor.props(placesDb, config.voAttributes).withRouter(FromConfig), name = s"$MS-actor")
+    val placesActor = system.actorOf(PlacesActor.props(placesDb, config.voAttributes).withRouter(FromConfig), name = MS)
 
     new PlacesRestService(config.hostname, config.port, config.getDeepFields, placesActor, externalAuthActor(config, restClient))
   }
@@ -30,6 +30,14 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
 trait Constants {
   val MS = "ms-places"
+
+  private def toApiCodes(codes: (Symbol, Int) *): Map[Symbol, String] = codes.map { case (s, code) => (s, MS+"-"+code) }.toMap
+
+  val apiCodes = toApiCodes(
+    'dummy -> -1
+  )
+
+  implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)
 }
 
 object Constants extends Constants

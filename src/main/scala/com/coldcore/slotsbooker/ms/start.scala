@@ -4,7 +4,7 @@ package ms
 import akka.actor.{ActorRef, ActorSystem}
 import akka.routing.FromConfig
 import akka.util.Timeout
-import com.coldcore.slotsbooker.ms.http.RestClient
+import ms.http.RestClient
 import com.mongodb.casbah.MongoClient
 import ms.actors.ExternalAuthActor
 import config.Constants._
@@ -29,6 +29,7 @@ object start {
     places.start.run
     booking.start.run
     payments.start.run
+    paypal.start.run
 
     Await.result(system.whenTerminated, Duration.Inf)
   }
@@ -67,15 +68,14 @@ trait CreateAuthActors {
   def externalAuthActor(config: Config, restClient: RestClient)(implicit system: ActorSystem, ec: ExecutionContext): ActorRef =
     system.synchronized {
       implicit val timeout = Timeout(1 second)
-      val selectorFuture = system.actorSelection("user/global-external-auth-actor").resolveOne
+      val selectorFuture = system.actorSelection("user/global-external-auth").resolveOne
 
       Await.ready(selectorFuture, 1 second).value.get match {
         case Success(actorRef) =>
           actorRef
         case Failure(_) =>
           import config._
-          system.actorOf(ExternalAuthActor.props(authBaseUrl, profilesBaseUrl, systemToken, restClient).withRouter(FromConfig),
-            name = "global-external-auth-actor")
+          system.actorOf(ExternalAuthActor.props(authBaseUrl, profilesBaseUrl, systemToken, restClient), name = "global-external-auth")
 
       }
     }

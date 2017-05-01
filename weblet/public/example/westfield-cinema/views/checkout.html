@@ -23,7 +23,9 @@
   </div>
 
   <div class="pay" ng-show="basket.amount > 0 && (!status || status == 'failed')">
-    <button class="btn btn-primary" ng-click="book()">Pay now</button>
+    <p class="credit">Your credit &nbsp; {{credit.currency}} {{credit.amount | numberX100 : true}}</p>
+    <button class="btn btn-primary" ng-click="bookWithCredit()" ng-show="credit.amount >= basket.amount">Pay with credit</button>
+    <button class="btn btn-primary" ng-click="bookWithCard()">Pay with card</button>
   </div>
 
   <p class="ref" ng-show="reference">Reference &nbsp; {{reference.ref}}</p>
