@@ -22,7 +22,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val eventsActor = system.actorOf(EventsActor.props(paypalDb, config.placesBaseUrl, config.paymentsBaseUrl, config.systemToken, restClient, config.sandboxMode).withRouter(FromConfig), name = s"$MS-events")
+    val eventsActor = system.actorOf(EventsActor.props(paypalDb, config.placesBaseUrl, config.paymentsBaseUrl, config.systemToken, restClient, config.sandboxMode, config.liveEventIp).withRouter(FromConfig), name = s"$MS-events")
 
     new PaypalRestService(config.hostname, config.port, eventsActor, externalAuthActor(config, restClient))
   }

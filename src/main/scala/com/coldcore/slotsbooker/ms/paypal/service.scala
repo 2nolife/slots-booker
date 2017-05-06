@@ -62,7 +62,7 @@ trait EventService {
 }
 
 class EventServiceImpl(val paypalDb: PaypalDb, val placesBaseUrl: String, val paymentsBaseUrl: String, val systemToken: String,
-                       val restClient: RestClient, val sandboxMode: Boolean)
+                       val restClient: RestClient, val sandboxMode: Boolean, val liveEventIp: String)
   extends EventService with PlacesMsRestCalls with PaymentsMsRestCalls with ProcessEvent
 
 trait ProcessEvent {
@@ -117,7 +117,10 @@ trait ProcessEvent {
     val source = event.source.get.convertTo[vo.ext.Event10]
     val selfHref = source.links.getOrElse(Nil).find(_.rel.get == "self").map(_.href.get).getOrElse("")
 
-    def validateLive: Boolean = false //todo validate by PayPal IP
+    def validateLive: Boolean = {
+      val ip = event.source_info.get.ip.getOrElse("")
+      parseCSV(liveEventIp).exists(ip ==)
+    }
 
     (selfHref match {
       case _ if selfHref.contains("//api.sandbox.paypal.com/") => 'sandbox

@@ -16,6 +16,7 @@ app.controller('myTicketsController', function($scope, placesService, miscServic
           slot.refreshSeat()
           slot.refreshActiveBooking(function() {
             slot.activeBooking.refreshPrice()
+            //slot.activeBooking.refreshReference() // instead use 'paid=true' in 'refreshBookedSlots'
           })
 
         })

@@ -49,6 +49,18 @@ trait PaymentsRoute {
             }
           }
 
+        } ~
+        path("reference") {
+
+          get {
+            parameters('ref,
+                       'profile_id ?) {
+              (ref,
+               profileId)  =>
+              completeByActor[vo.ext.Reference](paymentsActor, GetReferenceIN(ref, profileId, profile))
+            }
+          }
+
         }
 
       }

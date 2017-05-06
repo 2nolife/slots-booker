@@ -21,8 +21,8 @@ object UpdateBooking extends DefaultJsonProtocol { implicit val format = jsonFor
 case class CreateBooked(as_profile_id: String, slot_ids: Seq[String])
 object CreateBooked extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
 
-case class UpdateBooked(as_profile_id: String, status: Option[Int], booking_ids: Option[Seq[String]])
-object UpdateBooked extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+case class UpdateBooked(as_profile_id: String, status: Option[Int], booking_ids: Option[Seq[String]], paid: Option[Boolean])
+object UpdateBooked extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
 
 case class CreatePrice(name: String, amount: Int, currency: String)
 object CreatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
@@ -36,8 +36,9 @@ object UpdateHold extends DefaultJsonProtocol { implicit val format = jsonFormat
 
 case class Booked(booked_id: String, place_id: String, profile_id: Option[String],
                   status: Option[Int],
-                  slot_ids: Option[Seq[String]], booking_ids: Option[Seq[String]])
-object Booked extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
+                  slot_ids: Option[Seq[String]], booking_ids: Option[Seq[String]],
+                  paid: Option[Boolean])
+object Booked extends DefaultJsonProtocol { implicit val format = jsonFormat7(apply) }
 
 case class Slot(slot_id: String, place_id: String, space_id: String,
                 name: Option[String],

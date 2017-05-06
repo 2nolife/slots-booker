@@ -224,7 +224,7 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     slots.head.bookings shouldBe None
   }
 
-  "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&booked" should "list found slots with which were booked by a user" in {
+  "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&booked" should "list found slots which were booked by a user" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)
     val (slotIdA, slotIdB, slotIdC, slotIdD) = (
@@ -236,6 +236,13 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
       mongoCreateBooking(placeId, spaceId, slotIdA, name = "Booking A"),
       mongoCreateBooking(placeId, spaceId, slotIdB, name = "Booking B", username = "testuser2"), // booked by another user
       mongoCreateBooking(placeId, spaceId, slotIdD, name = "Booking D"))
+    val (bookedIdA, bookedIdB, bookedIdD) = (
+      mongoCreateBooked(placeId, Seq(slotIdA), Seq(bookingIdA), paid = Some(true)),
+      mongoCreateBooked(placeId, Seq(slotIdB), Seq(bookingIdB), username = "testuser2"), // booked by another user
+      mongoCreateBooked(placeId, Seq(slotIdD), Seq(bookingIdD)))
+    mongoSetSlotBooked(slotIdA, bookedIdA)
+    mongoSetSlotBooked(slotIdB, bookedIdB)
+    mongoSetSlotBooked(slotIdD, bookedIdD)
 
     val baseUrl = s"$slotsBaseUrl/slots/search?place_id=$placeId&space_id=$spaceId&from=20160112&to=20160115"
 
@@ -261,23 +268,38 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     slotsD.map(_.slot_id) should contain only (slotIdA, slotIdB)
   }
 
-/*                 //todo not needed, remove
-  "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&group=date" should "list found slos distinct per date and time" in {
+  "GET to /slots/search?place_id={?}&space_id={?}&from={?}&to={?}&booked&paid={?]" should "list found slots which were booked by a user and paid" in {
     val placeId = mongoCreatePlace()
-    val parentSpaceId = mongoCreateSpace(placeId)
-    val spaceIdA = mongoCreateInnerSpace(placeId, parentSpaceId)
-    val (slotIdA1, slotIdA2, slotIdA3, slotIdA4) = (
-      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160112, dateTo = 20160113), // 2 days
-      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160112, dateTo = 20160113), // 2 days
-      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160114, dateTo = 20160115), // 2 days
-      mongoCreateSlot(placeId, spaceIdA, dateFrom = 20160114, dateTo = 20160115)) // 2 days
+    val spaceId = mongoCreateSpace(placeId)
+    val (slotIdA, slotIdB, slotIdC, slotIdD) = (
+      mongoCreateSlot(placeId, spaceId, dateFrom = 20160112, dateTo = 20160115), // 4 days (12,13,14,15)
+      mongoCreateSlot(placeId, spaceId, dateFrom = 20160113, dateTo = 20160116), // 4 days (13,14,15,16)
+      mongoCreateSlot(placeId, spaceId, dateFrom = 20160111, dateTo = 20160112), // 2 days (11,12)
+      mongoCreateSlot(placeId, spaceId, dateFrom = 20160109, dateTo = 20160111)) // 3 days (09,10,11)
+    val (bookingIdA, bookingIdB, bookingIdD) = (
+      mongoCreateBooking(placeId, spaceId, slotIdA, name = "Booking A"),
+      mongoCreateBooking(placeId, spaceId, slotIdB, name = "Booking B", username = "testuser2"), // booked by another user
+      mongoCreateBooking(placeId, spaceId, slotIdD, name = "Booking D"))
+    val (bookedIdA, bookedIdB, bookedIdD) = (
+      mongoCreateBooked(placeId, Seq(slotIdA), Seq(bookingIdA), paid = Some(true)),
+      mongoCreateBooked(placeId, Seq(slotIdB), Seq(bookingIdB), username = "testuser2"), // booked by another user
+      mongoCreateBooked(placeId, Seq(slotIdD), Seq(bookingIdD), paid = Some(false)))
+    mongoSetSlotBooked(slotIdA, bookedIdA)
+    mongoSetSlotBooked(slotIdB, bookedIdB)
+    mongoSetSlotBooked(slotIdD, bookedIdD)
 
-    val urlA = s"$slotsBaseUrl/slots/search?place_id=$placeId&space_id=$spaceIdA&from=20160112&to=20160115&group=date"
+    val baseUrl = s"$slotsBaseUrl/slots/search?place_id=$placeId&space_id=$spaceId&from=20160109&to=20160115&booked"
+
+    val urlA = baseUrl+"&paid=true"
     val slotsA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Slot]]
 
-    slotsA.map(_.slot_id) should contain only (slotIdA1, slotIdA3)
+    slotsA.map(_.slot_id) should contain only slotIdA
+
+    val urlD = baseUrl+"&paid=false"
+    val slotsD = (When getTo urlD withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Slot]]
+
+    slotsD.map(_.slot_id) should contain only slotIdD
   }
-*/
 
   "PATCH to /slots/{id}" should "update writeable attributes" in {
     val placeId = mongoCreatePlace()

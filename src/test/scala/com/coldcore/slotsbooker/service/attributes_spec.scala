@@ -3,7 +3,7 @@ package ms.attributes
 
 import ms.vo.Attributes
 import ms.attributes.{Util => au}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito._
 import org.mockito.Matchers._
 import org.scalatest._

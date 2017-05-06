@@ -39,7 +39,7 @@ class BookingActor(bookingDb: BookingDb, placesBaseUrl: String, slotsBaseUrl: St
                    restClient: RestClient) extends Actor with ActorLogging with MsgInterceptor
   with QuoteReceive with RefundReceive with SlotsReceive with ReferenceReceive {
 
-  val bookingService: BookingService = new BookingServiceImpl(bookingDb, placesBaseUrl, slotsBaseUrl, systemToken, restClient)
+  val bookingService: BookingService = new BookingServiceImpl(bookingDb, placesBaseUrl, slotsBaseUrl, systemToken, restClient)(context.system)
 
   def receive =
     quoteReceive orElse
@@ -217,15 +217,13 @@ trait ReferenceReceive {
       lazy val referenceNotFound = myReference.isEmpty
 
       val (code, reference) =
-        if (referenceNotFound) (SC_NOT_FOUND, None)
-        else (SC_OK, myReference)
+        if (referenceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, myReference)
 
       reply ! CodeEntityOUT(code, reference)
 
     case ReferencePaidIN(obj, profile) =>
-      val code: ApiCode =
-        if (bookingService.referencePaid(obj.ref, obj.profile_id)) SC_OK
-        else SC_NOT_FOUND
+      val (code, _) = bookingService.referencePaid(obj.ref, obj.profile_id)
 
       reply ! CodeOUT(code)
 

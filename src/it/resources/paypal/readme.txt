@@ -4,6 +4,8 @@ How to simulate "sale completed" event
 
   Enable "sandbox_mode"
   Modify "event-sale-completed.json": change "id", "custom", "invoice"
+    or get a payload from PayPal developer "Sandbox Webhooks Events"
+  
   To send directly use port 8027, to send through Weblet use port 8080
   curl -v -X POST http://localhost:8027/paypal/events -H "Content-Type:application/json" -d @event-sale-completed.json
 

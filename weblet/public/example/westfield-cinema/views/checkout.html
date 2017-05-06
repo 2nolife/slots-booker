@@ -6,26 +6,13 @@
   <h4 class="alert alert-success" ng-show="status == 'success'">Booking complete</h4>
   <h4 class="alert alert-danger" ng-show="status == 'failed'">Something went wrong, please try with different seats</h4>
 
-  <div class="tickets" ng-show="basket.amount > 0">
-
-    <p class="title">{{cinemaSlot.movie.title}}</p>
-    <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | numberAsTime}}</p>
-
-    <p class="ticket" ng-repeat="price in basket.prices">
-      <span class="type">{{price.cinemaSlot.cinemaSeat.type}}</span>
-      <span class="age">{{price.age}}</span>
-      <span class="seat">Seat {{price.cinemaSlot.cinemaSeat.seatN}}</span>
-      <span class="price">{{price.sign}} {{price.amount | numberX100 : true}}</span>
-    </p>
-
-    <p class="total">{{basket.sign}} {{basket.amount | numberX100 : true}}</p>
-
-  </div>
+  <checkout-show-tickets />
 
   <div class="pay" ng-show="basket.amount > 0 && (!status || status == 'failed')">
     <p class="credit">Your credit &nbsp; {{credit.currency}} {{credit.amount | numberX100 : true}}</p>
     <button class="btn btn-primary" ng-click="bookWithCredit()" ng-show="credit.amount >= basket.amount">Pay with credit</button>
     <button class="btn btn-primary" ng-click="bookWithCard()">Pay with card</button>
+    <button class="btn btn-primary" ng-click="bookWithPayPal()">Pay with PayPal</button>
   </div>
 
   <p class="ref" ng-show="reference">Reference &nbsp; {{reference.ref}}</p>

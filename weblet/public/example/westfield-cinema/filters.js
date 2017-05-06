@@ -12,3 +12,16 @@ app.filter('cinemaDayScheduleHasMovieKey', function() {
     return arr
   }
 })
+
+app.filter('cinemaPaidBookings', function() {
+  return function(/*[CinemaSlot]*/ slots) {
+    var arr = [],
+        _ = {}
+    if (slots)
+      slots.forEach(function(slot) {
+        var quote = ((slot.activeBooking || _).reference || _).quote || _
+        if (quote.status == 1) arr.push(slot)
+      })
+    return arr
+  }
+})

@@ -133,6 +133,11 @@ case class ApiCode(code: Int, apiCode: Option[String]) {
   def is(a: Int): Boolean = code == a
   def not(a: Int): Boolean = code != a
   def csv: String = code+apiCode.map(","+_).mkString
+  def +(other: ApiCode): ApiCode = {
+    val v = List(apiCode, other.apiCode).flatten.mkString(",")
+    ApiCode(code, if (v.nonEmpty) Some(v) else None)
+  }
+  def +(others: Seq[ApiCode]): ApiCode = if (others.nonEmpty) others.foldLeft(this)((a,b) => a + b) else this
 }
 
 object ApiCode {

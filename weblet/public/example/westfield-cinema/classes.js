@@ -119,7 +119,7 @@ function CinemaHall(/*Space*/ source, /*CinemaPlace*/ cinemaPlace) {
     var today = parseInt(todayDate()),
         plus6 = parseInt(addDaysDate(today, 30)),
         yesterday = parseInt(addDaysDate(today, -1))
-    source.slotsFilter = { from: yesterday, to: plus6, inner: true, booked: '' }
+    source.slotsFilter = { from: yesterday, to: plus6, inner: true, booked: '', paid: true }
     source.refreshRetry('slots', force, function(/*str*/ status) {
       if ((status == 'success' || status == 'noop')) {
         wrapBookedSlots()
@@ -320,6 +320,15 @@ function CinemaBooking(/*Booking*/ source, /*CinemaSlot*/ cinemaSlot) {
     source.refresh('price', false, function(/*str*/ status) {
       if ((status == 'success' || status == 'noop') && !_this.price) {
         _this.price = source.price ? new CinemaPrice(source.price, cinemaSlot) : null
+      }
+      if (callback) callback()
+    })
+  }
+
+  this.refreshReference = function(/*fn*/ callback) {
+    source.refresh('reference', false, function(/*str*/ status) {
+      if (status == 'success' || status == 'noop') {
+        _this.reference = source.reference
       }
       if (callback) callback()
     })

@@ -28,7 +28,7 @@ trait ReferenceCRUD {
   def referenceByBookedId(bookedId: String, quote: Boolean = false, refund: Boolean = false): Option[vo.Reference]
   def referenceByRef(ref: String, profileId: String): Option[vo.Reference]
   def nextExpiredReference(minutes: Int): Option[vo.Reference]
-  def referencePaid(ref: String, profileId: String): Boolean
+  def referencePaid(ref: String, profileId: String): Option[vo.Reference]
   def createReference(obj: vo.Reference): vo.Reference
   def isRefUnique(ref: String, profileId: String): Boolean
 }
@@ -270,8 +270,8 @@ trait ReferenceCrudImpl {
       .findOne(("ref" $eq ref) ++ ("profile_id" $eq profileId))
       .map(asReference(_))
 
-  override def referencePaid(ref: String, profileId: String): Boolean = {
-    referenceByRef(ref, profileId).exists { reference =>
+  override def referencePaid(ref: String, profileId: String): Option[vo.Reference] =
+    referenceByRef(ref, profileId).map { reference =>
       reference.quote.foreach { q =>
         quotes
           .findAndModify(finderById(q.quote_id), $set("status" -> quoteStatus('complete)))
@@ -280,9 +280,8 @@ trait ReferenceCrudImpl {
         refunds
           .findAndModify(finderById(r.refund_id), $set("status" -> quoteStatus('complete)))
       }
-      true
+      referenceById(reference.reference_id).get
     }
-  }
 
   override def nextExpiredReference(minutes: Int): Option[vo.Reference] = 
     acquireEntryWithLock("status" $eq quoteStatus('pending_payment), quotes, locks, minutes)

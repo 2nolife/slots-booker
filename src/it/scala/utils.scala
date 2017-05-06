@@ -325,7 +325,7 @@ trait MongoCreate {
       .findAndModify(finderById(slotId), $set("booked" -> bookedId))
 
   def mongoCreateBooked(placeId: String, slotIds: Seq[String] = Nil, bookingIds: Seq[String] = Nil,
-                        username: String = "testuser", status: Int = 2): String = {
+                        username: String = "testuser", status: Int = 2, paid: Option[Boolean] = None): String = {
     val booked = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
@@ -335,6 +335,8 @@ trait MongoCreate {
       "status" -> status)
     mongoBooked
       .insert(booked)
+
+    update(finderById(booked.idString), mongoBooked, "paid", paid)
 
     booked.idString
   }

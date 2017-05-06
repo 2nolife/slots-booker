@@ -71,7 +71,7 @@ Model diagram
 
   Booked (maps slots with bookings)
   |
-  +-- Properties (status, etc)
+  +-- Properties (status, paid,etc)
   +-- booking_ids (array of booking IDs)
   +-- slot_ids (array of slots IDs)
 
@@ -79,6 +79,10 @@ Model diagram
     1 - is being booked
     2 - booked
     3 - conflict/failed
+
+  * paid property (initially set when quote Reference created)
+    false - reference unpaid or due payment
+    true - reference paid
 
   Quote
   |
@@ -131,8 +135,8 @@ Attributes
   4. value validation (regex) may be added later
 
 
-Booking process (successful flow)
-=================================
+Booking process (simplified, successful flow)
+=============================================
    o
   -|-                 [Booking MS]            [Slots MS]
   / \                       |                      |
@@ -192,6 +196,7 @@ Login with facebook
 Add client IP to the rest on the commands AND replies
 Add generated X header to requests to track
 See if weblet sets proper X-Forwarded-For header
+Store PayPal app keys bound to currency in Payments
 
 PayPal sandbox instructions:
 1) Login to "https://developer.paypal.com/developer/accounts/"
@@ -203,10 +208,6 @@ PayPal sandbox instructions:
 5) TODO configure place attributes
 6) TODO sample transactions from test accounts
 7) TODO go to live
-
-Java SDK: https://github.com/paypal/PayPal-Java-SDK/wiki/Making-First-Call
-Dashboard with all the options: https://developer.paypal.com/
-
 
 Running in the background
 =========================

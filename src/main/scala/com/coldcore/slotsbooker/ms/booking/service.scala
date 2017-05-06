@@ -1,7 +1,8 @@
 package com.coldcore.slotsbooker
 package ms.booking.service
 
-import ms.{Timestamp => ts}
+import akka.actor.ActorSystem
+import ms.{Logger, Timestamp => ts}
 import ms.booking.vo.{Reference, SelectedPrice}
 import ms.booking.db.BookingDb
 import ms.booking.vo
@@ -56,8 +57,8 @@ trait SlotsMsRestCalls extends SystemRestCalls {
     restPost[vo.ext.Booked](s"$slotsBaseUrl/slots/booked", vo.ext.CreateSlotBooked(profileId, slotIds))
 
   /** Update Booked in the "slots" micro service */
-  def updateBookedWithMsSlots(bookedId: String, bookingIds: Option[Seq[String]], status: Option[Int], profileId: String): (ApiCode, Option[vo.ext.Booked]) =
-    restPatch[vo.ext.Booked](s"$slotsBaseUrl/slots/booked/$bookedId", vo.ext.UpdateSlotBooked(profileId, status, bookingIds))
+  def updateBookedWithMsSlots(bookedId: String, bookingIds: Option[Seq[String]], status: Option[Int], paid: Option[Boolean], profileId: String): (ApiCode, Option[vo.ext.Booked]) =
+    restPatch[vo.ext.Booked](s"$slotsBaseUrl/slots/booked/$bookedId", vo.ext.UpdateSlotBooked(profileId, status, bookingIds, paid))
 
   /** Update Hold on a slot in the "slots" micro service */
   def updateHoldWithMsSlots(slotId: String, bookedId: String, status: Int): ApiCode =
@@ -130,7 +131,7 @@ trait BookingService {
   def quoteById(quoteId: String): Option[vo.Quote]
   def refundById(refundId: String): Option[vo.Refund]
   def referenceByRef(ref: String, profileId: String): Option[vo.Reference]
-  def referencePaid(ref: String, profileId: String): Boolean
+  def referencePaid(ref: String, profileId: String): (ApiCode, Option[Reference])
   def nextExpiredReference(): Option[vo.Reference]
 
   def quoteSlots(selected: Seq[vo.SelectedPrice], profileId: String): (ApiCode, Option[vo.Quote])
@@ -147,9 +148,11 @@ trait BookingService {
 }
 
 class BookingServiceImpl(val bookingDb: BookingDb, val placesBaseUrl: String, val slotsBaseUrl: String, val systemToken: String,
-                         val restClient: RestClient)
-    extends BookingService with PlacesMsRestCalls with SlotsMsRestCalls with CollectSlots with CollectSpaces with VoFactory
+                         val restClient: RestClient)(implicit system: ActorSystem)
+    extends BookingService with Logger with PlacesMsRestCalls with SlotsMsRestCalls with CollectSlots with CollectSpaces with VoFactory
     with Auxiliary with QuoteSlots with RefundSlots with BookSlots {
+
+  initLoggingAdapter
 
   def resolveSlotPrices(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = {
     val (pricedSlots, notPricedSlots) = slots.partition(_.prices.isDefined)
@@ -188,8 +191,14 @@ trait Auxiliary {
   override def nextExpiredReference(): Option[vo.Reference] =
     bookingDb.nextExpiredReference(5) //todo 5 minutes timeout, config in Place
 
-  override def referencePaid(ref: String, profileId: String): Boolean =
-    bookingDb.referencePaid(ref, profileId)
+  override def referencePaid(ref: String, profileId: String): (ApiCode, Option[Reference]) = {
+    val reference = bookingDb.referencePaid(ref, profileId)
+    val code =
+      if (reference.isEmpty) ApiCode(SC_NOT_FOUND)
+      else if (reference.exists(_.quote.isDefined)) ApiCode.OK + updateBookedPaidOrUnpaid(reference.get) // ref with quote
+      else ApiCode.OK // ref with refund
+    (code, reference)
+  }
 
   def referenceById(referenceId: String): Option[vo.Reference] =
     bookingDb.referenceById(referenceId)
@@ -199,6 +208,13 @@ trait Auxiliary {
 
   def slotIdsByRefund(refundId: String): Option[Seq[String]] =
     refundById(refundId).map(_.prices.get.map(_.slot_id))
+
+  def updateBookedPaidOrUnpaid(reference: vo.Reference): ApiCode = {
+    val complete = reference.quote.get.status.get == quoteStatus('complete)
+    val code = updateBookedWithMsSlots(reference.booked_ids.get.head, bookingIds = None, status = None, paid = Some(complete), reference.profile_id.get)._1
+    if (code not SC_OK) log.warning(s"Cannot update booked $code. (manually) set paid to $complete. Booked ID ${reference.booked_ids.get.head}")
+    code
+  }
 
   def updateQuoteAfterBookSlots(referenceId: String) =
     referenceById(referenceId).foreach { reference =>
@@ -454,7 +470,7 @@ trait BookSlots {
       val (code, booked) = createBookedWithMsSlots(slotIds, profileId)
       val either = if (code not SC_CREATED) Left(code) else Right(booked.get)
 
-      val rollback = () => booked.foreach(_ => updateBookedWithMsSlots(booked.get.booked_id, bookingIds = None, Some(bookedStatus('other)), profileId)): Unit
+      val rollback = () => booked.foreach(_ => updateBookedWithMsSlots(booked.get.booked_id, bookingIds = None, Some(bookedStatus('other)), paid = None, profileId)): Unit
       rollback +=: rollbacks
 
       either
@@ -486,7 +502,7 @@ trait BookSlots {
     }
 
     def step6(booked: vo.ext.Booked, bookings: Seq[vo.ext.Booking]): Either[ApiCode, _] = { // update Booked object
-      val (code, _) = updateBookedWithMsSlots(booked.booked_id, Some(bookings.map(_.booking_id)), Some(bookedStatus('booked)), profileId)
+      val (code, _) = updateBookedWithMsSlots(booked.booked_id, Some(bookings.map(_.booking_id)), Some(bookedStatus('booked)), paid = None, profileId)
       if (code not SC_OK) Left(code) else Right(SC_OK)
     }
 
@@ -604,15 +620,24 @@ trait BookSlots {
       val (codeR, reference) = bookSlots(quoteId.get, profileId)
       reference.foreach(r => updateQuoteAfterBookSlots(r.reference_id))
 
-      val systemAttrs = Attributes(JsObject(
-        "ref" -> JsString(reference.get.ref.get)
-      ))
+      if (reference.isEmpty) (codeR, None)
+      else {
+        val slotIds = slotIdsByQuote(quoteId.get).get
 
-      val slotIds = slotIdsByQuote(quoteId.get).get
-      val codeU = updateSlots(slotIds, profileId, obj.attributes) //todo check codeU
-      val codeX = updateSlots(slotIds, "*", Some(systemAttrs)) //todo check codeX
+        val (codeU, bookings) = updateSlotsBookings(slotIds, profileId, obj.attributes)
+        logWarning(codeU, bookings, obj.attributes)
 
-      if (reference.isEmpty) (codeR, None) else (SC_CREATED, referenceById(reference.get.reference_id))
+        val systemAttrs = Attributes(JsObject(
+          "ref" -> JsString(reference.get.ref.get)
+        ))
+        val codesX = bookings.getOrElse(Nil).map(b => updateBookingWithMsSlots(b.booking_id, b.slot_id, status = None, Some(systemAttrs), profileId = None)._1)
+        logWarning(codesX, bookings, Some(systemAttrs))
+
+        val codeY = updateBookedPaidOrUnpaid(reference.get)
+
+        val code = ApiCode.CREATED + codeU + codesX + codeY
+        (code, referenceById(reference.get.reference_id))
+      }
     }
   }
 
@@ -626,16 +651,36 @@ trait BookSlots {
     if (refundId.isEmpty) (codeQ, None)
     else {
       val slotIds = slotIdsByRefund(refundId.get).get
-      val codeU = updateSlots(slotIds, profileId, obj.attributes) //todo check codeU
+      val (codeU, bookings) = updateSlotsBookings(slotIds, profileId, obj.attributes)
+      logWarning(codeU, bookings, obj.attributes)
 
       val (codeR, reference) = cancelSlots(refundId.get, profileId)
       reference.foreach(r => updateRefundAfterCancelSlots(r.reference_id))
 
-      if (reference.isEmpty) (codeR, None) else (SC_CREATED, referenceById(reference.get.reference_id))
+      if (reference.isEmpty) (codeR, None)
+      else {
+        val systemAttrs = Attributes(JsObject(
+          "cancel_ref" -> JsString(reference.get.ref.get)
+        ))
+        val codesX = bookings.getOrElse(Nil).map(b => updateBookingWithMsSlots(b.booking_id, b.slot_id, status = None, Some(systemAttrs), profileId = None)._1)
+        logWarning(codesX, bookings, Some(systemAttrs))
+
+        val code = ApiCode.CREATED + codeU + codesX
+        (code, referenceById(reference.get.reference_id))
+      }
     }
   }
 
-  override def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): ApiCode = {
+  private def logWarning(code: ApiCode, bookings: Option[Seq[vo.ext.Booking]], attributes: Option[Attributes]) =
+    if (code not SC_OK) {
+      val msgAttrs = attributes.map("add attributes "+_.toString).getOrElse("no action required")
+      log.warning(s"Cannot update bookings $code. (manually) $msgAttrs. Booking IDs "+bookings.getOrElse(Nil).map(_.booking_id).mkString(","))
+    }
+
+  private def logWarning(codes: Seq[ApiCode], bookings: Option[Seq[vo.ext.Booking]], attributes: Option[Attributes]): Unit =
+    logWarning(codes.find(_ not SC_OK).getOrElse(codes.head), bookings, attributes)
+
+  private def updateSlotsBookings(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): (ApiCode, Option[Seq[vo.ext.Booking]]) = {
     def step1(): Either[ApiCode, Seq[vo.ext.Slot]] =  // get all slots, Booked objects filled
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
 
@@ -644,32 +689,35 @@ trait BookSlots {
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots Booked objects belong to a user and have proper status
       val booked = slots.map(_.booked.get)
-      if (booked.exists(_.profile_id.get != profileId) && profileId != "*") Left(SC_FORBIDDEN)
+      if (booked.exists(_.profile_id.get != profileId)) Left(SC_FORBIDDEN)
       else if (booked.exists(_.status.get != bookedStatus('booked))) Left(SC_CONFLICT)
       else Right(SC_OK)
     }
 
-    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // update Bookings attributes (apply profile permissions)
-      val codes =
+    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Booking]] = { // update Bookings attributes (apply profile permissions)
+      val codesAndBookings =
         slots.map { slot =>
           val b = slot.booked.get
           val i = b.slot_ids.get.indexOf(slot.slot_id)
           val bookingId = b.booking_ids.get.apply(i)
-          updateBookingWithMsSlots(bookingId, slot.slot_id, status = None, attributes, if (profileId != "*") Some(profileId) else None)._1
+          updateBookingWithMsSlots(bookingId, slot.slot_id, status = None, attributes, Some(profileId))
         }
-      codes.find(_ not SC_OK).map(Left(_)).getOrElse(Right(SC_OK))
+      codesAndBookings.map(_._1).find(_ not SC_OK).map(Left(_)).getOrElse(Right(codesAndBookings.flatMap(_._2)))
     }
 
-    val eitherA: Either[ApiCode, ApiCode] =
+    val eitherA: Either[ApiCode, Seq[vo.ext.Booking]] =
       for {
         slots    <- step1().right
         _        <- step2(slots).right
         _        <- step3(slots).right
-        _        <- step4(slots).right
-      } yield SC_OK
+        bookings <- step4(slots).right
+      } yield bookings
 
-    if (eitherA.isRight) eitherA.right.get
-    else eitherA.left.get
+    if (eitherA.isRight) (SC_OK, Some(eitherA.right.get))
+    else (eitherA.left.get, None)
   }
+
+  override def updateSlots(slotIds: Seq[String], profileId: String, attributes: Option[Attributes]): ApiCode =
+    updateSlotsBookings(slotIds, profileId, attributes)._1
 
 }

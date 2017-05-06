@@ -39,7 +39,7 @@ object SlotsDb {
   case class SearchCriteria(placeId: String, spaceIds: Seq[String],
                             dateFrom: Int, dateTo: Int, timeFrom: Int, timeTo: Int,
                             bookedByProfileId: Option[String] = None,
-                            groupBy: Option[String] = None)
+                            paidOrUnpaid: Option[Boolean] = None)
 }
 
 trait SlotsDb extends SlotCRUD with BookingCRUD with BookedCRUD with PriceCRUD with Search
@@ -126,6 +126,7 @@ trait VoFactory {
       place_id = as[String]("place_id"),
       profile_id = getAs[String]("profile_id"),
       status = getAs[Int]("status"),
+      paid = getAs[Boolean]("paid"),
       slot_ids =
         getAs[Seq[String]]("slot_ids")
           .noneIfEmpty,
@@ -386,6 +387,7 @@ trait BookedCrudImpl {
     import obj._
     Map(
       "status" -> status,
+      "paid" -> paid,
       "booking_ids" -> booking_ids.map(MongoDBList(_: _*))
     ).foreach { case (key, value) =>
       update(finderById(bookedId), booked, key, value)
@@ -477,7 +479,7 @@ trait SearchImpl {
       slots
         .find(finder() ++ placeAndSpaceQuery ++ datesInRangeQuery ++ onlyBookedQuery)
         .sort(MongoDBObject("date_from" -> 1, "time_from" -> 1, "date_to" -> 1, "time_to" -> 1))
-        .map(asSlot(_, defaultSlotFields))
+        .map(asSlot(_, customSlotFields(deep_bookings = false, deep_prices = false, deep_booked = bookedByProfileId.isDefined)))
         .toSeq
 
     val boundaryFrom = dateFrom*10000L+timeFrom
@@ -506,38 +508,37 @@ trait SearchImpl {
 
       }
 
-    val activeBookingsByProfile = (slotIds: Seq[String], profileId: String) =>
-      bookings
-        .find(finder() ++ ("status" $eq bookingStatus('active)) ++ ("profile_id" $eq profileId) ++ ("slot_id" $in slotIds))
-        .map(asBooking(_))
-        .toSeq
+//    val activeBookingsByProfile = (slotIds: Seq[String], profileId: String) =>
+//      bookings
+//        .find(finder() ++ ("status" $eq bookingStatus('active)) ++ ("profile_id" $eq profileId) ++ ("slot_id" $in slotIds))
+//        .map(asBooking(_))
+//        .toSeq
+
+// post process: filter with active booking by profile
+//    val filterByActiveBookings = (foundSlots: Seq[vo.Slot]) =>
+//      if (bookedByProfileId.isEmpty || bookedByProfileId.get == "*") foundSlots
+//      else activeBookingsByProfile(foundSlots.map(_.slot_id), bookedByProfileId.get)
+//              .flatMap(booking => foundSlots.find(_.slot_id == booking.slot_id))
 
     // post process: filter by time
     val filterByTime = (_: Unit) =>
-      (if (timeFrom == 0 && timeTo == 2400) slotsByDate else slotsByDateTime).map(_.slot_id)
-
-/*
-    // post process: group by date      //todo not needed, remove
-    val groupByDate = (slotIds: Seq[String]) =>
-      if (groupBy.exists(_.split(",").contains("date")))
-        slotIds
-          .map(slotId => slotsByDate.find(_.slot_id == slotId).get)
-          .groupBy(_.date_from.get)
-          .map(_._2.head).toSeq
-          .sortWith { case (slot1, slot2) => slot1.date_from.get < slot2.date_from.get }
-          .map(_.slot_id)
-      else slotIds
-*/
+      if (timeFrom == 0 && timeTo == 2400) slotsByDate else slotsByDateTime
 
     // post process: filter with active booking by profile
-    val filterByActiveBookings = (slotIds: Seq[String]) =>
-      if (bookedByProfileId.isEmpty || bookedByProfileId.get == "*") slotIds
-      else activeBookingsByProfile(slotIds, bookedByProfileId.get).map(_.slot_id)
+    val filterByActiveBookings = (foundSlots: Seq[vo.Slot]) =>
+      if (bookedByProfileId.isEmpty || bookedByProfileId.get == "*") foundSlots
+      else foundSlots.filter(_.booked.exists(_.profile_id.get == bookedByProfileId.get))
+
+    // post process: filter with paid/unpaid
+    val filterByPaid = (foundSlots: Seq[vo.Slot]) =>
+      if (paidOrUnpaid.isEmpty) foundSlots
+      else if (bookedByProfileId.isEmpty || bookedByProfileId.get == "*") Nil // can only operate on a single profile
+      else foundSlots.filter(_.booked.exists(_.paid == paidOrUnpaid))
 
     // get post processed slots with selected fields
-    val f = filterByTime andThen filterByActiveBookings 
+    val f = filterByTime andThen filterByActiveBookings andThen filterByPaid
     val retrieve = (slotIds: Seq[String]) => slotIds.flatMap(slotId => slotById(slotId, fields))
-    retrieve { f((): Unit) }
+    retrieve { f((): Unit).map(_.slot_id) }
   }
 
 }

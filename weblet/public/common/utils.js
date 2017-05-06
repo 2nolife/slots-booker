@@ -203,3 +203,14 @@ function apiCodeFromResponse(/*obj*/ response) {
     codes: arr
   }
 }
+
+function numberX100(/*num*/ value, /*bool*/ alwaysShowPence) {
+  // 230 -> 2.30
+  var result = '0'
+  if (value) {
+    var pound = Math.floor(value/100), pence = value-pound*100
+    var paddedPence = pence > 0 || alwaysShowPence ? '.'+('00'+pence).slice(-2) : ''
+    result = pound+paddedPence
+  }
+  return result
+}

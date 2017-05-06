@@ -117,7 +117,8 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val placeId = mongoCreatePlace()
     mongoCreateBalance(placeId, balance, username = forUsername)
     val quoteId = mongoCreatePaidQuote(placeId, Seq((randomId, 1600), (randomId, 800)), status = status, username = forUsername)
-    mongoCreateReference(placeId, Nil, quoteId = Some(quoteId), username = forUsername)
+    val bookedId = mongoCreateBooked(placeId, slotIds = Nil, bookingIds = Nil, username = forUsername)
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = forUsername)
     Map(
       "placeId" -> placeId
     )
@@ -243,10 +244,50 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     balanceA.credit.get.head.amount.get shouldBe -400
   }
 
-/*     todo
-  "GET to /payments/references/unpaid?place_id={?}" should "return list of references which require payment for a place" in {
-    fail()
+  "GET to /payments/reference?ref={?]" should "return a reference for a user" in {
+    val placeId = {
+      val ids = setupBalanceAndUnpaidQuote(2000)
+      ids("placeId")
+    }
+    val profileId = mongoProfileId("testuser2")
+
+    val url = s"$paymentsBaseUrl/payments/reference?ref=Testuser2_1"
+    val headers = authHeaderSeq("testuser2")
+    val reference = (When getTo url withHeaders headers expect() code SC_OK).withBody[vo.ext.Reference]
+
+    reference.ref.get shouldBe "Testuser2_1"
   }
-*/
+
+  "GET to /payments/reference?ref={?]&profile_id={?}" should "return a reference if submitted by moderator" in {
+    val placeId = {
+      val ids = setupBalanceAndUnpaidQuote(2000)
+      ids("placeId")
+    }
+    val profileId = mongoProfileId("testuser2")
+
+    val url = s"$paymentsBaseUrl/payments/reference?ref=Testuser2_1&profile_id=$profileId"
+    val headers = authHeaderSeq("testuser2")
+    val reference = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.ext.Reference]
+
+    reference.ref.get shouldBe "Testuser2_1"
+  }
+
+  "GET to /payments/reference?ref={?]&profile_id={?}" should "give 403 for non moderator" in {
+    val placeId = {
+      val ids = setupBalanceAndUnpaidQuote(2000)
+      ids("placeId")
+    }
+    val profileId = mongoProfileId("testuser2")
+
+    val url = s"$paymentsBaseUrl/payments/reference?ref=Testuser2_1&profile_id=$profileId"
+    val headers = authHeaderSeq("testuser3")
+    When getTo url withHeaders headers expect() code SC_FORBIDDEN
+  }
+
+  /*     todo
+    "GET to /payments/references/unpaid?place_id={?}" should "return list of references which require payment for a place" in {
+      fail()
+    }
+  */
 
 }

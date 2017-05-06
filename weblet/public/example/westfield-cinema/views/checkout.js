@@ -1,11 +1,8 @@
-app.controller('checkoutController', function($scope, state, apiBookingService, apiPaymentsService, notifyService) {
+app.controller('checkoutController', function($scope, state, apiBookingService, apiPaymentsService, notifyService, $location) {
 
   if (state.checkout && !state.checkout.complete) {
     $scope.basket = state.checkout
     var price = state.checkout.prices[0]
-    $scope.cinemaHall = price.cinemaSlot.cinemaSeat.cinemaHall
-    $scope.cinemaSlot = price.cinemaSlot
-
     getCredit(price.placeId, price.currency)
   }
 
@@ -81,10 +78,44 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
 //    })
   }
 
+  $scope.bookWithPayPal = function() {
+    $scope.status = 'progress'
+
+    getQuote(function(/*Quote*/ quote) {
+      bookSlots(quote, function(/*Reference*/ reference) {
+        state.checkout.reference = reference
+        $location.path('/checkout-paypal')
+      })
+    })
+  }
+
   function getCredit(/*str*/ placeId, /*str*/ currency) {
     apiPaymentsService.getUserBalance(placeId, null, function(/*Balance*/ balance) {
       $scope.credit = balance.creditIn(currency)
     })
   }
 
+})
+
+app.directive('checkoutShowTickets', function() {
+
+  var controller = function($scope, state) {
+
+    if (state.checkout && !state.checkout.complete) {
+      $scope.basket = state.checkout
+      var price = state.checkout.prices[0]
+      $scope.cinemaHall = price.cinemaSlot.cinemaSeat.cinemaHall
+      $scope.cinemaSlot = price.cinemaSlot
+    }
+
+  }
+
+  return {
+
+    restrict: 'E',
+
+    templateUrl: 'views/templates/chekoutShowTickets.html',
+
+    controller: controller
+  }
 })

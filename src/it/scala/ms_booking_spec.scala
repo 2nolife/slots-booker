@@ -852,11 +852,14 @@ class MsBookingReferenceSpec extends BaseMsBookingSpec {
   }
 
   "POST to /booking/reference/paid" should "mark quote or refund status to complete" in {
-    val placeId = mongoCreatePlace()
+    val (placeId, bookedId) = {
+      val ids = setup2ActiveBookings()
+      (ids("placeId"), ids("bookedId"))
+    }
+    val quoteId = mongoCreatePaidQuote(placeId, Seq((randomId, 1600), (randomId, 800)), status = 2, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
     val profileId = mongoProfileId("testuser2")
     mongoCreateBalance(placeId, 2000, username = "testuser2")
-    val quoteId = mongoCreatePaidQuote(placeId, Seq((randomId, 1600), (randomId, 800)), status = 2, username = "testuser2")
-    mongoCreateReference(placeId, Nil, quoteId = Some(quoteId), username = "testuser2")
 
     val url = s"$bookingBaseUrl/booking/reference/paid"
     val json = s"""{ "ref": "Testuser2_1", "profile_id": "$profileId" }"""

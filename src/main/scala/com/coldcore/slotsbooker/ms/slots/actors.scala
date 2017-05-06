@@ -48,7 +48,7 @@ trait PricesCommands {
 trait SearchCommands {
   case class SearchSlotsIN(placeId: String, spaceId: String, profile: ProfileRemote,
                            dateFrom: Int, dateTo: Int, timeFrom: Int, timeTo: Int,
-                           searchInnerSpaces: Boolean, bookedBy: Option[String], groupBy: Option[String],
+                           searchInnerSpaces: Boolean, bookedBy: Option[String], paid: Option[Boolean],
                            deepBookings: Boolean, deepPrices: Boolean)
 }
 
@@ -461,7 +461,7 @@ trait SearchSlots {
 
     case SearchSlotsIN(placeId, spaceId, profile,
                        dateFrom, dateTo, timeFrom, timeTo,
-                       searchInnerSpaces, bookedBy, groupBy,
+                       searchInnerSpaces, bookedBy, paid,
                        deepBookings, deepPrices) => //todo check dates range or enforce limit, otherwise could return a lot of slots
       val fields = customSlotFields(deepBookings, deepPrices, deep_booked = false)
 
@@ -478,7 +478,7 @@ trait SearchSlots {
         val spaceIds = spaceId +: (if (searchInnerSpaces) mySpace.get.flatSpaces.map(_.space_id) else Nil)
         val criteria = SearchCriteria(placeId, spaceIds,
                                       dateFrom, dateTo, timeFrom, timeTo,
-                                      bookedByProfileId, groupBy)
+                                      bookedByProfileId, paid)
         Some(slotsDb.searchSlots(criteria, fields))
       }
 

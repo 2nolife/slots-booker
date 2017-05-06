@@ -1,8 +1,8 @@
 package com.coldcore.slotsbooker
 package ms.attributes
 
-import java.util.regex.Pattern
 import ms.vo.{Attributes, ProfileRemote}
+import ms.utils.StringUtil._
 import spray.json._
 import Types._
 
@@ -51,7 +51,7 @@ object Types {
 object Util {
 
   def parse(csv: String): Seq[ConfiguredAttribute] =
-    csv.split(Pattern.quote(", ")).map { str =>
+    parseCSV(csv).map { str =>
       val parts = str.split(' ')
       val name = parts.head
       val chunks = parts.tail

@@ -279,7 +279,8 @@ function Space(/*json*/ source, /*services*/ sc) {
     var slotsFilterChanged = function() {
       var slotsFilter = source._slotsFilter || defaultSlotFilter
       return _this.slotsFilter.from != slotsFilter.from || _this.slotsFilter.to != slotsFilter.to ||
-             _this.slotsFilter.booked != slotsFilter.booked || _this.slotsFilter.inner != slotsFilter.inner
+             _this.slotsFilter.inner != slotsFilter.inner ||
+             _this.slotsFilter.booked != slotsFilter.booked || _this.slotsFilter.paid != slotsFilter.paid
     }
 
     if (!_this.slots || force || slotsFilterChanged()) {
@@ -604,6 +605,8 @@ function Booking(/*json*/ source, /*services*/ sc) {
     _this.user = source._user
     _this.attributes = source._attributes || source.attributes || {}
     _this.price = source._price
+    _this.reference = source._reference
+    _this.referenceCancel = source._referenceCancel
   }
 
   applyChangesFromSource()
@@ -641,6 +644,34 @@ function Booking(/*json*/ source, /*services*/ sc) {
     } else callback('noop')
   }
 
+  /** get booking reference from API (expands the source object) */
+  function refreshReference(/*bool*/ force, /*fn*/ callback) {
+    if ((!_this.reference || force) && _this.attributes.ref) {
+
+      sc.apiPaymentsService.getReference(_this.attributes.ref, source.profile_id,
+        function(/*Reference*/ reference) {
+          _this.reference = reference
+          _this.applyChangesToSource()
+        },
+        callback)
+
+    } else callback('noop')
+  }
+
+  /** get booking reference from API (expands the source object) */
+  function refreshReferenceCancel(/*bool*/ force, /*fn*/ callback) {
+    if ((!_this.referenceCancel || force) && _this.attributes.ref_cancel) {
+
+      sc.apiPaymentsService.getReference(_this.attributes.ref_cancel, source.profile_id,
+        function(/*Reference*/ reference) {
+          _this.referenceCancel = reference
+          _this.applyChangesToSource()
+        },
+        callback)
+
+    } else callback('noop')
+  }
+
   function refreshThis(/*bool|redundant*/ force, /*fn*/ callback) {
     sc.apiSlotsService.getBooking(_this.slotId, _this.id,
       function(/*Booking*/ booking) {
@@ -665,6 +696,14 @@ function Booking(/*json*/ source, /*services*/ sc) {
         f = refreshPrice
         break
 
+      case 'reference':
+        f = refreshReference
+        break
+
+      case 'referenceCancel':
+        f = refreshReferenceCancel
+        break
+
       default:
         console.log('Unknown refresh target: '+target)
     }
@@ -681,6 +720,7 @@ function Booking(/*json*/ source, /*services*/ sc) {
     changesToSource.field('status')
     changesToSource.field('user')
     changesToSource.field('price')
+    changesToSource.field('reference')
     changesToSource.field('attributes', {})
   }
 
@@ -771,6 +811,7 @@ function Quote(/*json*/ source, /*services*/ sc) { // read-only
   this.source = source
 
   this.id = source.quote_id
+  this.status = source.status
   this.amount = source.amount
   this.currency = source.currency
 
@@ -782,6 +823,7 @@ function Refund(/*json*/ source, /*services*/ sc) { // read-only
   this.source = source
 
   this.id = source.refund_id
+  this.status = source.status
   this.amount = source.amount
   this.currency = source.currency
 
@@ -794,7 +836,9 @@ function Reference(/*json*/ source, /*services*/ sc) { // read-only
 
   this.id = source.reference_id
   this.ref = source.ref
-
+  this.quote = source.quote ? new Quote(source.quote) : null
+  this.refund = source.refund ? new Refund(source.refund) : null
+  
 }
 
 function Balance(/*json*/ source, /*services*/ sc) { // read-only

@@ -42,7 +42,7 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
                        'to,
                        'inner ? true,
                        'booked ?,
-                       'group ?,
+                       'paid.as[Boolean].?,
                        'deep ? getDeepFields,
                        'deep_bookings.as[Boolean].?,
                        'deep_prices  .as[Boolean].?) {
@@ -52,7 +52,7 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
                to,
                inner,
                booked,
-               group,
+               paid,
                deep,
                deep_bookings,
                deep_prices) =>
@@ -62,7 +62,7 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
 
               completeByActor[Seq[vo.Slot]](slotsActor, SearchSlotsIN(place_id, space_id, profile,
                                                                       dateFrom, dateTo, timeFrom, timeTo,
-                                                                      inner, booked, group,
+                                                                      inner, booked, paid,
                                                                       deep_bookings.getOrElse(deep), deep_prices.getOrElse(deep)))
             }
           }

@@ -1,0 +1,20 @@
+<div id="view-checkout-paypal">
+
+  <h1 class="top">Checkout</h1>
+
+  <h4 class="alert alert-warning" ng-show="status == 'loading'">Loading, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Booking complete</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Something went wrong, please try with different seats</h4>
+
+  <checkout-show-tickets />
+  
+  <div class="pay" ng-show="status == 'ready'">
+    <div id="checkout-paypal-button"></div>
+  </div>
+
+  <p class="ref" ng-show="reference">Reference &nbsp; {{reference.ref}}</p>
+
+  <a href="#" class="empty" ng-show="!basket.amount">No tickets in your basket, start over?</a>
+  <a href="#" class="empty" ng-show="status == 'failed'">Start over?</a>
+
+</div>

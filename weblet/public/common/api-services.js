@@ -359,6 +359,7 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
 
     var query = '?place_id='+searchOptions.placeId+'&space_id='+searchOptions.spaceId+'&from='+searchOptions.from+'&to='+searchOptions.to+'&inner='+searchOptions.inner
     if (searchOptions.booked != undefined) query += '&booked='+searchOptions.booked
+    if (searchOptions.paid != undefined) query += '&paid='+searchOptions.paid
 
     $http.get('/api/slots/search'+query)
       .then(
@@ -560,6 +561,19 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
         })
   }
 
+  service.getReference = function(/*str*/ ref, /*str|optional*/ profileId, /*fn*/ callback, /*fn*/ statusCallback) { //todo
+    $http.get('/api/payments/reference?ref='+ref+(profileId ? '&profile_id='+profileId : ''))
+      .then(
+        function successCallback(response) {
+          var reference = response.data
+          callback(apiClassWrap.wrap(reference, 'reference'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  }
+
   service.getUserBalance = function(/*str*/ placeId, /*str|optional*/ profileId, /*fn*/ callback, /*fn*/ statusCallback) {
     $http.get('/api/payments/balance?place_id='+placeId+(profileId ? '&profile_id='+profileId : ''))
       .then(
@@ -586,6 +600,7 @@ app.service('apiClassWrap', function($injector) {
       apiPlacesService: $injector.get('apiPlacesService'),
       apiSpacesService: $injector.get('apiSpacesService'),
       apiSlotsService: $injector.get('apiSlotsService'),
+      apiPaymentsService: $injector.get('apiPaymentsService'),
       apiClassService: $injector.get('apiClassService')
     }
   }

@@ -17,12 +17,12 @@ trait EventCommands {
 }
 
 object EventsActor extends EventCommands {
-  def props(paypalDb: PaypalDb, placesBaseUrl: String, paymentsBaseUrl: String, systemToken: String, restClient: RestClient, sandboxMode: Boolean): Props =
-    Props(new EventsActor(paypalDb, placesBaseUrl, paymentsBaseUrl, systemToken, restClient, sandboxMode))
+  def props(paypalDb: PaypalDb, placesBaseUrl: String, paymentsBaseUrl: String, systemToken: String, restClient: RestClient, sandboxMode: Boolean, liveEventIp: String): Props =
+    Props(new EventsActor(paypalDb, placesBaseUrl, paymentsBaseUrl, systemToken, restClient, sandboxMode, liveEventIp))
 }
 
 class EventsActor(paypalDb: PaypalDb, placesBaseUrl: String, paymentsBaseUrl: String, systemToken: String,
-                  restClient: RestClient, sandboxMode: Boolean) extends Actor with ActorLogging with MsgInterceptor {
+                  restClient: RestClient, sandboxMode: Boolean, liveEventIp: String) extends Actor with ActorLogging with MsgInterceptor {
   import EventsActor._
   import context.dispatcher
 
@@ -30,7 +30,7 @@ class EventsActor(paypalDb: PaypalDb, placesBaseUrl: String, paymentsBaseUrl: St
 
   context.system.scheduler.schedule(10 seconds, 10 seconds, self, Tick)
 
-  val eventService: EventService = new EventServiceImpl(paypalDb, placesBaseUrl, paymentsBaseUrl, systemToken, restClient, sandboxMode)
+  val eventService: EventService = new EventServiceImpl(paypalDb, placesBaseUrl, paymentsBaseUrl, systemToken, restClient, sandboxMode, liveEventIp)
 
   def receive = {
 

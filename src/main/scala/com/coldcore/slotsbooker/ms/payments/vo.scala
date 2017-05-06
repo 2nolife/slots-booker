@@ -43,8 +43,8 @@ package ext {
   case class ReferencePaid(ref: String, profile_id: String)
   object ReferencePaid extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
 
-  case class CancelSlots(slot_ids: Option[Seq[String]], attributes: Option[Attributes])
-  object CancelSlots extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+  case class CancelSlots(slot_ids: Option[Seq[String]], as_profile_id: Option[String], attributes: Option[Attributes])
+  object CancelSlots extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
 }
 

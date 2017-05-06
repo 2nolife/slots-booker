@@ -98,8 +98,8 @@ package ext {
   case class CreateSlotBooked(as_profile_id: String, slot_ids: Seq[String])
   object CreateSlotBooked extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
 
-  case class UpdateSlotBooked(as_profile_id: String, status: Option[Int], booking_ids: Option[Seq[String]])
-  object UpdateSlotBooked extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+  case class UpdateSlotBooked(as_profile_id: String, status: Option[Int], booking_ids: Option[Seq[String]], paid: Option[Boolean])
+  object UpdateSlotBooked extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
 
   case class UpdateSlotHold(booked_id: String, status: Int)
   object UpdateSlotHold extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }

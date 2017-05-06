@@ -22,6 +22,7 @@ trait BalanceCommands {
 }
 
 trait ReferenceCommands {
+  case class GetReferenceIN(ref: String, profileId: Option[String], profile: ProfileRemote) extends RequestInfo
   case class ProcessReferenceIN(obj: vo.ProcessReference, profile: ProfileRemote) extends RequestInfo
 }
 
@@ -32,13 +33,13 @@ object PaymentsActor extends BalanceCommands with ReferenceCommands {
 
 class PaymentsActor(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl: String, systemToken: String,
                     restClient: RestClient) extends Actor with ActorLogging with MsgInterceptor
-  with AmendBalance with GetBalance with ProcessReference {
+  with AmendBalance with GetBalance with ProcessReference with GetReference {
 
   val paymentsService: PaymentsService = new PaymentsServiceImpl(paymentsDb, placesBaseUrl, bookingBaseUrl, systemToken, restClient)
 
   def receive =
     amendBalanceReceive orElse getBalanceReceive orElse
-    processReferenceReceive
+    processReferenceReceive orElse getReferenceReceive
 
   val placeModerator = (place: vo.ext.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
 }
@@ -79,7 +80,7 @@ trait GetBalance {
     case GetBalanceIN(placeId, profileId, profile) =>
       lazy val (codeA, myPlace) = paymentsService.placeById(placeId)
       lazy val placeNotFound = myPlace.isEmpty
-      lazy val canRead = profileId.isEmpty || placeModerator(myPlace.get, profile) || profile.isSuper
+      lazy val canRead = profileId.isEmpty || placeModerator(myPlace.get, profile) || profile.isSuper || profileId.exists(profile.profile_id ==)
 
       def read(): Option[vo.Balance] = Some(paymentsService.getBalance(placeId, profileId.getOrElse(profile.profile_id)))
 
@@ -89,6 +90,29 @@ trait GetBalance {
         else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, credit)
+
+  }
+
+}
+
+trait GetReference {
+  self: PaymentsActor =>
+  import PaymentsActor._
+
+  val getReferenceReceive: Actor.Receive = {
+
+    case GetReferenceIN(ref, profileId, profile) =>
+      lazy val (codeB, myReference) = paymentsService.referenceByRef(ref, profileId.getOrElse(profile.profile_id))
+      lazy val (codeA, myPlace) = myReference.map(ref => paymentsService.placeById(ref.place_id)).getOrElse(codeB, None)
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val canRead = profileId.isEmpty || placeModerator(myPlace.get, profile) || profile.isSuper || profileId.exists(profile.profile_id ==)
+
+      val (code, reference) =
+        if (placeNotFound) (codeA, None)
+        else if (canRead) (codeB, myReference)
+        else (ApiCode(SC_FORBIDDEN), None)
+
+      reply ! CodeEntityOUT(code, reference)
 
   }
 
@@ -143,10 +167,10 @@ class ExpiredActor(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl
 
     case Tick =>
       paymentsService.expiredReference() match {
-        case (code, Some(reference)) if code is SC_OK => log.debug(s"Cancelled expired reference ${reference.ref.get}")
+        case (code, Some(reference)) if (code is SC_OK) || (code is SC_CREATED) => log.debug(s"Cancelled expired reference ${reference.ref.get}")
         case (code, None) if code is SC_NOT_FOUND =>
-        case (code, Some(reference)) => log.warning(s"Code received $code for expired reference ${reference.ref.get}")
-        case (code, None) => log.warning(s"Code received $code")
+        case (code, Some(reference)) => log.warning(s"Received $code for expired reference ${reference.ref.get}")
+        case (code, None) => log.warning(s"Received $code")
       }
 
   }

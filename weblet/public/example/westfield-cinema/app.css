@@ -275,24 +275,24 @@ header nav li a:hover {
   padding: 20px;
 }
 
-#view-checkout .tickets {
+.checkout-show-tickets {
   padding: 20px;
 }
 
-#view-checkout .tickets .title {
+.checkout-show-tickets .title {
   padding-top: 10px;
   text-align: center;
   font-size: 20px;
   color: #dff0d8;
 }
 
-#view-checkout .tickets .date {
+.checkout-show-tickets .date {
   padding-bottom: 20px;
   text-align: center;
   font-size: 16px;
 }
 
-#view-checkout .ticket {
+.checkout-show-tickets .ticket {
   width: 600px;
   height: 50px;
   margin: 10px auto;
@@ -301,7 +301,7 @@ header nav li a:hover {
   text-align: center;
 }
 
-#view-checkout .ticket span {
+.checkout-show-tickets .ticket span {
   display: inline-block;
   width: 20%;
   color: #fff;
@@ -311,7 +311,7 @@ header nav li a:hover {
   height: 100%;
 }
 
-#view-checkout .ticket span:first-child {
+.checkout-show-tickets .ticket span:first-child {
   background: linear-gradient(to right, #ffc400, #654e01);
   float: left;
   font-size: 24px;
@@ -321,7 +321,7 @@ header nav li a:hover {
   width: 30%;
 }
 
-#view-checkout .total {
+.checkout-show-tickets .total {
   width: 500px;
   margin: 10px auto;
   text-align: right;
@@ -339,6 +339,35 @@ header nav li a:hover {
 #view-checkout h4 {
   text-align: center;
   margin:10px;
+}
+
+#view-checkout-paypal .pay {
+  text-align: center;
+  padding-top: 50px;
+}
+
+#view-checkout-paypal .pay #checkout-paypal-button {
+  display:inline-block;
+}
+
+#view-checkout-paypal h4 {
+  text-align: center;
+  margin:10px;
+}
+
+#view-checkout-paypal .empty {
+  display: block;
+  text-align: center;
+  width: 400px;
+  margin: 10px auto;
+  font-size: 16px;
+  color: #dff0d8;
+  padding: 20px;
+}
+
+#view-checkout-paypal .ref {
+  text-align: center;
+  padding: 20px;
 }
 
 #view-my-tickets .ticket {

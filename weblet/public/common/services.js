@@ -58,3 +58,76 @@ app.service('notifyService', function($timeout) {
   }
 
 })
+
+app.service('paypalService', function() {
+  var service = this
+
+  var checkoutScriptLoaded = false
+
+  service.loadCheckoutScript = function(/*fn*/ callback) {
+    if (checkoutScriptLoaded) callback()
+    else $.getScript('https://www.paypalobjects.com/api/checkout.js', function() {
+      checkoutScriptLoaded = true
+      callback()
+    })
+  }
+
+  service.checkout = function(/*obj*/ options) {
+    ['onBefore',
+     'onReady',
+     'env',
+     'appKeyProduction',
+     'appKeySandbox',
+     'total',
+     'currency',
+     'placeId',
+     'profileId',
+     'onSuccess',
+     'onError',
+     'button'
+    ].forEach(function(v) {
+      assert(options[v], 'Required but missing: '+v)
+    })
+
+    var render = {
+      env: options.env, // 'production|sandbox' environment
+
+      client: { // API key for PayPal REST App
+        sandbox:    options.appKeySandbox,
+        production: options.appKeyProduction
+      },
+
+      payment: function() {
+          var env    = this.props.env
+          var client = this.props.client
+
+          return paypal.rest.payment.create(env, client, {
+            transactions: [
+              {
+                amount: { total: options.total, currency: options.currency },   // Note: must match the PayPal account currency
+                custom: 'place='+options.placeId+',profile='+options.profileId, // Required: Place ID and Profile ID
+                invoice_number: (options.ref ? 'ref='+options.ref : null)       // Optional: must be unique, can be processed by PayPal only once
+              }
+            ]
+          })
+      },
+
+      commit: true, // Optional: show a 'Pay Now' button in the checkout flow
+
+      onAuthorize: function(data, actions) {
+        // Optional: display a confirmation page here
+        return actions.payment.execute()
+          .then(options.onSuccess) // Show a success page to the buyer
+          .catch(options.onError)  // Show an error page to the buyer
+      }
+    }
+
+    options.onBefore()
+    service.loadCheckoutScript(function() {
+      paypal.Button.render(render, options.button)
+      options.onReady()
+    })
+
+  }
+
+})

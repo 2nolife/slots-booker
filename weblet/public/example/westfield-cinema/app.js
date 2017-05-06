@@ -13,6 +13,7 @@ app.config(function($routeProvider, $httpProvider) {
     .when('/hall/:hallId', { templateUrl: 'views/hallSchedule.html', controller: 'hallScheduleController' })
     .when('/hall/:hallId/:slotId', { templateUrl: 'views/hallSeats.html', controller: 'hallSeatsController' })
     .when('/checkout', { templateUrl: 'views/checkout.html', controller: 'checkoutController' })
+    .when('/checkout-paypal', { templateUrl: 'views/checkoutPaypal.html', controller: 'checkoutPaypalController' })
     .when('/refund', { templateUrl: 'views/refund.html', controller: 'refundController' })
     .when('/my-tickets', { templateUrl: 'views/myTickets.html', controller: 'myTicketsController' })
     .otherwise({ redirectTo: '/featuring' })
@@ -27,16 +28,19 @@ app.constant('config', {
   place_external_key: 'westfield-cinema',
 
   all_movies: [ // copy paste from westfield-cinema.js
-      { key: 'ro', title: 'Rogue One',         time: 60+45, cover: 'cover_rogue_one.jpeg',       price_add: 150 },
-      { key: 'ca', title: 'Captain America',   time: 60+35, cover: 'cover_captain_america.jpeg', price_add: 150 },
-      { key: 'jb', title: 'Jason Bourne',      time: 60+15, cover: 'cover_jason_bourne.jpeg',    price_add: 0   },
-      { key: 'ds', title: 'Doctor Strange',    time: 60+30, cover: 'cover_doctor_strange.jpeg',  price_add: 0   },
-      { key: 'ss', title: 'Suicide Squad',     time: 60+45, cover: 'cover_suicide_squad.jpeg',   price_add: 0   },
-      { key: 'st', title: 'Star Trek',         time: 60+35, cover: 'cover_star_trek.jpeg',       price_add: 0   },
-      { key: 'dp', title: 'Deadpool',          time: 60+20, cover: 'cover_deadpool.jpeg',        price_add: 50  },
-      { key: 'bs', title: 'Batman v Superman', time: 60+30, cover: 'cover_batman_superman.jpeg', price_add: 150 },
-      { key: 'wc', title: 'Warcraft',          time: 60+35, cover: 'cover_warcraft.jpeg',        price_add: 50  }
-    ]
+    { key: 'ro', title: 'Rogue One',         time: 60+45, cover: 'cover_rogue_one.jpeg',       price_add: 150 },
+    { key: 'ca', title: 'Captain America',   time: 60+35, cover: 'cover_captain_america.jpeg', price_add: 150 },
+    { key: 'jb', title: 'Jason Bourne',      time: 60+15, cover: 'cover_jason_bourne.jpeg',    price_add: 0   },
+    { key: 'ds', title: 'Doctor Strange',    time: 60+30, cover: 'cover_doctor_strange.jpeg',  price_add: 0   },
+    { key: 'ss', title: 'Suicide Squad',     time: 60+45, cover: 'cover_suicide_squad.jpeg',   price_add: 0   },
+    { key: 'st', title: 'Star Trek',         time: 60+35, cover: 'cover_star_trek.jpeg',       price_add: 0   },
+    { key: 'dp', title: 'Deadpool',          time: 60+20, cover: 'cover_deadpool.jpeg',        price_add: 50  },
+    { key: 'bs', title: 'Batman v Superman', time: 60+30, cover: 'cover_batman_superman.jpeg', price_add: 150 },
+    { key: 'wc', title: 'Warcraft',          time: 60+35, cover: 'cover_warcraft.jpeg',        price_add: 50  }
+  ],
+
+  paypal_sandbox_key: 'ASvMOVLnKOgHDAKYbDpuX1UNi8-c5POxJ4ks3ZlF-zj2UZU32_VE-EODxgBWIxxnkwT7uG1StIQA78Mr', //todo config in Place/Payment
+  paypal_production_key: 'ASvMOVLnKOgHDAKYbDpuX1UNi8-c5POxJ4ks3ZlF-zj2UZU32_VE-EODxgBWIxxnkwT7uG1StIQA78Mr'
 
 })
 

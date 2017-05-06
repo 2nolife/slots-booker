@@ -36,9 +36,9 @@ trait BookingMsRestCalls extends SystemRestCalls {
   def expiredReferenceFromMsBooking: (ApiCode, Option[vo.ext.Reference]) =
     restGet[vo.ext.Reference](s"$bookingBaseUrl/booking/reference/expired")
 
-  def cancelExpiredReferenceWithMsBooking(slotIds: Seq[String]): ApiCode =
-    restPost[EmptyEntity](s"$bookingBaseUrl/booking/cancel", vo.ext.CancelSlots(Some(slotIds),
-      Some(Attributes(JsObject("reason" -> JsString("expired"))))))._1
+  def cancelExpiredReferenceWithMsBooking(slotIds: Seq[String], profileId: String): ApiCode =
+    restPost[EmptyEntity](s"$bookingBaseUrl/booking/cancel", vo.ext.CancelSlots(Some(slotIds), Some(profileId),
+      Some(Attributes(JsObject("cancel_reason" -> JsString("expired"))))))._1
 }
 
 trait PaymentsService {
@@ -141,7 +141,7 @@ trait ProcessReference {
     if (reference.isEmpty) (code, None)
     else {
       val slotIds = reference.get.quote.get.prices.getOrElse(Nil).map(_.slot_id)
-      val code = cancelExpiredReferenceWithMsBooking(slotIds)
+      val code = cancelExpiredReferenceWithMsBooking(slotIds, reference.get.profile_id.get)
       (code, reference)
     }
   }
