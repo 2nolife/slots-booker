@@ -2,6 +2,9 @@ package com.coldcore.slotsbooker
 package ms.payments.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
+import ms.attributes.Types._
+import ms.attributes.{OncePermission, WritePermission, Permission => ap, Util => au}
+import ms.vo.Implicits._
 import ms.rest.RequestInfo
 import ms.payments.service.{PaymentsService, PaymentsServiceImpl}
 import ms.http.{ApiCode, RestClient}
@@ -21,27 +24,37 @@ trait BalanceCommands {
   case class GetBalanceIN(placeId: String, profileId: Option[String], profile: ProfileRemote) extends RequestInfo
 }
 
+trait AccountCommands {
+  case class UpdateCurrencyAccountIN(obj: vo.UpdateCurrencyAccount, profile: ProfileRemote) extends RequestInfo
+  case class GetAccountIN(placeId: String, profile: ProfileRemote) extends RequestInfo
+}
+
 trait ReferenceCommands {
   case class GetReferenceIN(ref: String, profileId: Option[String], profile: ProfileRemote) extends RequestInfo
   case class ProcessReferenceIN(obj: vo.ProcessReference, profile: ProfileRemote) extends RequestInfo
 }
 
-object PaymentsActor extends BalanceCommands with ReferenceCommands {
-  def props(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl: String, systemToken: String, restClient: RestClient): Props =
-    Props(new PaymentsActor(paymentsDb, placesBaseUrl, bookingBaseUrl, systemToken, restClient))
+object PaymentsActor extends BalanceCommands with AccountCommands with ReferenceCommands {
+  def props(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl: String, systemToken: String, restClient: RestClient, voAttributes: VoAttributes): Props =
+    Props(new PaymentsActor(paymentsDb, placesBaseUrl, bookingBaseUrl, systemToken, restClient, voAttributes))
 }
 
 class PaymentsActor(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl: String, systemToken: String,
-                    restClient: RestClient) extends Actor with ActorLogging with MsgInterceptor
-  with AmendBalance with GetBalance with ProcessReference with GetReference {
+                    restClient: RestClient, val voAttributes: VoAttributes) extends Actor with ActorLogging with MsgInterceptor with VoExpose
+  with AmendBalance with GetBalance with AmendAccount with GetAccount with ProcessReference with GetReference {
 
   val paymentsService: PaymentsService = new PaymentsServiceImpl(paymentsDb, placesBaseUrl, bookingBaseUrl, systemToken, restClient)
 
   def receive =
     amendBalanceReceive orElse getBalanceReceive orElse
+    amendAccountReceive orElse getAccountReceive orElse
     processReferenceReceive orElse getReferenceReceive
 
   val placeModerator = (place: vo.ext.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
+
+  def permitAttributes(obj: vo.UpdateCurrencyAccount, place: vo.ext.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("currency_account"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
 }
 
 trait AmendBalance {
@@ -59,13 +72,13 @@ trait AmendBalance {
 
       def update(): Option[vo.Balance] = Some(paymentsService.addCredit(obj.place_id, obj.profile_id, obj))
 
-      val (code, credit) =
+      val (code, balance) =
         if (invalidEntity) (ApiCode(SC_BAD_REQUEST, 'reason_missing), None)
         else if (placeNotFound) (codeA, None)
         else if (canUpdate) (ApiCode.OK, update())
         else (ApiCode(SC_FORBIDDEN), None)
 
-      reply ! CodeEntityOUT(code, credit)
+      reply ! CodeEntityOUT(code, balance)
 
   }
 
@@ -84,12 +97,62 @@ trait GetBalance {
 
       def read(): Option[vo.Balance] = Some(paymentsService.getBalance(placeId, profileId.getOrElse(profile.profile_id)))
 
-      val (code, credit) =
+      val (code, balance) =
         if (placeNotFound) (codeA, None)
         else if (canRead) (ApiCode.OK, read())
         else (ApiCode(SC_FORBIDDEN), None)
 
-      reply ! CodeEntityOUT(code, credit)
+      reply ! CodeEntityOUT(code, balance)
+
+  }
+
+}
+
+trait AmendAccount {
+  self: PaymentsActor =>
+  import PaymentsActor._
+
+  val amendAccountReceive: Actor.Receive = {
+
+    case UpdateCurrencyAccountIN(obj, profile) =>
+      lazy val (codeA, myPlace) = paymentsService.placeById(obj.place_id)
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
+      lazy val canUpdate = placeModerator(myPlace.get, profile) || profile.isSuper
+
+      def update(): Option[vo.Account] = Some(paymentsService.updateAccount(obj.place_id, obj))
+
+      val (code, account) =
+        if (placeNotFound) (codeA, None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
+        else if (canUpdate) (ApiCode.OK, update())
+        else (ApiCode(SC_FORBIDDEN), None)
+
+      reply ! CodeEntityOUT(code, exposeAccount(account, myPlace, profile))
+
+  }
+
+}
+
+trait GetAccount {
+  self: PaymentsActor =>
+  import PaymentsActor._
+
+  val getAccountReceive: Actor.Receive = {
+
+    case GetAccountIN(placeId, profile) =>
+      lazy val (codeA, myPlace) = paymentsService.placeById(placeId)
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val canRead = true
+
+      def read(): Option[vo.Account] = Some(paymentsService.getAccount(placeId))
+
+      val (code, account) =
+        if (placeNotFound) (codeA, None)
+        else if (canRead) (ApiCode.OK, read())
+        else (ApiCode(SC_FORBIDDEN), None)
+
+      reply ! CodeEntityOUT(code, exposeAccount(account, myPlace, profile))
 
   }
 
@@ -174,4 +237,33 @@ class ExpiredActor(paymentsDb: PaymentsDb, placesBaseUrl: String, bookingBaseUrl
       }
 
   }
+}
+
+trait VoExpose {
+  self: {
+    val voAttributes: VoAttributes
+  } =>
+
+  private val placeModerator = (place: vo.ext.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
+
+  def expose(obj: vo.Account, place: vo.ext.Place, profile: ProfileRemote): vo.Account =
+    Some(obj)
+      .map { p => exposeCurrencies(p.currencies, Some(place), profile); p }
+      .get
+
+  def exposeAccount(obj: Option[vo.Account], place: Option[vo.ext.Place], profile: ProfileRemote): Option[vo.Account] =
+    obj.map(expose(_, place.get, profile))
+
+  def expose(obj: vo.CurrencyAccount, place: vo.ext.Place, profile: ProfileRemote): vo.CurrencyAccount =
+    Some(obj)
+      .map(p => au.exposeClass(p, voAttributes("currency_account"), ap.defaultRead(profile, _ => placeModerator(place, profile))))
+      .map(p => p.copy(attributes = p.attributes.noneIfEmpty))
+      .get
+
+  def exposeCurrency(obj: Option[vo.CurrencyAccount], place: Option[vo.ext.Place], profile: ProfileRemote): Option[vo.CurrencyAccount] =
+    obj.map(expose(_, place.get, profile))
+
+  def exposeCurrencies(obj: Option[Seq[vo.CurrencyAccount]], place: Option[vo.ext.Place], profile: ProfileRemote): Option[Seq[vo.CurrencyAccount]] =
+    obj.map(_.map(expose(_, place.get, profile)).toList)
+
 }

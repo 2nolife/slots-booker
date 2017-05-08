@@ -144,6 +144,7 @@ trait MongoTables {
   lazy val mongoSlotPrices: MongoCollection = mongoDB(slots.Constants.MS+"-prices")
 
   lazy val mongoBalances: MongoCollection = mongoDB(payments.Constants.MS+"-balances")
+  lazy val mongoAccounts: MongoCollection = mongoDB(payments.Constants.MS+"-accounts")
 
   lazy val mongoQuotes: MongoCollection = mongoDB(booking.Constants.MS+"-quotes")
   lazy val mongoRefunds: MongoCollection = mongoDB(booking.Constants.MS+"-refunds")
@@ -416,6 +417,17 @@ trait MongoCreate {
       .insert(balance)
   }
 
+  def mongoCreateAccount(placeId: String, currency: String = "GBP") = {
+    val account = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "currencies" -> MongoDBList(MongoDBObject(
+        "currency" -> currency
+      )))
+    mongoAccounts
+      .insert(account)
+  }
+
   def mongoCreateFreeRefund(placeId: String, slotsIds: Seq[String], quoteIds: Seq[String], status: Int = 0, username: String = "testuser"): String = {
     val refund = MongoDBObject(
       "test" -> true,
@@ -624,6 +636,7 @@ trait MongoCleaner {
         mongoPrices ::
         mongoSpaces ::
         mongoBalances ::
+        mongoAccounts ::
         mongoQuotes ::
         mongoRefunds ::
         mongoReferences ::

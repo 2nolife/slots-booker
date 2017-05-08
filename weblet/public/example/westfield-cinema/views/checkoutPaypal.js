@@ -1,4 +1,4 @@
-app.controller('checkoutPaypalController', function($scope, state, config, paypalService) {
+app.controller('checkoutPaypalController', function($scope, state, config, paypalService, apiPaymentsService) {
 
   var opts = {}
 
@@ -36,12 +36,17 @@ app.controller('checkoutPaypalController', function($scope, state, config, paypa
         bookingFailed()
       })
     }
-    opts.env = 'sandbox'
-    opts.appKeySandbox = config.paypal_sandbox_key
-    opts.appKeyProduction = config.paypal_production_key
     opts.button = '#checkout-paypal-button'
 
-    paypalService.checkout(opts)
+    getAccount(opts.placeId, opts.currency, function(/*json*/ attrs) {
+      opts.env = attrs.paypal_env
+      opts.appKeySandbox = attrs.paypal_skey
+      opts.appKeyProduction = attrs.paypal_pkey
+
+      if (!opts.env) bookingFailed()
+      else paypalService.checkout(opts)
+    })
+
   }
 
   function bookingFailed() {
@@ -52,6 +57,13 @@ app.controller('checkoutPaypalController', function($scope, state, config, paypa
     $scope.reference = state.checkout.reference
     $scope.status = 'success'
     state.checkout.complete = true
+  }
+
+  function getAccount(/*str*/ placeId, /*str*/ currency, /*fn*/ callback) {
+    apiPaymentsService.getPlaceAccount(placeId, function(/*Account*/ account) {
+      var attrs = account.currencyIn(currency).attributes
+      callback(attrs)
+    })
   }
 
 })

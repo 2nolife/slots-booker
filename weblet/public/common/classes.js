@@ -852,7 +852,23 @@ function Balance(/*json*/ source, /*services*/ sc) { // read-only
 
   this.creditIn = function(/*str*/ currency) {
     var arr = $.grep(_this.credit, function(c) { return c.currency == currency })
-    return arr.length ? arr[0] : { amount: 0, currency: currency }
+    return arr.length ? arr[0] : { currency: currency, amount: 0 }
+  }
+
+}
+
+function Account(/*json*/ source, /*services*/ sc) { // read-only
+
+  var _this = this
+
+  this.sc = sc
+  this.source = source
+
+  this.currencies = source.currencies || []
+
+  this.currencyIn = function(/*str*/ currency) {
+    var arr = $.grep(_this.currencies, function(c) { return c.currency == currency })
+    return arr.length ? arr[0] : { currency: currency, attributes: {} }
   }
 
 }

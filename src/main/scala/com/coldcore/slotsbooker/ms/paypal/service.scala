@@ -33,10 +33,10 @@ trait PaymentsMsRestCalls extends SystemRestCalls {
   } =>
 
   def processReferenceWithMsPaymets(ref: String, profileId: String): ApiCode =
-    restPost[EmptyEntity](s"$paymentsBaseUrl/payments/reference/process", vo.ext.ProcessReference(ref, Some(profileId)))._1
+    restPatch[EmptyEntity](s"$paymentsBaseUrl/payments/reference/process", vo.ext.ProcessReference(ref, Some(profileId)))._1
 
   def updateCreditWithMsPaymets(placeId: String, profileId: String, amount: Int, currency: String, source: JsObject): ApiCode =
-    restPost[EmptyEntity](s"$paymentsBaseUrl/payments/balance", vo.ext.UpdateCredit(profileId, placeId, amount, currency, source))._1
+    restPatch[EmptyEntity](s"$paymentsBaseUrl/payments/balance", vo.ext.UpdateCredit(profileId, placeId, amount, currency, source))._1
 }
 
 trait PaypalService {

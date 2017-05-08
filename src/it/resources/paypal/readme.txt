@@ -1,8 +1,24 @@
+PayPal sandbox instructions
+===========================
+  1) Login to "https://developer.paypal.com/developer/accounts/"
+  2) Create a sandbox Business account
+  3) Create REST API application "https://developer.paypal.com/developer/applications/"
+     name it "slotsbooker" and link to the sandbox account
+  4) Create a web hook for "Payment sale completed" event pointing
+     to SB, eg. "https://sb.coldcore.com/api/paypal/events"
+  5) Use REST app Client ID to send payments to the test account
+
+
+Update DB with REST app details
+===============================
+Update "paypal_skey" property in the "ms-payments-accounts" collection with your app key
+
+
 How to simulate "sale completed" event
 ======================================
   API: https://developer.paypal.com/docs/api/payments/#payment_create
 
-  Enable "sandbox_mode"
+  Enable "sandbox_mode" in "application.conf"
   Modify "event-sale-completed.json": change "id", "custom", "invoice"
     or get a payload from PayPal developer "Sandbox Webhooks Events"
   

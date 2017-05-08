@@ -549,7 +549,7 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
   var service = this
 
   service.processReference = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.post('/api/payments/reference/process', entity)
+    $http.patch('/api/payments/reference/process', entity)
       .then(
         function successCallback(response) {
           var balance = response.data
@@ -580,6 +580,19 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
         function successCallback(response) {
           var balance = response.data
           callback(apiClassWrap.wrap(balance, 'balance'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+        })
+  },
+
+  service.getPlaceAccount = function(/*str*/ placeId, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.get('/api/payments/account?place_id='+placeId)
+      .then(
+        function successCallback(response) {
+          var account = response.data
+          callback(apiClassWrap.wrap(account, 'account'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
@@ -639,6 +652,9 @@ app.service('apiClassWrap', function($injector) {
         break
       case 'balance':
         clz = new Balance(json, sc)
+        break
+      case 'account':
+        clz = new Account(json, sc)
         break
     }
 

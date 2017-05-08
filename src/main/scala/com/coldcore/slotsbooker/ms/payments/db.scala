@@ -1,6 +1,7 @@
 package com.coldcore.slotsbooker
 package ms.payments.db
 
+import ms.vo.Attributes
 import ms.Timestamp
 import ms.db.MongoQueries
 import ms.payments.Constants._
@@ -10,18 +11,24 @@ import com.mongodb.casbah.commons.MongoDBObject
 import ms.payments.vo
 import spray.json._
 
-trait PaymentsDb extends BalanceCRUD
+trait PaymentsDb extends BalanceCRUD with AccountCRUD
 
 trait BalanceCRUD {
   def getBalance(placeId: String, profileId: String): vo.Balance
   def addCredit(placeId: String, profileId: String, obj: vo.UpdateCredit): vo.Balance
 }
 
+trait AccountCRUD {
+  def getAccount(placeId: String): vo.Account
+  def updateAccount(placeId: String, obj: vo.UpdateCurrencyAccount): vo.Account
+}
+
 class MongoPaymentsDb(client: MongoClient, dbName: String) extends PaymentsDb with VoFactory with MongoQueries
-  with BalanceCrudImpl with TxCrudImpl {
+  with BalanceCrudImpl with AccountCrudImpl with TxCrudImpl {
 
   private val db = client(dbName)
   val balances = db(MS+"-balances")
+  val accounts = db(MS+"-accounts")
   val tx = db(MS+"-tx")
 
 }
@@ -49,11 +56,40 @@ trait VoFactory {
     )
   }
 
+  def asAccount(data: MongoDBObject): vo.Account = {
+    import data._
+    vo.Account(
+      place_id = as[String]("place_id"),
+      currencies =
+        getAs[Seq[DBObject]]("currencies")
+          .map(_.map(asCurrencyAccount(_)))
+          .noneIfEmpty
+    )
+  }
+
+  def asCurrencyAccount(data: MongoDBObject): vo.CurrencyAccount = {
+    import data._
+    vo.CurrencyAccount(
+      currency = getAs[String]("currency"),
+      attributes =
+        getAs[AnyRef]("attributes")
+        .map(json => Attributes(json.toString))
+    )
+  }
+
   def asMongoObject(credit: vo.Credit): MongoDBObject = {
     import credit._
     MongoDBObject(
       "amount" -> amount.get,
       "currency" -> currency.get
+    )
+  }
+
+  def asMongoObject(currencyAccount: vo.CurrencyAccount): MongoDBObject = {
+    import currencyAccount._
+    MongoDBObject(
+      "currency" -> currency.get,
+      "attributes" -> asDBObject(attributes.get.value)
     )
   }
 
@@ -131,6 +167,75 @@ trait BalanceCrudImpl {
       .map(asBalance(_))
       .get
   }
+}
+
+trait AccountCrudImpl {
+  self: MongoPaymentsDb =>
+
+  override def getAccount(placeId: String): vo.Account =
+    accounts
+      .findOne("place_id" $eq placeId)
+      .map(asAccount(_))
+      .getOrElse(vo.Account(placeId, currencies = None))
+
+  private def ensureAccountRecord(placeId: String, currency: String): String = {
+    val recordFinder = "place_id" $eq placeId
+    accounts
+      .update(
+        recordFinder,
+        $setOnInsert(
+          "place_id" -> placeId,
+          "entry.created" -> Timestamp.asLong),
+        upsert = true)
+
+    accounts
+      .findOne(recordFinder ++ ("currencies.currency" $eq currency))
+      .orElse {
+        accounts
+          .findAndModify(
+            recordFinder,
+            $addToSet("currencies" -> MongoDBObject(
+              "currency" -> currency
+            )))
+      }
+
+    accounts
+      .findOne(recordFinder)
+      .map(_.idString)
+      .get
+  }
+
+  override def updateAccount(placeId: String, obj: vo.UpdateCurrencyAccount): vo.Account = {
+    import obj._
+    val accountId = ensureAccountRecord(placeId, currency)
+
+    val currencies =
+      accounts
+        .findOne(finderById(accountId))
+        .map(asAccount(_))
+        .flatMap(_.currencies)
+        .get
+
+    val nc =
+      currencies.find(_.currency.get == currency).map { c =>
+        val merged = mergeJsObject(c.attributes.map(_.value).getOrElse(JsObject()), attributes.map(_.value).getOrElse(JsObject()))
+        c.copy(attributes = Some(Attributes(merged)))
+      }.get
+
+    val ncurrencies =
+      currencies.filter(_.currency.get != currency) :+ nc
+
+    accounts
+      .update(finderById(accountId), $set("currencies" -> ncurrencies.map(asMongoObject)))
+
+    entryUpdated(accountId, accounts)
+
+    accounts
+      .findOne(finderById(accountId))
+      .map(asAccount(_))
+      .get
+  }
+
 }
 
 trait TxCrudImpl {

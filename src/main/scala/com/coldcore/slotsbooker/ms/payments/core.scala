@@ -22,7 +22,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val paymentsActor = system.actorOf(PaymentsActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = MS)
+    val paymentsActor = system.actorOf(PaymentsActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = MS)
     val expiredActor = system.actorOf(ExpiredActor.props(paymentsDb, config.placesBaseUrl, config.bookingBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = s"$MS-expired")
 
     new PaymentsRestService(config.hostname, config.port, paymentsActor, externalAuthActor(config, restClient))

@@ -51,6 +51,7 @@ This code is open source software licensed under the [GNU Lesser General Public 
 * References for successful bookings and refunds
 * Local timezone support per club
 * Responses with full and partial JSON graph
+* Users can credit clubs and pay through PayPal
 * Genius Bar: the simple UI example to demo basic bookings
 * Westfield Cinema: the advanced UI example to demo a cinema
 
@@ -58,7 +59,6 @@ This code is open source software licensed under the [GNU Lesser General Public 
 
 ### Major topics ###
 * Control panel for users, admins and moderators
-* Users must be able to credit clubs through PayPal
 * 3rd party payment support
 * Deals and promotions on slots (get 3 for the price of 2)
 * Discount for club members and membership types

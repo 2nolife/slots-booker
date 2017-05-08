@@ -37,10 +37,7 @@ app.constant('config', {
     { key: 'dp', title: 'Deadpool',          time: 60+20, cover: 'cover_deadpool.jpeg',        price_add: 50  },
     { key: 'bs', title: 'Batman v Superman', time: 60+30, cover: 'cover_batman_superman.jpeg', price_add: 150 },
     { key: 'wc', title: 'Warcraft',          time: 60+35, cover: 'cover_warcraft.jpeg',        price_add: 50  }
-  ],
-
-  paypal_sandbox_key: 'ASvMOVLnKOgHDAKYbDpuX1UNi8-c5POxJ4ks3ZlF-zj2UZU32_VE-EODxgBWIxxnkwT7uG1StIQA78Mr', //todo config in Place/Payment
-  paypal_production_key: 'ASvMOVLnKOgHDAKYbDpuX1UNi8-c5POxJ4ks3ZlF-zj2UZU32_VE-EODxgBWIxxnkwT7uG1StIQA78Mr'
+  ]
 
 })
 

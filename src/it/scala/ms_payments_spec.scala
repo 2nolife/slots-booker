@@ -32,7 +32,7 @@ class MsPaymentsBalanceSpec extends BaseMsPaymentsSpec {
 
   "GET to /payments/balance?place_id={?}" should "give 401 with invalid bearer token" in {
     val url = s"$paymentsBaseUrl/payments/balance?place_id=$randomId"
-    assert401_invalidToken { When postTo url entity "{}" }
+    assert401_invalidToken { When getTo url }
   }
 
   "GET to /payments/balance?place_id={?}" should "return user balance even if entry does not exist" in {
@@ -69,12 +69,12 @@ class MsPaymentsBalanceSpec extends BaseMsPaymentsSpec {
     balance.credit.get.head.amount.get shouldBe 600
   }
 
-  "POST to /payments/balance" should "give 401 with invalid bearer token" in {
+  "PATCH to /payments/balance" should "give 401 with invalid bearer token" in {
     val url = s"$paymentsBaseUrl/payments/balance"
-    assert401_invalidToken { When postTo url entity "{}" }
+    assert401_invalidToken { When patchTo url entity "{}" }
   }
 
-  "POST to /payments/balance" should "give 403 for non moderator" in {
+  "PATCH to /payments/balance" should "give 403 for non moderator" in {
     val placeId = mongoCreatePlace()
     val profileId = mongoProfileId("testuser")
 
@@ -82,10 +82,10 @@ class MsPaymentsBalanceSpec extends BaseMsPaymentsSpec {
     val source = """{ "reason": "manual change" }"""
     val json = s"""{ "profile_id": "$profileId", "place_id": "$placeId", "amount": 1200, "currency": "GBP", "source": $source }"""
     val headers = authHeaderSeq("testuser2")
-    When postTo url entity json withHeaders headers expect() code SC_FORBIDDEN
+    When patchTo url entity json withHeaders headers expect() code SC_FORBIDDEN
   }
 
-  "POST to /payments/balance" should "add or remove amount for that user" in {
+  "PATCH to /payments/balance" should "add or remove amount for that user" in {
     val placeId = mongoCreatePlace()
     val profileId = mongoProfileId("testuser2")
 
@@ -94,19 +94,97 @@ class MsPaymentsBalanceSpec extends BaseMsPaymentsSpec {
     val source = """{ "reason": "manual change" }"""
 
     val jsonA = s"""{ "profile_id": "$profileId", "place_id": "$placeId", "amount": 1200, "currency": "GBP", "source": $source }"""
-    val balanceA = (When postTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
+    val balanceA = (When patchTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
 
     balanceA.credit.get.head.amount.get shouldBe 1200
 
     val jsonB = s"""{ "profile_id": "$profileId", "place_id": "$placeId", "amount": -700, "currency": "GBP", "source": $source }"""
-    val balanceB = (When postTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
+    val balanceB = (When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
 
     balanceB.credit.get.head.amount.get shouldBe 500
 
     val jsonC = s"""{ "profile_id": "$profileId", "place_id": "$placeId", "amount": 150, "currency": "EUR", "source": $source }"""
-    val balanceC = (When postTo url entity jsonC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
+    val balanceC = (When patchTo url entity jsonC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
 
     balanceC.credit.get.map(c => c.currency.get -> c.amount.get) shouldBe Seq("GBP" -> 500, "EUR" -> 150)
+  }
+
+}
+
+class MsPaymentsAccountSpec extends BaseMsPaymentsSpec {
+
+  "GET to /payments/account?place_id={?}" should "give 401 with invalid bearer token" in {
+    val url = s"$paymentsBaseUrl/payments/account?place_id=$randomId"
+    assert401_invalidToken { When getTo url }
+  }
+
+  "GET to /payments/account?place_id={?}" should "return place account" in {
+    val placeId = mongoCreatePlace()
+    mongoCreateAccount(placeId)
+
+    val urlA = s"$paymentsBaseUrl/payments/account?place_id=$placeId"
+    val accountA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Account]
+
+    accountA.currencies.get.head.currency.get shouldBe "GBP"
+  }
+
+  "GET to /payments/account?place_id={?}" should "return place account even if entry does not exist" in {
+    val placeId = mongoCreatePlace()
+
+    val urlB = s"$paymentsBaseUrl/payments/account?place_id=$placeId"
+    val accountB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Account]
+
+    accountB.currencies shouldBe None
+  }
+
+  "PATCH to /payments/account" should "give 401 with invalid bearer token" in {
+    val url = s"$paymentsBaseUrl/payments/account"
+    assert401_invalidToken { When patchTo url entity "{}" }
+  }
+
+  "PATCH to /payments/account" should "give 403 for non moderator" in {
+    val placeId = mongoCreatePlace()
+    val profileId = mongoProfileId("testuser")
+
+    val url = s"$paymentsBaseUrl/payments/account"
+    val json = s"""{ "place_id": "$placeId", "currency": "GBP" }"""
+    val headers = authHeaderSeq("testuser2")
+    When patchTo url entity json withHeaders headers expect() code SC_FORBIDDEN
+  }
+
+  "PATCH to /payments/balance" should "update place currency account attributes" in {
+    val placeId = mongoCreatePlace()
+
+    val url = s"$paymentsBaseUrl/payments/account"
+    val source = """{ "reason": "manual change" }"""
+
+    val jsonA = s"""{ "place_id": "$placeId", "currency": "GBP", "attributes": {"kez_rw": "value_a", "kez_rwp": "value_b"} }"""
+    val accountA = (When patchTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Account]
+
+    accountA.currencies.get.size shouldBe 1
+
+    {
+      val ca = accountA.currencies.get.head
+      ca.currency.get shouldBe "GBP"
+      ca.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("value_a"), "kez_rwp" -> JsString("value_b")))
+    }
+
+    val jsonB = s"""{ "place_id": "$placeId", "currency": "EUR", "attributes": {"kez_rw": "value_c"} }"""
+    val accountB = (When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Account]
+
+    accountB.currencies.get.size shouldBe 2
+
+    val jsonC = s"""{ "place_id": "$placeId", "currency": "EUR", "attributes": {"kez_rw": "value_d"} }"""
+    val accountC = (When patchTo url entity jsonC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Account]
+
+    accountC.currencies.get.size shouldBe 2
+
+    {
+      val ca = accountC.currencies.get.last
+      ca.currency.get shouldBe "EUR"
+      ca.attributes.get.value shouldBe JsObject(Map("kez_rw" -> JsString("value_d")))
+    }
+
   }
 
 }
@@ -124,7 +202,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     )
   }
 
-  "POST to /payments/reference/process" should "debit user balance as per reference quote" in {
+  "PATCH to /payments/reference/process" should "debit user balance as per reference quote" in {
     val placeId = {
       val ids = setupBalanceAndUnpaidQuote(5000)
       ids("placeId")
@@ -134,7 +212,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1" }"""
-    When postTo url entity json withHeaders headers expect() code SC_OK
+    When patchTo url entity json withHeaders headers expect() code SC_OK
 
     val urlA = s"$paymentsBaseUrl/payments/balance?place_id=$placeId&profile_id=$profileId"
     val balanceA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
@@ -142,7 +220,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     balanceA.credit.get.head.amount.get shouldBe 2600
   }
 
-  "POST to /payments/reference/process" should "credit user balance as per reference refund" in {
+  "PATCH to /payments/reference/process" should "credit user balance as per reference refund" in {
     val placeId = mongoCreatePlace()
     val profileId = mongoProfileId("testuser2")
     mongoCreateBalance(placeId, 5000, username = "testuser2")
@@ -152,7 +230,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1" }"""
-    When postTo url entity json withHeaders headers expect() code SC_OK
+    When patchTo url entity json withHeaders headers expect() code SC_OK
 
     val urlA = s"$paymentsBaseUrl/payments/balance?place_id=$placeId&profile_id=$profileId"
     val balanceA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
@@ -160,7 +238,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     balanceA.credit.get.head.amount.get shouldBe 7400
   }
 
-  "POST to /payments/reference/process" should "give 409 if quote or refund is not due payment" in {
+  "PATCH to /payments/reference/process" should "give 409 if quote or refund is not due payment" in {
     val placeId = {
       val ids = setupBalanceAndUnpaidQuote(5000, status = 1)
       ids("placeId")
@@ -170,7 +248,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1" }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When patchTo url entity json withHeaders headers expect() code SC_CONFLICT
 
     val urlA = s"$paymentsBaseUrl/payments/balance?place_id=$placeId&profile_id=$profileId"
     val balanceA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
@@ -178,10 +256,10 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     balanceA.credit.get.head.amount.get shouldBe 5000
   }
 
-  "POST to /payments/reference/process" should "give 404 if reference does not exist" in {
+  "PATCH to /payments/reference/process" should "give 404 if reference does not exist" in {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val json = s"""{ "ref": "$randomId" }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_NOT_FOUND
+    When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_NOT_FOUND
   }
 
   "POST to /payments/reference/process" should "give 403 if non-moderator processes reference of another user" in {
@@ -191,10 +269,10 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser3")
     val json = s"""{ "ref": "Testuser2_1", "as_profile_id": "$profileId" }"""
-    When postTo url entity json withHeaders headers expect() code SC_FORBIDDEN
+    When patchTo url entity json withHeaders headers expect() code SC_FORBIDDEN
   }
 
-  "POST to /payments/reference/process" should "process reference of another user if submitted by moderator" in {
+  "PATCH to /payments/reference/process" should "process reference of another user if submitted by moderator" in {
     val placeId = {
       val ids = setupBalanceAndUnpaidQuote(5000)
       ids("placeId")
@@ -204,7 +282,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1", "as_profile_id": "$profileId" }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_OK
+    When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK
 
     val urlA = s"$paymentsBaseUrl/payments/balance?place_id=$placeId&profile_id=$profileId"
     val balanceA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]
@@ -212,7 +290,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     balanceA.credit.get.head.amount.get shouldBe 2600
   }
 
-  "POST to /payments/reference/process" should "give 409 if not enough balance" in {
+  "PATCH to /payments/reference/process" should "give 409 if not enough balance" in {
     val placeId = {
       val ids = setupBalanceAndUnpaidQuote(2000)
       ids("placeId")
@@ -222,10 +300,10 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1" }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When patchTo url entity json withHeaders headers expect() code SC_CONFLICT
   }
 
-  "POST to /payments/reference/process" should "debit user balance as per reference quote and go to negative balance" in {
+  "PATCH to /payments/reference/process" should "debit user balance as per reference quote and go to negative balance" in {
     val placeId = {
       val ids = setupBalanceAndUnpaidQuote(2000)
       ids("placeId")
@@ -236,7 +314,7 @@ class MsPaymentsReferenceSpec extends BaseMsPaymentsSpec {
     val url = s"$paymentsBaseUrl/payments/reference/process"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "ref": "Testuser2_1" }"""
-    When postTo url entity json withHeaders headers expect() code SC_OK
+    When patchTo url entity json withHeaders headers expect() code SC_OK
 
     val urlA = s"$paymentsBaseUrl/payments/balance?place_id=$placeId&profile_id=$profileId"
     val balanceA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Balance]

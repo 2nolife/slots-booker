@@ -16,6 +16,15 @@ object Credit extends DefaultJsonProtocol { implicit val format = jsonFormat2(ap
 case class Balance(profile_id: String, place_id: String, credit: Option[Seq[Credit]])
 object Balance extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
+case class UpdateCurrencyAccount(place_id: String, currency: String, attributes: Option[Attributes])
+object UpdateCurrencyAccount extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+
+case class CurrencyAccount(currency: Option[String], attributes: Option[Attributes])
+object CurrencyAccount extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+
+case class Account(place_id: String, currencies: Option[Seq[CurrencyAccount]])
+object Account extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+
 /** External JSON objects from other micro services. */
 package ext {
 

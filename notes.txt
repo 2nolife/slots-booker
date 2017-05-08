@@ -187,7 +187,9 @@ Cancel process:
     If the Quote was paid, the user must request a new Refund (sees the amount to refund).
     If the Quote was not paid, a Refund step may be omitted (it be created by MS).
 
-TODO
+
+T O D O
+=======
 Maximum bookings per day
 Expiry actor every minute while no refs and then pull all refs one by one without delay
 prm# attribute (expands to prm1, prm2 etc)
@@ -198,16 +200,6 @@ Add generated X header to requests to track
 See if weblet sets proper X-Forwarded-For header
 Store PayPal app keys bound to currency in Payments
 
-PayPal sandbox instructions:
-1) Login to "https://developer.paypal.com/developer/accounts/"
-2) Sandbox -> Accounts then create a test sandbox Business account
-3) Create REST API application "https://developer.paypal.com/developer/applications/"
-   name it "slotsbooker" and link to the sandbox account
-4) Create a web hook for "Payment sale completed" event pointing to SB (eg. "https://sb.coldcore.com/api/paypal/events")
-5) Use simulator to fire events "https://developer.paypal.com/developer/webhooksSimulator/"
-5) TODO configure place attributes
-6) TODO sample transactions from test accounts
-7) TODO go to live
 
 Running in the background
 =========================

@@ -25,7 +25,7 @@ trait PaymentsRoute {
 
         path("balance") {
 
-          post {
+          patch {
             entity(as[vo.UpdateCredit]) { entity =>
               completeByActor[vo.Balance](paymentsActor, UpdateCreditIN(entity, profile))
             }
@@ -41,9 +41,23 @@ trait PaymentsRoute {
           }
 
         } ~
+        path("account") {
+
+          patch {
+            entity(as[vo.UpdateCurrencyAccount]) { entity =>
+              completeByActor[vo.Account](paymentsActor, UpdateCurrencyAccountIN(entity, profile))
+            }
+          } ~
+          get {
+            parameters('place_id) { placeId =>
+              completeByActor[vo.Account](paymentsActor, GetAccountIN(placeId, profile))
+            }
+          }
+
+        } ~
         path("reference" / "process") {
 
-          post {
+          patch {
             entity(as[vo.ProcessReference]) { entity =>
               completeByActor[EmptyEntity](paymentsActor, ProcessReferenceIN(entity, profile))
             }

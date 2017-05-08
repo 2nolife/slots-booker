@@ -320,6 +320,7 @@ function setupPlace() {
     .then(addPrices)
     .then(bookRandom)
     .then(function() { users.updateBalance('tester', _placeId, 25000, 'GBP') })
+    .then(function() { users.updatePaymentsAccount(_placeId, 'GBP') })
     .then(function() {
       console.log('Westfield Cinema place set up')
       deferred.resolve()

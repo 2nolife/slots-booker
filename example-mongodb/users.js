@@ -6,11 +6,12 @@ var qu = require('./query-utils')
 module.exports = {
   setVars: setVars,
   setupUsers: setupUsers,
-  updateBalance: updateBalance
+  updateBalance: updateBalance,
+  updatePaymentsAccount: updatePaymentsAccount
 }
 
 var _db, _profileIds, _placeIds
-var _users, _profiles, _balances
+var _users, _profiles, _balances, _accounts
 
 function setVars(/*obj*/ db, /*{}*/ profileIds, /*{}*/ placeIds) {
   _db = db
@@ -18,9 +19,10 @@ function setVars(/*obj*/ db, /*{}*/ profileIds, /*{}*/ placeIds) {
   _profileIds = profileIds
   _placeIds = placeIds
 
-  _users = db.collection('ms-auth-users'),
+  _users = db.collection('ms-auth-users')
   _profiles = db.collection('ms-profiles')
   _balances = db.collection('ms-payments-balances')
+  _accounts = db.collection('ms-payments-accounts')
 
   console.log('Users module set up')
 }
@@ -58,6 +60,25 @@ function updateBalance(/*str*/ username, /*str*/ placeId, /*num*/ amount, /*str*
         }]
       }
   qu.insert_one(_balances, newBalance, function onItem() {
+    deferred.resolve()
+  })
+  return deferred.promise
+}
+
+function updatePaymentsAccount(/*str*/ placeId, /*str*/ currency) {
+  var deferred = Q.defer(),
+      newAccount = {
+        place_id: placeId,
+        currencies: [{
+          currency: currency,
+          attributes: {
+            paypal_env: 'sandbox',
+            paypal_pkey: 'n/a',
+            paypal_skey: 'ASvMOVLnKOgHDAKYbDpuX1UNi8-c5POxJ4ks3ZlF-zj2UZU32_VE-EODxgBWIxxnkwT7uG1StIQA78Mr'
+          }
+        }]
+      }
+  qu.insert_one(_accounts, newAccount, function onItem() {
     deferred.resolve()
   })
   return deferred.promise

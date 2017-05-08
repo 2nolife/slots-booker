@@ -43,6 +43,11 @@ trait MongoQueries {
     collection
       .findAndModify(finder, $pull(arrayName -> value))
 
+  def mergeJsObject(existing: JsObject, value: JsObject): JsObject = {
+    val delete = value.fields.collect { case (name, JsString("")) => name }.toSeq
+    JsObject((existing.fields ++ value.fields).filter { case (name, _) => !delete.contains(name) })
+  }
+
   def mergeJsObject(finder: DBObject, collection: MongoCollection, propertyName: String, value: JsObject) {
     val existing =
       collection
@@ -50,8 +55,7 @@ trait MongoQueries {
         .flatMap(_.getAs[AnyRef](propertyName).map(_.toString.parseJson.asJsObject))
         .getOrElse(JsObject())
 
-    val delete = value.fields.collect { case (name, JsString("")) => name }.toSeq
-    val nvalue = JsObject((existing.fields ++ value.fields).filter { case (name, _) => !delete.contains(name) })
+    val nvalue = mergeJsObject(existing, value)
 
     collection
       .findAndModify(finder, $set(propertyName -> asDBObject(nvalue)))

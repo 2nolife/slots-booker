@@ -43,8 +43,10 @@ trait BookingMsRestCalls extends SystemRestCalls {
 
 trait PaymentsService {
   def placeById(placeId: String): (ApiCode, Option[vo.ext.Place])
-  def addCredit(placeId: String, profileId: String, obj: vo.UpdateCredit): vo.Balance
   def getBalance(placeId: String, profileId: String): vo.Balance
+  def addCredit(placeId: String, profileId: String, obj: vo.UpdateCredit): vo.Balance
+  def getAccount(placeId: String): vo.Account
+  def updateAccount(placeId: String, obj: vo.UpdateCurrencyAccount): vo.Account
   def referenceByRef(ref: String, profileId: String): (ApiCode, Option[vo.ext.Reference])
   def processReference(ref: String, profileId: String): ApiCode
   def expiredReference(): (ApiCode, Option[vo.ext.Reference])
@@ -67,11 +69,17 @@ trait Auxiliary {
   override def referenceByRef(ref: String, profileId: String): (ApiCode, Option[vo.ext.Reference]) =
     referenceFromMsBooking(ref, profileId)
 
+  override def getBalance(placeId: String, profileId: String): vo.Balance =
+  paymentsDb.getBalance(placeId, profileId)
+
   override def addCredit(placeId: String, profileId: String, obj: vo.UpdateCredit): vo.Balance =
     paymentsDb.addCredit(placeId, profileId, obj)
 
-  override def getBalance(placeId: String, profileId: String): vo.Balance =
-    paymentsDb.getBalance(placeId, profileId)
+  override def getAccount(placeId: String): vo.Account =
+    paymentsDb.getAccount(placeId)
+
+  override def updateAccount(placeId: String, obj: vo.UpdateCurrencyAccount): vo.Account =
+    paymentsDb.updateAccount(placeId, obj)
 }
 
 trait ProcessReference {
