@@ -1,4 +1,4 @@
-app.filter('chunkArray', function() {
+app.filter('sb_chunkArray', function() {
   return function(/*array*/ arr, /*num*/ chunkSize) {
     var chunks = []
     if (arr)
@@ -8,13 +8,13 @@ app.filter('chunkArray', function() {
   }
 })
 
-app.filter('csvArray', function() {
+app.filter('sb_csvArray', function() {
   return function(/*array*/ arr) {
     return arr ? arr.join(', ') : []
   }
 })
 
-app.filter('numberX100', function() {
+app.filter('sb_numberX100', function() {
   return function(/*num*/ value, /*bool*/ alwaysShowPence) {
     // 230 -> 2.30
     var result = '0'
@@ -27,7 +27,7 @@ app.filter('numberX100', function() {
   }
 })
 
-app.filter('numberAsDate', function() {
+app.filter('sb_numberAsDate', function() {
   return function(/*num*/ value) {
     // 20161230 -> 12/30/2016
     var result = ''
@@ -40,7 +40,7 @@ app.filter('numberAsDate', function() {
   }
 })
 
-app.filter('numberAsTime', function() {
+app.filter('sb_numberAsTime', function() {
   return function(/*num*/ value) {
     // 1259 -> 12:59
     var result = ''

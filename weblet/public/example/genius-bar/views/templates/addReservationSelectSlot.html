@@ -14,8 +14,8 @@
           <p>{{ds.day}}</p>
           <ul>
             <li ng-repeat="slot in ds.slots">
-              <a href ng-click="submitSlot(slot)" ng-show="slot.status == 'free'">{{slot.timeFrom | numberAsTime}}</a>
-              <p ng-show="slot.status != 'free'" class="{{slot.status}}">{{slot.timeFrom | numberAsTime}}</p>
+              <a href ng-click="submitSlot(slot)" ng-show="slot.status == 'free'">{{slot.timeFrom | sb_numberAsTime}}</a>
+              <p ng-show="slot.status != 'free'" class="{{slot.status}}">{{slot.timeFrom | sb_numberAsTime}}</p>
             </li>
           </ul>
         </nav>

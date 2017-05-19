@@ -112,6 +112,28 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
     When patchTo url entity json withHeaders headers expect() code SC_FORBIDDEN
   }
 
+  "GET to /places" should "return places where a user is either owner or moderator" in {
+    val placeId = mongoCreatePlace()
+    val profileId = mongoProfileId("testuser2")
+    mongoSetPlaceModerators(placeId, Seq(profileId))
+
+    val url = s"$placesBaseUrl/places"
+    val placesA = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Place]]
+
+    placesA.size shouldBe 1
+    placesA.head.name.get shouldBe "My Place Name"
+
+    val headersB = authHeaderSeq("testuser2")
+    val placesB = (When getTo url withHeaders headersB expect() code SC_OK).withBody[Seq[vo.Place]]
+
+    placesB.size shouldBe 1
+
+    val headersC = authHeaderSeq("testuser3")
+    val placesC = (When getTo url withHeaders headersC expect() code SC_OK).withBody[Seq[vo.Place]]
+
+    placesC.size shouldBe 0
+  }
+
   "GET to /places/{id}" should "return a place" in {
     val placeId = mongoCreatePlace()
 

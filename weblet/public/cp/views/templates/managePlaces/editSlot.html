@@ -1,0 +1,49 @@
+<div class="edited-slot" ng-show="editedSlot">
+
+  <div class="row gap-top slot-nav">
+    <ul class="col-sm-11 breadcrumb">
+      <li><a href ng-click="unsetEditedSlot()"><i class="fa fa-long-arrow-left fa-lg"></i></a></li>
+      <li>
+        <span>{{editedSlot.name}}</span>
+        <span>{{editedSlot.formatted.dateFrom}}</span> <span>{{editedSlot.formatted.timeFrom}}</span>
+        <span>to</span>
+        <span>{{editedSlot.formatted.dateTo}}</span> <span>{{editedSlot.formatted.timeTo}}</span>
+      </li>
+    </ul>
+    <button class="btn btn-danger col-sm-1" ng-click="deleteEditedSlot()"><i class="fa fa-times fa-lg"></i></button>
+  </div>
+
+  <div class="row">
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Prices" index-var="slotMenuTab" />
+  </div>
+
+  <div class="row" ng-show="slotMenuTab == 0">
+    <form class="form-horizontal">
+      <fieldset>
+        <div class="form-group">
+          <label class="control-label col-sm-2">Name</label>
+          <div class="col-sm-6">
+            <input class="form-control" type="text" ng-model="editedSlot.name" />
+          </div>
+        </div>
+        <div class="form-group" ng-repeat="attr in editedSlot.attributesArray">
+          <label class="control-label col-sm-2">{{attr.name}}</label>
+          <div class="col-sm-6">
+            <input class="form-control" type="text" ng-model="attr.value" />
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="col-sm-offset-2 col-sm-10">
+            <button class="btn btn-xs btn-success" ng-click="saveEditedSlotProperties()"><i class="fa fa-check fa-fw"></i> Save</button>
+          </div>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+
+  <div class="row" ng-show="slotMenuTab == 1">
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="newPrice()"><i class="fa fa-plus fa-fw"></i> Price</button>
+    <a href class="col-sm-2" ng-repeat="price in editedSlot.prices" ng-click="editPrice(price)">{{price.amount | sb_numberX100 : true }}</a>
+  </div>
+
+</div>

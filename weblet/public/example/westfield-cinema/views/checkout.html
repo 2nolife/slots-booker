@@ -9,7 +9,7 @@
   <checkout-show-tickets />
 
   <div class="pay" ng-show="basket.amount > 0 && (!status || status == 'failed')">
-    <p class="credit">Your credit &nbsp; {{credit.currency}} {{credit.amount | numberX100 : true}}</p>
+    <p class="credit">Your credit &nbsp; {{credit.currency}} {{credit.amount | sb_numberX100 : true}}</p>
     <button class="btn btn-primary" ng-click="bookWithCredit()" ng-show="credit.amount >= basket.amount">Pay with credit</button>
     <button class="btn btn-primary" ng-click="bookWithCard()">Pay with card</button>
     <button class="btn btn-primary" ng-click="bookWithPayPal()">Pay with PayPal</button>

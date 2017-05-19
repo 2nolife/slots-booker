@@ -70,9 +70,9 @@ app.directive('myReservationsSelectBooking', function() {
       source.onChangeCallback.add(applyChangesFromSource)
 
       function bookedSlotsByDate(/*num*/ daysInAdvance) {
-        var today = parseInt(todayDate()),
-            plus6 = parseInt(addDaysDate(today, daysInAdvance)),
-            yesterday = parseInt(addDaysDate(today, -1))
+        var today = parseInt(sb.utils.todayDate()),
+            plus6 = parseInt(sb.utils.addDaysDate(today, daysInAdvance)),
+            yesterday = parseInt(sb.utils.addDaysDate(today, -1))
         source.slotsFilter = { from: yesterday, to: plus6, booked: '' }
         source.refreshRetry('slots', true, function(/*str*/ status) {
           if (status == 'success') {
@@ -116,16 +116,16 @@ app.directive('myReservationsSelectBooking', function() {
 
       function slotStatus() {
         var now = new Date(),
-            todayDatetime = todayDate()+(now.getHours()*100+now.getMinutes())
+            todayDatetime = sb.utils.todayDate()+(now.getHours()*100+now.getMinutes())
             slotDatetime = ''+_this.dateFrom+_this.timeFrom,
             status = ''
-       if (datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
+       if (sb.utils.datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
 
         return status
       }
 
       function shortDate() {
-        return weekdayAsWord(_this.dateFrom)+', '+strToDate(_this.dateFrom).getDate()+' '+monthAsWord(_this.dateFrom)
+        return sb.utils.weekdayAsWord(_this.dateFrom)+', '+sb.utils.strToDate(_this.dateFrom).getDate()+' '+sb.utils.monthAsWord(_this.dateFrom)
       }
 
       this.setParentSpace = function(/*MySpace*/ space) {
@@ -180,7 +180,7 @@ app.directive('myReservationsSelectBooking', function() {
 
 app.directive('myReservationsBookingInfo', function() {
 
-  var controller = function($scope, $timeout, apiBookingService) {
+  var controller = function($scope, $timeout, sb_apiBookingService) {
 
     function MySlot(/*Slot*/ source) {
 
@@ -200,7 +200,7 @@ app.directive('myReservationsBookingInfo', function() {
       source.onChangeCallback.add(applyChangesFromSource)
 
       function shortDate() {
-        return weekdayAsWord(_this.dateFrom)+', '+strToDate(_this.dateFrom).getDate()+' '+monthAsWord(_this.dateFrom)
+        return sb.utils.weekdayAsWord(_this.dateFrom)+', '+sb.utils.strToDate(_this.dateFrom).getDate()+' '+sb.utils.monthAsWord(_this.dateFrom)
       }
 
       this.toApiCancelEntity = function() {
@@ -221,7 +221,7 @@ app.directive('myReservationsBookingInfo', function() {
     }
 
     $scope.cancelBooking = function() {
-      apiBookingService.cancel(
+      sb_apiBookingService.cancel(
         $scope.mySlot.toApiCancelEntity(),
         bookingCancelled,
         function statusCallback(/*str*/ status) {

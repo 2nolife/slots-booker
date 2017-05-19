@@ -1,0 +1,35 @@
+<div class="place-moderators container-fluid" ng-show="showContent">
+
+  <div class="row">
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addModerator()"><i class="fa fa-plus fa-fw"></i> Moderator</button>
+  </div>
+
+  <div class="row" ng-show="editedPlace.moderators.length">
+    <table class="table table-hover">
+      <thead>
+      <tr>
+        <th>Username</th>
+        <th>Name</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+
+      <tr>
+        <td>{{editedPlace.owner.username}}</td>
+        <td>{{editedPlace.owner.fullName}}</td>
+        <td><i data-toggle="tooltip" title="Owner" class="fa fa-user"></i></td>
+      </tr>
+      <tr ng-repeat="moderator in editedPlace.moderators">
+        <td>{{moderator.username}}</td>
+        <td>{{moderator.fullName}}</td>
+        <td><a href class="text-danger" ng-click="removeModerator(moderator)"><i class="fa fa-minus-square"></i></a></td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <user-finder-dialog trigger="userFinderTrigger" on-user="onUser(user)"/>
+
+</div>

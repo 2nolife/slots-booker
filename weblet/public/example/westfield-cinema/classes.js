@@ -116,9 +116,9 @@ function CinemaHall(/*Space*/ source, /*CinemaPlace*/ cinemaPlace) {
   }
 
   function bookedSlotsFromToday(/*bool*/ force, /*fn*/ callback) {
-    var today = parseInt(todayDate()),
-        plus6 = parseInt(addDaysDate(today, 30)),
-        yesterday = parseInt(addDaysDate(today, -1))
+    var today = parseInt(sb.utils.todayDate()),
+        plus6 = parseInt(sb.utils.addDaysDate(today, 30)),
+        yesterday = parseInt(sb.utils.addDaysDate(today, -1))
     source.slotsFilter = { from: yesterday, to: plus6, inner: true, booked: '', paid: true }
     source.refreshRetry('slots', force, function(/*str*/ status) {
       if ((status == 'success' || status == 'noop')) {
@@ -161,8 +161,8 @@ function CinemaSeat(/*Space*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*
   source.onChangeCallback.add(applyChangesFromSource)
 
   function slotsDaysInAdvance(/*num*/ daysInAdvance, /*fn*/ callback) {
-    var today = parseInt(todayDate()),
-        plus6 = parseInt(addDaysDate(today, daysInAdvance))
+    var today = parseInt(sb.utils.todayDate()),
+        plus6 = parseInt(sb.utils.addDaysDate(today, daysInAdvance))
     source.slotsFilter = { from: today, to: plus6 }
     source.refreshRetry('slots', false, function(/*str*/ status) {
       if ((status == 'success' || status == 'noop')) {
@@ -174,13 +174,13 @@ function CinemaSeat(/*Space*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*
   }
 
   function slotsByDay(/*num*/ daysInAdvance) {
-    var today = parseInt(todayDate())
+    var today = parseInt(sb.utils.todayDate())
         array = []
     for (var n = 0; n < daysInAdvance; n++) {
-      var date = parseInt(addDaysDate(today, n)),
+      var date = parseInt(sb.utils.addDaysDate(today, n)),
           slots = $.grep(_this.slots, function(slot) { return slot.dateFrom == date }),
-          day = weekdayAsWord(date),
-          short = strToDate(date).getDate()+' '+monthAsWord(date)
+          day = sb.utils.weekdayAsWord(date),
+          short = sb.utils.strToDate(date).getDate()+' '+sb.utils.monthAsWord(date)
 
       array.push({ shortDate: short, day: day, slots: slots })
     }
@@ -215,9 +215,9 @@ function CinemaSlot(/*Slot*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*/
     _this.movieKey = source.attributes.prm1.movie_key
     _this.dateFrom = source.dateFrom
     _this.timeFrom = source.timeFrom
-    _this.day = weekdayAsWord(_this.dateFrom)
+    _this.day = sb.utils.weekdayAsWord(_this.dateFrom)
     _this.shortDate = shortDate()
-    _this.status = source.book_status == 0 ? 'available' : 'booked'
+    _this.status = source.bookStatus == 0 ? 'available' : 'booked'
     _this.prices = _this.prices || []
   }
 
@@ -228,7 +228,7 @@ function CinemaSlot(/*Slot*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*/
   source.onChangeCallback.add(applyChangesFromSource)
 
   function shortDate() {
-    return strToDate(_this.dateFrom).getDate()+' '+monthAsWord(_this.dateFrom)
+    return sb.utils.strToDate(_this.dateFrom).getDate()+' '+sb.utils.monthAsWord(_this.dateFrom)
   }
 
   this.refreshPrices = function(/*fn*/ callback) {

@@ -8,7 +8,7 @@
     <div class="ticket" ng-repeat="slot in bookedSlots">
       <p class="title">
         <span>{{slot.movie.title}}</span>
-        <span>{{slot.cinemaSeat.cinemaHall.name}} &nbsp; {{slot.day}}, {{slot.shortDate}} at {{slot.timeFrom | numberAsTime}}</span>
+        <span>{{slot.cinemaSeat.cinemaHall.name}} &nbsp; {{slot.day}}, {{slot.shortDate}} at {{slot.timeFrom | sb_numberAsTime}}</span>
       </p>
       <p class="seat">
         <span>Seat {{slot.cinemaSeat.seatN}}</span>

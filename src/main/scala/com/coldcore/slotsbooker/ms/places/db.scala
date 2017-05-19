@@ -56,6 +56,7 @@ trait PlacesDb extends PlaceCRUD with SpaceCRUD with PriceCRUD with PlaceSearch
 
 trait PlaceCRUD {
   def placeById(placeId: String, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
+  def placesByProfileId(profileId: String, fields: PlaceFields = defaultPlaceFields): Seq[vo.Place]
   def createPlace(profileId: String, obj: vo.CreatePlace, fields: PlaceFields = defaultPlaceFields): vo.Place
   def updatePlace(placeId: String, obj: vo.UpdatePlace, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
   def deletePlace(placeId: String): Boolean
@@ -127,8 +128,6 @@ trait VoFactory {
       place_id = placeId,
       profile_id = as[String]("profile_id"),
       name = getAs[String]("name"),
-      url = getAs[String]("url"),
-      email = getAs[String]("email"),
       address =
         getAs[DBObject]("address")
         .map(asAddress(_)),
@@ -210,6 +209,15 @@ trait PlaceCrudImpl {
     places
       .findOne(finderById(placeId))
       .map(asPlace(_, fields))
+
+  override def placesByProfileId(profileId: String, fields: PlaceFields = defaultPlaceFields): Seq[vo.Place] =
+    places
+      .find(finder(
+        $or(
+          "profile_id" $eq profileId,
+          "moderators" $eq profileId)))
+      .map(asPlace(_, fields))
+      .toSeq  
 
   override def createPlace(profileId: String, obj: vo.CreatePlace, fields: PlaceFields): vo.Place = {
     import obj._

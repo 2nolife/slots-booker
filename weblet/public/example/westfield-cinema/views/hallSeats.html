@@ -3,7 +3,7 @@
   <h1 class="top">{{cinemaSlot.movie.title}}</h1>
 
   <div class="movie">
-    <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | numberAsTime}}</p>
+    <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | sb_numberAsTime}}</p>
     <img src="img/{{cinemaSlot.movie.cover}}" />
   </div>
 

@@ -1,0 +1,95 @@
+#page-wrapper {
+  min-height: 600px;
+  padding: 10px;
+}
+
+.navbar-brand {
+  width: 250px;
+}
+
+.menu-tabs {
+  margin: 10px 0 10px 0;
+}
+
+.gap-top {
+  padding-top: 10px;
+}
+
+#top-header {
+  display: inline-block;
+  margin: 0;
+  padding: 15px 0 0 0;
+  font-size: 18px;
+}
+
+.ui-datepicker {
+  z-index:1051 !important;
+}
+
+h1.top {
+  display: none;
+}
+
+#view-sign-in form {
+  width: 400px;
+  margin: 0 auto;
+  padding: 150px 50px 0 50px;
+}
+
+#view-manage-places .listed-places .place {
+  border: 1px solid silver;
+  margin: 10px 0;
+  min-height: 180px;
+}
+
+#view-manage-places .listed-places .place img {
+  width: 100px;
+  height: 100px;
+  amax-width: 120px;
+  amax-height: 120px;
+  float: left;
+  border: 0;
+  margin: 0 20px;
+  border: 1px solid #f6f6f6;
+  background: repeating-linear-gradient(45deg, #f6f6f6, #f6f6f6 20px, #fff 20px, #fff 40px);
+}
+
+#view-manage-places .listed-places .place h3 {
+  padding: 5px 10px;
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  background: #f6f6f6;
+  background: repeating-linear-gradient(45deg, #f6f6f6, #f6f6f6 20px, #fff 20px, #fff 40px);
+}
+
+#view-manage-places .listed-places .place h3 a {
+  font-size: 14px;
+  float: right;
+  margin: 0 5px;
+}
+
+#view-manage-places .listed-places .place p span {
+  width: 90px;
+  display: inline-block;
+  font-weight: 500;
+}
+
+#view-manage-places .edited-place .breadcrumb {
+  margin-bottom: 0;
+}
+
+#view-manage-places .edited-space .slots-list tbody tr {
+  cursor: pointer;
+}
+
+#view-manage-places .edited-space .slot-nav span {
+  padding-right: 10px;
+}
+
+#view-manage-places .new-place .template h3 {
+  padding: 5px 10px;
+  margin: 10px 0 10px 0;
+  font-size: 16px;
+  background: #f6f6f6;
+  background: repeating-linear-gradient(45deg, #f6f6f6, #f6f6f6 20px, #fff 20px, #fff 40px);
+}

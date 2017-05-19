@@ -18,7 +18,7 @@ app.config(function($routeProvider, $httpProvider) {
     .when('/my-tickets', { templateUrl: 'views/myTickets.html', controller: 'myTicketsController' })
     .otherwise({ redirectTo: '/featuring' })
 
-  $httpProvider.interceptors.push('authInterceptor')
+  $httpProvider.interceptors.push('sb_authInterceptor')
 
 })
 
@@ -54,7 +54,7 @@ app.value('state', {
 app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state, $location) {
 
   $rootScope.$on('api.authorized', function() {
-    $injector.get('loginService').refreshUser(function(/*str*/ status) {
+    $injector.get('sb_loginService').refreshUser(function(/*str*/ status) {
       if (status == 'success') $location.path('/dashboard')
     })
   })
@@ -68,8 +68,8 @@ app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state, $l
     if (!state.accessToken) {
       $rootScope.$broadcast('api.unauthorized')
     } else {
-      $injector.get('loginService').setHttpAuthHeader()
-      $injector.get('loginService').refreshUser()
+      $injector.get('sb_loginService').setHttpAuthHeader()
+      $injector.get('sb_loginService').refreshUser()
     }
   }, 10)
 

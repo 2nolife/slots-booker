@@ -25,6 +25,18 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
 
         pathEnd {
 
+          get {
+            parameters('deep ? getDeepFields,
+                       'deep_spaces.as[Boolean].?,
+                       'deep_prices.as[Boolean].?) {
+              (deep,
+               deep_spaces,
+               deep_prices) =>
+
+              completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(profile,
+                                                                      deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+            }
+          } ~
           post {
             entity(as[vo.CreatePlace]) { entity =>
               completeByActor[vo.Place](placesActor, CreatePlaceIN(entity, profile))
@@ -43,7 +55,7 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
                deep_prices) =>
 
               parameterSeq { attributes =>
-                completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(attributes.filterNot(p => Seq("and", "or", "deep", "deep_spaces", "deep_prices").contains(p._1)),
+                completeByActor[Seq[vo.Place]](placesActor, SearchPlacesIN(attributes.filterNot(p => Seq("and", "or", "deep", "deep_spaces", "deep_prices").contains(p._1)),
                                                                         joinOR = attributes.exists(p => p._1 == "or"),
                                                                         profile,
                                                                         deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))

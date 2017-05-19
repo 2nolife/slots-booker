@@ -1,4 +1,4 @@
-app.controller('refundController', function($scope, state, apiBookingService, apiPaymentsService) {
+app.controller('refundController', function($scope, state, sb_apiBookingService, sb_apiPaymentsService) {
 
   if (state.refund && !state.refund.complete) {
     $scope.basket = state.refund
@@ -19,7 +19,7 @@ app.controller('refundController', function($scope, state, apiBookingService, ap
     $scope.status = 'count'
     var slotIds = state.refund.slots.map(function(slot) { return slot.id })
 
-    apiBookingService.refund(
+    sb_apiBookingService.refund(
       { slot_ids: slotIds },
       function(/*Refund*/ refund) {
         $scope.total = {
@@ -37,7 +37,7 @@ app.controller('refundController', function($scope, state, apiBookingService, ap
   }
 
   function refundSlots(/*Refund*/ refund, /*fn*/ callback) {
-    apiBookingService.cancel(
+    sb_apiBookingService.cancel(
       { refund_id: refund.id },
       function(/*Reference*/ reference) {
         callback(reference)
@@ -49,7 +49,7 @@ app.controller('refundController', function($scope, state, apiBookingService, ap
   }
 
   function refundToCredit(/*Reference*/ reference, /*fn*/ callback) {
-    apiPaymentsService.processReference(
+    sb_apiPaymentsService.processReference(
       { ref: reference.ref },
       function() {
         callback(reference)

@@ -1,4 +1,4 @@
-app.service('apiPlacesService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiPlacesService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.findPlaces = function(/*json*/ searchOptions, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -15,11 +15,24 @@ app.service('apiPlacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var places = response.data
-          callback(places.map(function(place) { return apiClassWrap.wrap(place, 'place') }))
+          callback(places.map(function(place) { return sb_apiClassWrap.wrap(place, 'place') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.getPlaces = function(/*fn*/ callback, /*fn*/ statusCallback) {
+    $http.get('/api/places')
+      .then(
+        function successCallback(response) {
+          var places = response.data
+          callback(places.map(function(place) { return sb_apiClassWrap.wrap(place, 'place') }))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -28,11 +41,11 @@ app.service('apiPlacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var place = response.data
-          callback(apiClassWrap.wrap(place, 'place'))
+          callback(sb_apiClassWrap.wrap(place, 'place'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -41,17 +54,17 @@ app.service('apiPlacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var place = response.data
-          callback(apiClassWrap.wrap(place, 'place'))
+          callback(sb_apiClassWrap.wrap(place, 'place'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.patchPrice = function(/*str*/ placeId, /*str*/ spaceId, /*str*/ priceId, /*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -59,11 +72,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -75,7 +88,7 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -84,11 +97,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -97,11 +110,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -110,11 +123,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var space = response.data
-          callback(apiClassWrap.wrap(space, 'space'))
+          callback(sb_apiClassWrap.wrap(space, 'space'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -126,7 +139,7 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -135,11 +148,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var space = response.data
-          callback(apiClassWrap.wrap(space, 'space'))
+          callback(sb_apiClassWrap.wrap(space, 'space'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -148,11 +161,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var space = response.data
-          callback(apiClassWrap.wrap(space, 'space'))
+          callback(sb_apiClassWrap.wrap(space, 'space'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -167,11 +180,11 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var spaces = response.data
-          callback(spaces.map(function(space) { return apiClassWrap.wrap(space, 'space') }))
+          callback(spaces.map(function(space) { return sb_apiClassWrap.wrap(space, 'space') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -180,17 +193,17 @@ app.service('apiSpacesService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var prices = response.data
-          callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
+          callback(prices.map(function(price) { return sb_apiClassWrap.wrap(price, 'price') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.patchPrice = function(/*str*/ slotId, /*str*/ priceId, /*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -198,11 +211,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -214,7 +227,7 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -223,11 +236,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -236,11 +249,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var price = response.data
-          callback(apiClassWrap.wrap(price, 'price'))
+          callback(sb_apiClassWrap.wrap(price, 'price'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -249,11 +262,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var booking = response.data
-          callback(apiClassWrap.wrap(booking, 'booking'))
+          callback(sb_apiClassWrap.wrap(booking, 'booking'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -262,11 +275,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var booking = response.data
-          callback(apiClassWrap.wrap(booking, 'booking'))
+          callback(sb_apiClassWrap.wrap(booking, 'booking'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -275,11 +288,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var slot = response.data
-          callback(apiClassWrap.wrap(slot, 'slot'))
+          callback(sb_apiClassWrap.wrap(slot, 'slot'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -291,7 +304,7 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -300,11 +313,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var slot = response.data
-          callback(apiClassWrap.wrap(slot, 'slot'))
+          callback(sb_apiClassWrap.wrap(slot, 'slot'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -313,11 +326,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var slot = response.data
-          callback(apiClassWrap.wrap(slot, 'slot'))
+          callback(sb_apiClassWrap.wrap(slot, 'slot'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -332,11 +345,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var bookings = response.data
-          callback(bookings.map(function(booking) { return apiClassWrap.wrap(booking, 'booking') }))
+          callback(bookings.map(function(booking) { return sb_apiClassWrap.wrap(booking, 'booking') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -345,11 +358,11 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var prices = response.data
-          callback(prices.map(function(price) { return apiClassWrap.wrap(price, 'price') }))
+          callback(prices.map(function(price) { return sb_apiClassWrap.wrap(price, 'price') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -365,17 +378,17 @@ app.service('apiSlotsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var slots = response.data
-          callback(slots.map(function(slot) { return apiClassWrap.wrap(slot, 'slot') }))
+          callback(slots.map(function(slot) { return sb_apiClassWrap.wrap(slot, 'slot') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiBookingService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.book = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -383,11 +396,11 @@ app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var reference = response.data
-          callback(apiClassWrap.wrap(reference, 'reference'))
+          callback(sb_apiClassWrap.wrap(reference, 'reference'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -396,11 +409,11 @@ app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var reference = response.data
-          callback(apiClassWrap.wrap(reference, 'reference'))
+          callback(sb_apiClassWrap.wrap(reference, 'reference'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -409,11 +422,11 @@ app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var quote = response.data
-          callback(apiClassWrap.wrap(quote, 'quote'))
+          callback(sb_apiClassWrap.wrap(quote, 'quote'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -422,17 +435,17 @@ app.service('apiBookingService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var refund = response.data
-          callback(apiClassWrap.wrap(refund, 'refund'))
+          callback(sb_apiClassWrap.wrap(refund, 'refund'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiUsersService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.getUser = function(/*str*/ userId, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -440,11 +453,11 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var user = response.data
-          callback(apiClassWrap.wrap(user, 'user'))
+          callback(sb_apiClassWrap.wrap(user, 'user'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -463,11 +476,11 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
         var users = responses.map(function(response) {
           return response.data
         })
-        callback(users.map(function(user) { return apiClassWrap.wrap(user, 'user') }))
+        callback(users.map(function(user) { return sb_apiClassWrap.wrap(user, 'user') }))
         if (statusCallback) statusCallback('success')
       },
       function errorCallback(responses) {
-        if (!statusCallback || !statusCallback('error', responses)) apiHelper.notifyResponseError(responses[0])
+        if (!statusCallback || !statusCallback('error', responses)) sb_apiHelper.notifyResponseError(responses[0])
       })
   }
 
@@ -485,11 +498,11 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var users = response.data
-          callback(users.map(function(user) { return apiClassWrap.wrap(user, 'user') }))
+          callback(users.map(function(user) { return sb_apiClassWrap.wrap(user, 'user') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -498,11 +511,11 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var user = response.data
-          callback(apiClassWrap.wrap(user, 'user'))
+          callback(sb_apiClassWrap.wrap(user, 'user'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -514,7 +527,7 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -526,7 +539,7 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -539,13 +552,13 @@ app.service('apiUsersService', function($http, apiHelper, $q, apiClassWrap) {
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
+app.service('sb_apiPaymentsService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
   var service = this
 
   service.processReference = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
@@ -553,11 +566,11 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var balance = response.data
-          callback(apiClassWrap.wrap(balance, 'balance'))
+          callback(sb_apiClassWrap.wrap(balance, 'balance'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -566,11 +579,11 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var reference = response.data
-          callback(apiClassWrap.wrap(reference, 'reference'))
+          callback(sb_apiClassWrap.wrap(reference, 'reference'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
@@ -579,11 +592,11 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var balance = response.data
-          callback(apiClassWrap.wrap(balance, 'balance'))
+          callback(sb_apiClassWrap.wrap(balance, 'balance'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   },
 
@@ -592,29 +605,29 @@ app.service('apiPaymentsService', function($http, apiHelper, $q, apiClassWrap) {
       .then(
         function successCallback(response) {
           var account = response.data
-          callback(apiClassWrap.wrap(account, 'account'))
+          callback(sb_apiClassWrap.wrap(account, 'account'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
-          if (!statusCallback || !statusCallback('error', response)) apiHelper.notifyResponseError(response)
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
         })
   }
 
 })
 
-app.service('apiClassWrap', function($injector) {
+app.service('sb_apiClassWrap', function($injector) {
   var service = this
 
   var sc = null
 
   function initServiceContainer() {
     if (!sc) sc = {
-      apiUsersService: $injector.get('apiUsersService'),
-      apiPlacesService: $injector.get('apiPlacesService'),
-      apiSpacesService: $injector.get('apiSpacesService'),
-      apiSlotsService: $injector.get('apiSlotsService'),
-      apiPaymentsService: $injector.get('apiPaymentsService'),
-      apiClassService: $injector.get('apiClassService')
+      apiUsersService: $injector.get('sb_apiUsersService'),
+      apiPlacesService: $injector.get('sb_apiPlacesService'),
+      apiSpacesService: $injector.get('sb_apiSpacesService'),
+      apiSlotsService: $injector.get('sb_apiSlotsService'),
+      apiPaymentsService: $injector.get('sb_apiPaymentsService'),
+      apiClassService: $injector.get('sb_apiClassService')
     }
   }
 
@@ -624,37 +637,37 @@ app.service('apiClassWrap', function($injector) {
     var clz
     switch (className) {
       case 'user':
-        clz = new User(json, sc)
+        clz = new sb.classes.User(json, sc)
         break
       case 'place':
-        clz = new Place(json, sc)
+        clz = new sb.classes.Place(json, sc)
         break
       case 'space':
-        clz = new Space(json, sc)
+        clz = new sb.classes.Space(json, sc)
         break
       case 'slot':
-        clz = new Slot(json, sc)
+        clz = new sb.classes.Slot(json, sc)
         break
       case 'price':
-        clz = new Price(json, sc)
+        clz = new sb.classes.Price(json, sc)
         break
       case 'booking':
-        clz = new Booking(json, sc)
+        clz = new sb.classes.Booking(json, sc)
         break
       case 'quote':
-        clz = new Quote(json, sc)
+        clz = new sb.classes.Quote(json, sc)
         break
       case 'refund':
-        clz = new Refund(json, sc)
+        clz = new sb.classes.Refund(json, sc)
         break
       case 'reference':
-        clz = new Reference(json, sc)
+        clz = new sb.classes.Reference(json, sc)
         break
       case 'balance':
-        clz = new Balance(json, sc)
+        clz = new sb.classes.Balance(json, sc)
         break
       case 'account':
-        clz = new Account(json, sc)
+        clz = new sb.classes.Account(json, sc)
         break
     }
 
@@ -663,7 +676,7 @@ app.service('apiClassWrap', function($injector) {
 
 })
 
-app.service('apiClassService', function($timeout) {
+app.service('sb_apiClassService', function($timeout) {
   var service = this
 
   /** retry forced 'refresh' function on 'source' in case of 'locked' status */
@@ -693,12 +706,12 @@ app.service('apiClassService', function($timeout) {
 
 })
 
-app.service('apiHelper', function(notifyService) {
+app.service('sb_apiHelper', function(sb_notifyService) {
   var service = this
 
   service.notifyResponseError = function(/*obj*/ response) {
-    var apiCode = apiCodeFromResponse(response)
-    notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
+    var apiCode = sb.utils.apiCodeFromResponse(response)
+    sb_notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
   }
 
 })

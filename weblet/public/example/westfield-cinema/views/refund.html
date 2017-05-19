@@ -8,7 +8,7 @@
   <h4 class="alert alert-danger" ng-show="status == 'failed'">Something went wrong, please try again</h4>
 
   <div class="total" ng-show="total">
-    <p>Refund of &nbsp; {{total.currency}} {{total.amount | numberX100 : true}} &nbsp; for {{total.count}} tickets</p>
+    <p>Refund of &nbsp; {{total.currency}} {{total.amount | sb_numberX100 : true}} &nbsp; for {{total.count}} tickets</p>
     <button class="btn btn-primary" ng-click="confirm()" ng-show="total.amount > 0 && !status">Confirm</button>
   </div>
 

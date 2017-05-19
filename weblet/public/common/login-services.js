@@ -1,4 +1,4 @@
-app.service('authInterceptor', function($q, $rootScope) {
+app.service('sb_authInterceptor', function($q, $rootScope) {
   var service = this
 
   service.responseError = function(response) {
@@ -9,12 +9,12 @@ app.service('authInterceptor', function($q, $rootScope) {
 
 })
 
-app.service('loginService', function($rootScope, $cookies, $http, state, notifyService) {
+app.service('sb_loginService', function($rootScope, $cookies, $http, state, sb_notifyService) {
   var service = this
 
   function notifyResponseError(/*obj*/ response) {
-    var apiCode = apiCodeFromResponse(response)
-    notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
+    var apiCode = sb.utils.apiCodeFromResponse(response)
+    sb_notifyService.notify('<strong>'+response.status+'</strong> '+apiCode.text, 'danger')
   }
 
   service.setHttpAuthHeader = function() {
@@ -46,8 +46,8 @@ app.service('loginService', function($rootScope, $cookies, $http, state, notifyS
     $http.get('/api/profiles/me')
       .then(
         function successCallback(response) {
-          state.userProfile = new User(response.data)
-          assert(state.userProfile.id, 'Invalid user profile')
+          state.userProfile = new sb.classes.User(response.data)
+          sb.utils.assert(state.userProfile.id, 'Invalid user profile')
           $rootScope.$broadcast('api.user.ok')
           if (statusCallback) statusCallback('success')
         },

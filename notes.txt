@@ -193,12 +193,11 @@ T O D O
 Maximum bookings per day
 Expiry actor every minute while no refs and then pull all refs one by one without delay
 prm# attribute (expands to prm1, prm2 etc)
-NS in angular classes and utils or package (sb_, sb)
 Login with facebook
 Add client IP to the rest on the commands AND replies
 Add generated X header to requests to track
 See if weblet sets proper X-Forwarded-For header
-Store PayPal app keys bound to currency in Payments
+Deployment diagram
 
 
 Running in the background

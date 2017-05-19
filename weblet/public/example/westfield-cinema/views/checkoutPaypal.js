@@ -1,4 +1,4 @@
-app.controller('checkoutPaypalController', function($scope, state, config, paypalService, apiPaymentsService) {
+app.controller('checkoutPaypalController', function($scope, state, config, sb_paypalService, sb_apiPaymentsService) {
 
   var opts = {}
 
@@ -6,7 +6,7 @@ app.controller('checkoutPaypalController', function($scope, state, config, paypa
     $scope.basket = state.checkout
 
     opts = {
-      total: numberX100(state.checkout.amount, true),
+      total: sb.utils.numberX100(state.checkout.amount, true),
       currency: state.checkout.prices[0].currency,
       placeId: state.checkout.prices[0].placeId,
       profileId: state.userProfile.id,
@@ -44,7 +44,7 @@ app.controller('checkoutPaypalController', function($scope, state, config, paypa
       opts.appKeyProduction = attrs.paypal_pkey
 
       if (!opts.env) bookingFailed()
-      else paypalService.checkout(opts)
+      else sb_paypalService.checkout(opts)
     })
 
   }
@@ -60,7 +60,7 @@ app.controller('checkoutPaypalController', function($scope, state, config, paypa
   }
 
   function getAccount(/*str*/ placeId, /*str*/ currency, /*fn*/ callback) {
-    apiPaymentsService.getPlaceAccount(placeId, function(/*Account*/ account) {
+    sb_apiPaymentsService.getPlaceAccount(placeId, function(/*Account*/ account) {
       var attrs = account.currencyIn(currency).attributes
       callback(attrs)
     })

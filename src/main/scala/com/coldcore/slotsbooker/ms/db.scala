@@ -84,8 +84,8 @@ trait MongoQueries {
 
   def finderByAttributes(byAttributes: Seq[(String,String)], joinOR: Boolean): DBObject = {
     val byAttributesCriteria = byAttributes.map {
-      case (name, value) if value.endsWith("*") => "attributes."+name $eq (Pattern.quote(value.dropRight(1))+".*").r
-      case (name, value) => "attributes."+name $eq value
+      case (name, value) if value.endsWith("*") => "attributes."+name $eq ("(?i)"+Pattern.quote(value.dropRight(1))+".*").r
+      case (name, value) => "attributes."+name $eq ("(?i)"+Pattern.quote(value)).r
     }
     val byAttributesQuery =
       if (byAttributesCriteria.isEmpty) MongoDBObject()

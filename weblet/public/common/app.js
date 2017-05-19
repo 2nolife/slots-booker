@@ -8,18 +8,13 @@ app.config(function($routeProvider, $httpProvider) {
 
   $routeProvider
     .when('/', { templateUrl: 'views/dummy.html', controller: 'dummyController' })
-    .when('/manage-users', { templateUrl: 'views/manageUsers.html', controller: 'manageUsersController' })
-    .when('/manage-places', { templateUrl: 'views/managePlaces.html', controller: 'managePlacesController' })
     .otherwise({ redirectTo: '/' })
 
-  $httpProvider.interceptors.push('authInterceptor')
+  $httpProvider.interceptors.push('sb_authInterceptor')
 
 })
 
 app.constant('config', {
-
-    all_user_roles: ['ADMIN', 'MODERATOR'],
-    allowed_login_user_roles: ['ADMIN', 'MODERATOR']
 
 })
 
@@ -33,7 +28,7 @@ app.value('state', {
 app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state) {
 
   $rootScope.$on('api.authorized', function() {
-    $injector.get('loginService').refreshUser()
+    $injector.get('sb_loginService').refreshUser()
   })
 
   $timeout(function() {
@@ -41,8 +36,8 @@ app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state) {
     if (state.accessToken == null) {
       $rootScope.$broadcast('api.unauthorized')
     } else {
-      $injector.get('loginService').setHttpAuthHeader()
-      $injector.get('loginService').refreshUser()
+      $injector.get('sb_loginService').setHttpAuthHeader()
+      $injector.get('sb_loginService').refreshUser()
     }
   }, 10)
 

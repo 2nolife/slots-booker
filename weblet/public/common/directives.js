@@ -1,4 +1,4 @@
-app.directive('onAdminRole', function(state) {
+app.directive('sbOnAdminRole', function(state) {
 
   function userInRole(/*str*/ role) {
     return state.userProfile != null && state.userProfile.roles.indexOf(role) != -1
@@ -15,7 +15,7 @@ app.directive('onAdminRole', function(state) {
   }
 })
 
-app.directive('randomScopeID', function(state) {
+app.directive('sbRandomScopeID', function(state) {
 
   return {
 
@@ -28,7 +28,7 @@ app.directive('randomScopeID', function(state) {
   }
 })
 
-app.directive('datepicker', function () {
+app.directive('sbDatepicker', function () {
   return {
 
     restrict: 'A',
@@ -47,7 +47,7 @@ app.directive('datepicker', function () {
   }
 })
 
-app.directive('includeReplace', function () {
+app.directive('sbIncludeReplace', function () {
   return {
 
     restrict: 'A',

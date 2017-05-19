@@ -98,8 +98,8 @@ app.directive('addReservationSelectSlot', function() {
       source.onChangeCallback.add(applyChangesFromSource)
 
       function slotsByDate(/*num*/ daysInAdvance, /*fn*/ callback) {
-        var today = parseInt(todayDate()),
-            plus6 = parseInt(addDaysDate(today, daysInAdvance))
+        var today = parseInt(sb.utils.todayDate()),
+            plus6 = parseInt(sb.utils.addDaysDate(today, daysInAdvance))
         source.slotsFilter = { from: today, to: plus6 }
         source.refreshRetry('slots', true, function(/*str*/ status) {
           if (status == 'success') {
@@ -115,13 +115,13 @@ app.directive('addReservationSelectSlot', function() {
       }
 
       function slotsByDay(/*num*/ daysInAdvance) {
-        var today = parseInt(todayDate())
+        var today = parseInt(sb.utils.todayDate())
             array = []
         for (var n = 0; n < daysInAdvance; n++) {
-          var date = parseInt(addDaysDate(today, n)),
+          var date = parseInt(sb.utils.addDaysDate(today, n)),
               slots = $.grep(_this.slots, function(slot) { return slot.dateFrom == date }),
-              day = weekdayAsWord(date),
-              short = strToDate(date).getDate()+' '+monthAsWord(date)
+              day = sb.utils.weekdayAsWord(date),
+              short = sb.utils.strToDate(date).getDate()+' '+sb.utils.monthAsWord(date)
 
           array.push({ short: short, day: day, slots: slots })
         }
@@ -146,7 +146,7 @@ app.directive('addReservationSelectSlot', function() {
         _this.dateTo = source.dateTo
         _this.timeFrom = source.timeFrom
         _this.timeTo = source.timeTo
-        _this.book_status = source.book_status
+        _this.bookStatus = source.bookStatus
         _this.status = slotStatus()
       }
 
@@ -156,11 +156,11 @@ app.directive('addReservationSelectSlot', function() {
 
       function slotStatus() {
         var now = new Date(),
-            todayDatetime = todayDate()+(now.getHours()*100+now.getMinutes())
+            todayDatetime = sb.utils.todayDate()+(now.getHours()*100+now.getMinutes())
             slotDatetime = ''+_this.dateFrom+_this.timeFrom,
             status = 'free'
-        if (datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
-        if (_this.book_status != 0) status = 'booked'
+        if (sb.utils.datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
+        if (_this.bookStatus != 0) status = 'booked'
 
         return status
       }
@@ -211,7 +211,7 @@ app.directive('addReservationSelectSlot', function() {
 
 app.directive('addReservationBookSlot', function() {
 
-  var controller = function($scope, $timeout, apiBookingService) {
+  var controller = function($scope, $timeout, sb_apiBookingService) {
 
     function MySlot(/*Slot*/ source) {
 
@@ -231,7 +231,7 @@ app.directive('addReservationBookSlot', function() {
       source.onChangeCallback.add(applyChangesFromSource)
 
       function shortDate() {
-        return weekdayAsWord(_this.dateFrom)+', '+strToDate(_this.dateFrom).getDate()+' '+monthAsWord(_this.dateFrom)
+        return sb.utils.weekdayAsWord(_this.dateFrom)+', '+sb.utils.strToDate(_this.dateFrom).getDate()+' '+sb.utils.monthAsWord(_this.dateFrom)
       }
 
       this.toApiBookEntity = function() {
@@ -252,7 +252,7 @@ app.directive('addReservationBookSlot', function() {
     }
 
     function book() {
-      apiBookingService.book(
+      sb_apiBookingService.book(
         $scope.mySlot.toApiBookEntity(),
         slotBooked,
         function statusCallback(/*str*/ status) {

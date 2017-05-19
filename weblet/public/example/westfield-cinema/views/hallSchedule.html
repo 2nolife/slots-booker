@@ -11,7 +11,7 @@
       </p>
 
       <a class="movie" href="#/hall/{{cinemaHall.id}}/{{slot.id}}" ng-repeat="slot in daySchedule.slots">
-        <p class="time">{{slot.timeFrom | numberAsTime}}</p>
+        <p class="time">{{slot.timeFrom | sb_numberAsTime}}</p>
         <img src="img/{{slot.movie.cover}}" />
         <p class="title">{{slot.movie.title}}</p>
       </a>

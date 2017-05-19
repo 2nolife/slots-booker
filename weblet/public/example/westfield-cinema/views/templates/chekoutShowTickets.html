@@ -1,15 +1,15 @@
 <div class="checkout-show-tickets" ng-show="basket.amount > 0">
 
   <p class="title">{{cinemaSlot.movie.title}}</p>
-  <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | numberAsTime}}</p>
+  <p class="date">{{cinemaHall.name}} &nbsp; {{cinemaSlot.day}}, {{cinemaSlot.shortDate}} at {{cinemaSlot.timeFrom | sb_numberAsTime}}</p>
 
   <p class="ticket" ng-repeat="price in basket.prices">
     <span class="type">{{price.cinemaSlot.cinemaSeat.type}}</span>
     <span class="age">{{price.age}}</span>
     <span class="seat">Seat {{price.cinemaSlot.cinemaSeat.seatN}}</span>
-    <span class="price">{{price.sign}} {{price.amount | numberX100 : true}}</span>
+    <span class="price">{{price.sign}} {{price.amount | sb_numberX100 : true}}</span>
   </p>
 
-  <p class="total">{{basket.sign}} {{basket.amount | numberX100 : true}}</p>
+  <p class="total">{{basket.sign}} {{basket.amount | sb_numberX100 : true}}</p>
 
 </div>

@@ -1,0 +1,60 @@
+<div ng-show="showContent">
+
+  <div class="row">
+    <div class="col-sm-5">
+      <div class="input-group">
+        <input type="text" class="form-control" ng-model="dateFilter.from" sb-datepicker />
+        <span class="input-group-addon">to</span>
+        <input type="text" class="form-control" ng-model="dateFilter.to" sb-datepicker />
+        <span class="input-group-btn">
+            <button type="button" class="btn btn-default" ng-click="applyDateFilter()"><i class="fa fa-search"></i></button>
+          </span>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="btn-group">
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day-1')"><i class="fa fa-play fa-flip-horizontal"></i></button>
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day')">Today</button>
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day+1')"><i class="fa fa-play"></i></button>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month-1')"><i class="fa fa-backward"></i></button>
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month')">This month</button>
+        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month+1')"><i class="fa fa-forward"></i></button>
+      </div>
+    </div>
+    <button class="btn btn-success col-sm-1" ng-click="addSlot()"><i class="fa fa-plus fa-lg"></i></button>
+  </div>
+
+  <div class="row" ng-show="!editedSlot">
+    <table class="table table-hover slots-list" ng-show="editedSpace.slots.length">
+      <thead>
+      <tr>
+        <th>Name</th>
+        <th>From</th>
+        <th>To</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+
+      <tr ng-repeat="slot in editedSpace.slots" ng-click="editSlot(slot)">
+        <td>{{slot.name}}</td>
+        <td class="slot-date"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></td>
+        <td class="slot-date"><span>{{slot.formatted.dateTo}}</span> <span>{{slot.formatted.timeTo}}</span></td>
+        <td><i ng-show="slot.bookStatus != 0" data-toggle="tooltip" title="Booked" class="fa fa-user"></i></td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <ng-include src="'views/templates/managePlaces/editSlot.html'" sb-include-replace />
+
+  <edited-place-edit-price-dialog trigger="editPriceTrigger" edited-price="editedPrice" dialog-title="{{dialogOptions.title}}"
+                                  on-save="dialogOptions.onSave()" on-delete="dialogOptions.onDelete()" has-delete="{{dialogOptions.hasDelete}}"/>
+
+  <edited-place-new-slot-dialog trigger="newSlotTrigger" new-slot="newSlot" dialog-title="{{dialogOptions.title}}"
+                                on-save="dialogOptions.onSave()"/>
+
+</div>

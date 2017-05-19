@@ -1,4 +1,4 @@
-app.controller('loginDialogController', function($scope, loginService, modalDialogService) {
+app.controller('sb_loginDialogController', function($scope, sb_loginService, modalDialogService) {
 
   $scope.username = ''
   $scope.password = ''
@@ -9,7 +9,7 @@ app.controller('loginDialogController', function($scope, loginService, modalDial
       password: $scope.password
     }
     $scope.password = ''
-    loginService.login(credentials)
+    sb_loginService.login(credentials)
   }
 
   var loginDialog = modalDialogService.registerDialog('#login-dialog')

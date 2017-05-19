@@ -1,0 +1,64 @@
+<div class="place-properties" ng-show="showContent">
+
+  <form class="form-horizontal">
+    <fieldset>
+      <div class="form-group">
+        <label class="control-label col-sm-2">Name</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="editedPlace.name" />
+        </div>
+      </div>
+      <div class="form-group" ng-repeat="attr in editedPlace.attributesArray">
+        <label class="control-label col-sm-2">{{attr.name}}</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="attr.value" />
+        </div>
+      </div>
+
+<!--
+      <div class="form-group">
+        <label class="control-label col-sm-2">Client key</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="editedPlace.name" readonly />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2">External key</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="editedPlace.url" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2">URL</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="editedPlace.url" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2">Email</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="email" ng-model="editedPlace.email" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2">Primary number</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" ng-model="editedPlace.primaryNumber" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2">Negative balance</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="email" ng-model="editedPlace.email" />
+        </div>
+      </div>
+-->
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button class="btn btn-success" ng-click="save()"><i class="fa fa-check fa-fw"></i> Save</button>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+
+</div>

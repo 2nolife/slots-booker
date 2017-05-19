@@ -21,9 +21,11 @@ trait PlaceCommands {
   case class UpdatePlaceIN(placeId: String, obj: vo.UpdatePlace, profile: ProfileRemote) extends RequestInfo
   case class GetPlaceIN(placeId: String, profile: ProfileRemote,
                         deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
-  case class DeletePlaceIN(placeId: String, profile: ProfileRemote) extends RequestInfo
-  case class GetPlacesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote,
+  case class GetPlacesIN(profile: ProfileRemote,
                          deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
+  case class DeletePlaceIN(placeId: String, profile: ProfileRemote) extends RequestInfo
+  case class SearchPlacesIN(byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote,
+                            deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
 }
 
 trait SpaceCommands {
@@ -270,7 +272,16 @@ trait GetPlace {
 
       reply ! CodeEntityOUT(code, expose(place, profile))
 
-    case GetPlacesIN(byAttributes, joinOR, profile, deepSpaces, deepPrices) =>
+    case GetPlacesIN(profile, deepSpaces, deepPrices) =>
+      val fields = customPlaceFields(deepSpaces, deepPrices)
+
+      def read: Option[Seq[vo.Place]] = Some(placesDb.placesByProfileId(profile.profile_id, fields))
+
+      val (code, places) = (ApiCode.OK, read)
+
+      reply ! CodeEntityOUT(code, exposeSeq(places, profile))
+
+    case SearchPlacesIN(byAttributes, joinOR, profile, deepSpaces, deepPrices) =>
       val fields = customPlaceFields(deepSpaces, deepPrices)
       val privileged =
         byAttributes.nonEmpty && !byAttributes.exists { case (_, value) => value.endsWith("*") && value.size < 3+1 }

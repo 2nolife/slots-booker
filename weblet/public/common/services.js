@@ -1,4 +1,4 @@
-app.service('modalDialogService', function($timeout) {
+app.service('sb_modalDialogService', function($timeout) {
   var service = this
 
   var dialogs = {}
@@ -34,7 +34,7 @@ app.service('modalDialogService', function($timeout) {
 
 })
 
-app.service('notifyService', function($timeout) {
+app.service('sb_notifyService', function($timeout) {
   var service = this
 
   var defaultOptions = {
@@ -59,7 +59,7 @@ app.service('notifyService', function($timeout) {
 
 })
 
-app.service('paypalService', function() {
+app.service('sb_paypalService', function() {
   var service = this
 
   var checkoutScriptLoaded = false
@@ -86,7 +86,7 @@ app.service('paypalService', function() {
      'onError',
      'button'
     ].forEach(function(v) {
-      assert(options[v], 'Required but missing: '+v)
+      sb.utils.assert(options[v], 'Required but missing: '+v)
     })
 
     var render = {

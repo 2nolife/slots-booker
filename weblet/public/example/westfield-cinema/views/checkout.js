@@ -1,4 +1,4 @@
-app.controller('checkoutController', function($scope, state, apiBookingService, apiPaymentsService, notifyService, $location) {
+app.controller('checkoutController', function($scope, state, sb_apiBookingService, sb_apiPaymentsService, sb_notifyService, $location) {
 
   if (state.checkout && !state.checkout.complete) {
     $scope.basket = state.checkout
@@ -21,7 +21,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
       return { slot_id: price.cinemaSlot.id, price_id: price.id }
     })
 
-    apiBookingService.quote(
+    sb_apiBookingService.quote(
       { selected: slotsAnsPrices },
       function(/*Quote*/ quote) {
         if (quote.amount != state.checkout.amount) bookingFailed()
@@ -34,7 +34,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
   }
 
   function bookSlots(/*Quote*/ quote, /*fn*/ callback) {
-    apiBookingService.book(
+    sb_apiBookingService.book(
       { quote_id: quote.id },
       function(/*Reference*/ reference) {
         callback(reference)
@@ -46,7 +46,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
   }
 
   function payWithCredit(/*Reference*/ reference, /*fn*/ callback) {
-    apiPaymentsService.processReference(
+    sb_apiPaymentsService.processReference(
       { ref: reference.ref },
       function() {
         callback(reference)
@@ -68,7 +68,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
   }
 
   $scope.bookWithCard = function() {
-    notifyService.featureNotImplemented()
+    sb_notifyService.featureNotImplemented()
 //    $scope.status = 'progress'
 //
 //    getQuote(function(/*Quote*/ quote) {
@@ -90,7 +90,7 @@ app.controller('checkoutController', function($scope, state, apiBookingService, 
   }
 
   function getCredit(/*str*/ placeId, /*str*/ currency) {
-    apiPaymentsService.getUserBalance(placeId, null, function(/*Balance*/ balance) {
+    sb_apiPaymentsService.getUserBalance(placeId, null, function(/*Balance*/ balance) {
       $scope.credit = balance.creditIn(currency)
     })
   }

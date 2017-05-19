@@ -1,0 +1,16 @@
+<div class="place-spaces container-fluid" ng-show="showContent">
+
+  <div class="row">
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addRootSpace()"><i class="fa fa-plus fa-fw"></i> Space</button>
+    <a href class="col-sm-2" ng-repeat="space in editedPlace.spaces" ng-click="editSpace(space)">{{space.name}}</a>
+  </div>
+
+  <ng-include src="'views/templates/managePlaces/editSpace.html'" sb-include-replace />
+  
+  <edited-place-edit-price-dialog trigger="editPriceTrigger" edited-price="editedPrice" dialog-title="{{dialogOptions.title}}"
+                                  on-save="dialogOptions.onSave()" on-delete="dialogOptions.onDelete()" has-delete="{{dialogOptions.hasDelete}}"/>
+
+  <edited-place-new-space-dialog trigger="newSpaceTrigger" new-space="newSpace" dialog-title="{{dialogOptions.title}}"
+                                 on-save="dialogOptions.onSave()"/>
+
+</div>

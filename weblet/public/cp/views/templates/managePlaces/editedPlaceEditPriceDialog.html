@@ -1,0 +1,54 @@
+<div randomScopeID class="modal fade edited-place-edit-price-dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <button class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">{{dialogTitle}}</h4>
+      </div>
+
+      <div class="modal-body">
+        <form class="form-horizontal">
+          <fieldset>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Name</label>
+              <div class="col-sm-9">
+                <input class="form-control" type="text" ng-model="editedPrice.name" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Amount</label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <div class="input-group-btn">
+                    <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">{{selectedCurrency.value}} <span class="caret"></span></button>
+                    <ul class="dropdown-menu">
+                      <li ng-repeat="(currency,sign) in selectedCurrency.currencies"><a href ng-click="selectedCurrency.change(currency)">{{currency}}</a></li>
+                    </ul>
+                  </div>
+                  <span class="input-group-addon">{{selectedCurrency.sign}}</span>
+                  <input class="form-control" type="number" ng-model="editedAmount.pound" />
+                  <span class="input-group-addon">.</span>
+                  <input class="form-control" type="number" ng-model="editedAmount.pence" />
+                </div>
+              </div>
+            </div>
+            <div class="form-group" ng-repeat="attr in editedPrice.attributesArray" ng-show="editedPrice.id">
+              <label class="control-label col-sm-3">{{attr.name}}</label>
+              <div class="col-sm-9">
+                <input class="form-control" type="text" ng-model="attr.value" />
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-danger pull-left" data-dismiss="modal" ng-click="onDelete()" ng-show="hasDelete"><i class="fa fa-times fa-fw"></i> Delete</button>
+        <button class="btn btn-success" data-dismiss="modal" ng-click="submit()"><i class="fa fa-check fa-fw"></i> Save</button>
+        <button class="btn btn-default" data-dismiss="modal"><i class="fa fa-ban fa-fw"></i> Cancel</button>
+      </div>
+
+    </div>
+  </div>
+</div>

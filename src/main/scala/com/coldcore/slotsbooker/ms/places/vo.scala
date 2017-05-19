@@ -29,12 +29,12 @@ object DateTime extends DefaultJsonProtocol {
 }
 
 case class Place(place_id: String, profile_id: String,
-                 name: Option[String], url: Option[String], email: Option[String], address: Option[Address],
+                 name: Option[String], address: Option[Address],
                  spaces: Option[Seq[Space]], moderators: Option[Seq[String]], attributes: Option[Attributes],
                  datetime: Option[DateTime])
 object Place extends DefaultJsonProtocol {
   implicit val placeFormat: RootJsonFormat[Place] =
-    jsonFormat(apply, "place_id", "profile_id", "name", "url", "email", "address", "spaces", "moderators", "attributes", "datetime")
+    jsonFormat(apply, "place_id", "profile_id", "name", "address", "spaces", "moderators", "attributes", "datetime")
 }
 
 case class CreatePlace(name: String)

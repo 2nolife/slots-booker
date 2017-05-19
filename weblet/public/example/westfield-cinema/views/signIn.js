@@ -1,4 +1,4 @@
-app.controller('signInController', function($scope, loginService) {
+app.controller('signInController', function($scope, sb_loginService) {
 
   delete $scope.password
 
@@ -9,7 +9,7 @@ app.controller('signInController', function($scope, loginService) {
     }
     delete $scope.password
 
-    loginService.login(credentials)
+    sb_loginService.login(credentials)
   }
 
 });
