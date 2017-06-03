@@ -39,6 +39,8 @@ trait SpaceCommands {
   case class GetInnerSpacesIN(placeId: String, spaceId: String, profile: ProfileRemote,
                               deepSpaces: Boolean, deepPrices: Boolean, limit: Option[Int]) extends RequestInfo
   case class DeleteSpaceIN(placeId: String, spaceId: String, profile: ProfileRemote) extends RequestInfo
+  case class SearchSpacesIN(placeId: String, byAttributes: Seq[(String,String)], joinOR: Boolean, profile: ProfileRemote,
+                            deepSpaces: Boolean, deepPrices: Boolean) extends RequestInfo
 }
 
 trait PriceCommands {
@@ -63,11 +65,20 @@ class PlacesActor(val placesDb: PlacesDb, val voAttributes: VoAttributes) extend
 
   val placeModerator = (place: vo.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
 
+  def permitAttributes(obj: vo.CreatePlace, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("place"), ap.defaultWrite(profile, _ => true))._1
+
   def permitAttributes(obj: vo.UpdatePlace, place: vo.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("place"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
 
+  def permitAttributes(obj: vo.CreateSpace, place: vo.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("space"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
   def permitAttributes(obj: vo.UpdateSpace, place: vo.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("space"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
+  def permitAttributes(obj: vo.CreatePrice, place: vo.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("price"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
 
   def permitAttributes(obj: vo.UpdatePrice, place: vo.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("price"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
@@ -81,7 +92,14 @@ trait AmendPlace {
   val amendPlaceReceive: Actor.Receive = {
 
     case CreatePlaceIN(obj, profile) =>
-      val place = Some(placesDb.createPlace(profile.profile_id, obj))
+      lazy val forbidAttributes = !permitAttributes(obj, profile)
+
+      def create(): Option[vo.Place] = Some(placesDb.createPlace(profile.profile_id, obj))
+
+      val (code, place) =
+        if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
+        else (ApiCode.CREATED, create())
+
       reply ! CodeEntityOUT(ApiCode.CREATED, expose(place, profile))
 
     case UpdatePlaceIN(placeId, obj, profile) =>
@@ -97,7 +115,7 @@ trait AmendPlace {
         if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
         else if (forbidModerators) (ApiCode(SC_FORBIDDEN), None)
         else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
-        else if (canUpdate) (ApiCode(SC_OK), update())
+        else if (canUpdate) (ApiCode.OK, update())
         else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, expose(place, profile))
@@ -131,12 +149,14 @@ trait AmendSpace {
     case CreateSpaceIN(placeId, obj, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
       lazy val placeNotFound = myPlace.isEmpty
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canCreate = profile.isSuper || placeModerator(myPlace.get, profile)
 
       def create(): Option[vo.Space] = Some(placesDb.createSpace(placeId, obj))
 
       val (code, space) =
         if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
         else if (canCreate) (ApiCode.CREATED, create())
         else (ApiCode(SC_FORBIDDEN), None)
 
@@ -163,12 +183,14 @@ trait AmendSpace {
       lazy val myPlace = placesDb.placeById(placeId)
       lazy val mySpace = placesDb.spaceById(spaceId)
       lazy val spaceNotFound = myPlace.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canCreate = profile.isSuper || placeModerator(myPlace.get, profile)
 
       def create(): Option[vo.Space] = Some(placesDb.createInnerSpace(spaceId, obj))
 
       val (code, space) =
         if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
         else if (canCreate) (ApiCode.CREATED, create())
         else (ApiCode(SC_FORBIDDEN), None)
 
@@ -205,12 +227,14 @@ trait AmendPrice {
       lazy val myPlace = placesDb.placeById(placeId)
       lazy val mySpace = placesDb.spaceById(spaceId)
       lazy val spaceNotFound = myPlace.isEmpty || mySpace.isEmpty || mySpace.get.place_id != placeId
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canCreate = profile.isSuper || placeModerator(myPlace.get, profile)
 
       def create(): Option[vo.Price] = Some(placesDb.createPrice(spaceId, obj))
 
       val (code, price) =
         if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
         else if (canCreate) (ApiCode.CREATED, create())
         else (ApiCode(SC_FORBIDDEN), None)
 
@@ -345,6 +369,24 @@ trait GetSpace {
       val (code, spaces) =
         if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
         else (ApiCode.OK, read)
+
+      reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
+
+    case SearchSpacesIN(placeId, byAttributes, joinOR, profile, deepSpaces, deepPrices) =>
+      val fields = customSpaceFields(deepSpaces, deepPrices)
+      val privileged =
+        byAttributes.nonEmpty && !byAttributes.exists { case (_, value) => value.endsWith("*") && value.size < 3+1 }
+
+      lazy val myPlace = placesDb.placeById(placeId)
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val canRead = profile.isSuper || privileged
+
+      def read: Option[Seq[vo.Space]] = Some(placesDb.searchSpaces(placeId, byAttributes, joinOR, fields))
+
+      val (code, spaces) =
+        if (placeNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (canRead) (ApiCode.OK, read)
+        else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, exposeSpaces(spaces, myPlace, profile))
 

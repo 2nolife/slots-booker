@@ -4,10 +4,11 @@
     <button class="btn btn-default" ng-click="reloadEditedPlace()"><i class="fa fa-refresh fa-fw {{loadEditedPlaceSpin ? 'fa-spin' : ''}}"></i> Refresh</button>
   </div>
   <div class="btn-group pull-right">
-    <button class="btn btn-xs btn-danger" ng-click="dummy()"><i class="fa fa-times fa-fw"></i> Delete</button>
+    <button class="btn btn-xs btn-danger" ng-click="deleteEditedPlace()"><i class="fa fa-trash-o fa-fw"></i> Delete</button>
   </div>
 
-  <triggered-nav-tabs class="menu-tabs" tabs="Properties,Address,Spaces,Moderators" index-var="placeMenuTab" />
+  <triggered-nav-tabs class="menu-tabs" tabs="Properties,Address,Spaces, Moderators" index-var="placeMenuTab" reset-trigger='editedPlace' ng-show="editedPlace.template == 'default'"/>
+  <triggered-nav-tabs class="menu-tabs" tabs="Properties,Address,Seasons,Moderators" index-var="placeMenuTab" reset-trigger='editedPlace' ng-show="editedPlace.template == 'waterski'"/>
 
   <edited-place-properties trigger="placeMenuTab == 0" edited-place="editedPlace" />
   <edited-place-address trigger="placeMenuTab == 1" edited-place="editedPlace" />

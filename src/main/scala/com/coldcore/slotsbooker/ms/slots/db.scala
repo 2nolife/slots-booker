@@ -198,6 +198,8 @@ trait SlotsCrudImpl {
     slots.
       insert(slot)
 
+    attributes.foreach(a => mergeJsObject(finderById(slot.idString), slots, "attributes", a.value))
+
     entryCreated(slot.idString, slots)
 
     slotById(slot.idString, fields).get
@@ -428,6 +430,8 @@ trait PriceCrudImpl {
 
     prices.
       insert(price)
+
+    attributes.foreach(a => mergeJsObject(finderById(price.idString), prices, "attributes", a.value))
 
     entryCreated(price.idString, prices)
 

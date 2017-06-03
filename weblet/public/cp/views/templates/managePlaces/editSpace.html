@@ -5,11 +5,13 @@
       <li ng-repeat="space in editedSpace.parentSpaces"><a href ng-click="editSpace(space)">{{space.name}}</a></li>
       <li>{{editedSpace.name}}</li>
     </ul>
-    <button class="btn btn-danger col-sm-1" ng-click="deleteEditedSpace()"><i class="fa fa-times fa-lg"></i></button>
+    <button class="btn btn-danger col-sm-1" ng-click="deleteEditedSpace()"><i class="fa fa-trash-o fa-lg"></i></button>
   </div>
 
   <div class="row">
-    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Spaces,Prices,Slots" index-var="spaceMenuTab" />
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Spaces,Prices,Slots" index-var="spaceMenuTab"                             ng-show="editedPlace.template == 'default'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Lakes, Prices,"      index-var="spaceMenuTab" reset-trigger='editedSpace' ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'season'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,,      Prices,Slots" index-var="spaceMenuTab" reset-trigger='editedSpace' ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'lake'" />
   </div>
 
   <div class="row" ng-show="spaceMenuTab == 0">
@@ -37,12 +39,13 @@
   </div>
 
   <div class="row" ng-show="spaceMenuTab == 2">
-    <button class="btn btn-xs btn-success col-sm-2" ng-click="newPrice()"><i class="fa fa-plus fa-fw"></i> Price</button>
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addPrice()"><i class="fa fa-plus fa-fw"></i> Price</button>
     <a href class="col-sm-2" ng-repeat="price in editedSpace.prices" ng-click="editPrice(price)">{{price.amount | sb_numberX100 : true }}</a>
   </div>
 
   <div class="row" ng-show="spaceMenuTab == 1">
-    <button class="btn btn-xs btn-success col-sm-2" ng-click="addSpace()"><i class="fa fa-plus fa-fw"></i> Space</button>
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addSpace()" ng-show="editedPlace.template == 'default'"><i class="fa fa-plus fa-fw"></i> Space</button>
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addSpace()" ng-show="editedPlace.template == 'waterski'"><i class="fa fa-plus fa-fw"></i> Lake</button>
     <a href class="col-sm-2" ng-repeat="space in editedSpace.spaces" ng-click="editSpace(space)">{{space.name}}</a>
   </div>
 

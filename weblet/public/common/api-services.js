@@ -62,6 +62,31 @@ app.service('sb_apiPlacesService', function($http, sb_apiHelper, $q, sb_apiClass
         })
   }
 
+  service.addPlace = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.post('/api/places', entity)
+      .then(
+        function successCallback(response) {
+          var place = response.data
+          callback(sb_apiClassWrap.wrap(place, 'place'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.deletePlace = function(/*str*/ placeId, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.delete('/api/places/'+placeId)
+      .then(
+        function successCallback(response) {
+          callback()
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
 })
 
 app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
@@ -169,8 +194,30 @@ app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClass
         })
   }
 
+  service.findSpaces = function(/*str*/ placeId, /*json*/ searchOptions, /*fn*/ callback, /*fn*/ statusCallback) {
+    var attrs0 = (searchOptions.attributes || []).map(function(attr) {
+      return Object.keys(attr).map(function(key) {
+        return key+'='+attr[key]
+      })
+    })
+    var attrs = [].concat.apply([], attrs0).join('&')
+
+    var query = '?'+(searchOptions.join || 'and')+(attrs.length > 0 ? '&' : '')+attrs
+
+    $http.get('/api/places/'+placeId+'/spaces/search'+query)
+      .then(
+        function successCallback(response) {
+          var spaces = response.data
+          callback(spaces.map(function(space) { return sb_apiClassWrap.wrap(space, 'space') }))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
   service.refreshSpaces = function(/*str*/ placeId, /*str(optional)*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
-    options = $.extend(true, {}, {}, options)
+    options = $.extend(true, {}, options)
 
     var query = ''
     if (options.limit != undefined) query += '&limit='+options.limit
@@ -335,7 +382,7 @@ app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassW
   }
 
   service.refreshBookings = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
-    options = $.extend(true, {}, {}, options)
+    options = $.extend(true, {}, options)
 
     var query = ''
     if (options.active != undefined) query += '&active'

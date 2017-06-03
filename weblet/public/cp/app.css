@@ -78,12 +78,72 @@ h1.top {
   margin-bottom: 0;
 }
 
-#view-manage-places .edited-space .slots-list tbody tr {
+#view-manage-places .edited-space .slots-list tbody td:first-child {
+  cursor: default;
+  width: 30px;
+}
+
+#view-manage-places .edited-space .slots-list tbody td {
   cursor: pointer;
 }
 
-#view-manage-places .edited-space .slot-nav span {
+#view-manage-places .edited-space .slots-calendar .day {
+  float: left;
+  padding: 5px;
+  font-size: 12px;
+  border: 1px solid #999;
+  width: 100px;
+}
+
+#view-manage-places .edited-space .slots-calendar .day .date {
+  background: #ddd;
+  margin: 0;
+  padding: 5px;
+  text-align: center;
+}
+
+#view-manage-places .edited-space .slots-calendar .day .date span {
+  display: block;
+}
+
+#view-manage-places .edited-space .slots-calendar .day .slot {
+  border: 1px solid #ddd;
+  margin: 0;
+  padding: 5px 5px 0 5px;
+  font-size: 10px;
+  height: 25px;
+}
+
+#view-manage-places .edited-space .slots-calendar .day .slot.booked {
+  background: repeating-linear-gradient(45deg, #ddd, #ddd 10px, #fff 10px, #fff 20px);
+}
+
+#view-manage-places .edited-space .slots-calendar .day .slot span {
+  display: block;
+  float: right;
+}
+
+#view-manage-places .edited-space .slots-calendar .day .slot span:first-child {
+  width: 30px;
+  float: left;
+}
+
+#view-manage-places .edited-space .slots-calendar .day.exclude {
+  border: 1px solid #ddd;
+}
+
+#view-manage-places .edited-space .slots-calendar .day.exclude .date {
+  border: 1px solid #ddd;
+  background: none;
+}
+
+#view-manage-places .edited-space .breadcrumb.slot-nav span {
   padding-right: 10px;
+}
+
+#view-manage-places .edited-space button.slot-period {
+  border-right: none;
+  border-radius: 0;
 }
 
 #view-manage-places .new-place .template h3 {

@@ -11,26 +11,44 @@
           </span>
       </div>
     </div>
-    <div class="col-sm-6">
+    <div class="col-sm-5">
       <div class="btn-group">
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day-1')"><i class="fa fa-play fa-flip-horizontal"></i></button>
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day')">Today</button>
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('day+1')"><i class="fa fa-play"></i></button>
-      </div>
-      <div class="btn-group">
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month-1')"><i class="fa fa-backward"></i></button>
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month')">This month</button>
-        <button type="button" class="btn btn-default" ng-click="changeDateFilter('month+1')"><i class="fa fa-forward"></i></button>
+        <button class="btn btn-default" ng-click="changeDateFilter(searchPeriod+'-1')"><i class="fa fa-play fa-flip-horizontal"></i></button>
+        <button class="btn btn-default" ng-click="changeDateFilter('day')" ng-show="searchPeriod == 'day'">Today</button>
+        <button class="btn btn-default" ng-click="changeDateFilter('week')" ng-show="searchPeriod == 'week'">This week</button>
+        <button class="btn btn-default" ng-click="changeDateFilter('month')" ng-show="searchPeriod == 'month'">This month</button>
+        <button class="btn btn-default dropdown-toggle slot-period" data-toggle="dropdown"><i class="fa fa-caret-down"></i></button>
+        <ul class="dropdown-menu">
+          <li><a href ng-click="searchPeriod = 'day'">Daily</a></li>
+          <li><a href ng-click="searchPeriod = 'week'">Weekly</a></li>
+          <li><a href ng-click="searchPeriod = 'month'">Monthly</a></li>
+        </ul>
+        <button class="btn btn-default" ng-click="changeDateFilter(searchPeriod+'+1')"><i class="fa fa-play"></i></button>
       </div>
     </div>
-    <button class="btn btn-success col-sm-1" ng-click="addSlot()"><i class="fa fa-plus fa-lg"></i></button>
+    <div class="col-sm-2">
+      <div class="btn-group">
+        <button class="btn btn-default" ng-click="viewSlotsMode = 'table'" ng-class="{active: viewSlotsMode == 'table'}"><i class="fa fa-list"></i></button>
+        <button class="btn btn-default" ng-click="viewSlotsMode = 'calendar'" ng-class="{active: viewSlotsMode == 'calendar'}"><i class="fa fa-calendar"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row gap-top" ng-show="!editedSlot">
+    <button class="btn btn-success btn-xs" ng-click="addSlot()"><i class="fa fa-plus fa-lg fa-fw"></i> Slot</button>
+    <button class="btn btn-success btn-xs" ng-click="addSlotSchedule()"><i class="fa fa-plus fa-lg fa-fw"></i> Schedule</button>
+    <button class="btn btn-warning btn-xs" ng-click="copySlots()"><i class="fa fa-copy fa-lg fa-fw"></i> Copy</button>
+    <button class="btn btn-danger btn-xs" ng-click="deleteSlots()"><i class="fa fa-trash-o fa-lg fa-fw"></i> Delete</button>
   </div>
 
   <div class="row" ng-show="!editedSlot">
-    <table class="table table-hover slots-list" ng-show="editedSpace.slots.length">
+
+    <table class="table table-hover slots-list" ng-show="editedSpace.slots.length && viewSlotsMode == 'table'">
       <thead>
       <tr>
+        <th><input type="checkbox" ng-model="toggledSlots" ng-click="toggleSlots()"/></th>
         <th>Name</th>
+        <th>Day</th>
         <th>From</th>
         <th>To</th>
         <th></th>
@@ -38,15 +56,22 @@
       </thead>
       <tbody>
 
-      <tr ng-repeat="slot in editedSpace.slots" ng-click="editSlot(slot)">
-        <td>{{slot.name}}</td>
-        <td class="slot-date"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></td>
-        <td class="slot-date"><span>{{slot.formatted.dateTo}}</span> <span>{{slot.formatted.timeTo}}</span></td>
-        <td><i ng-show="slot.bookStatus != 0" data-toggle="tooltip" title="Booked" class="fa fa-user"></i></td>
+      <tr ng-repeat="slot in editedSpace.slots">
+        <td><input type="checkbox" ng-model="slot.selected"/></td>
+        <td ng-click="editSlot(slot)">{{slot.name}}</td>
+        <td ng-click="editSlot(slot)" class="slot-date">{{slot.formatted.weekday}}</td>
+        <td ng-click="editSlot(slot)" class="slot-date"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></td>
+        <td ng-click="editSlot(slot)" class="slot-date"><span>{{slot.formatted.dateTo}}</span> <span>{{slot.formatted.timeTo}}</span></td>
+        <td ng-click="editSlot(slot)"><i ng-show="slot.bookStatus > 0" data-toggle="tooltip" title="Booked" class="fa fa-user"></i></td>
       </tr>
 
       </tbody>
     </table>
+
+    <div class="gap-top" ng-show="viewSlotsMode == 'calendar'">
+      <slots-calendar calendar="slotsCalendar"/>
+    </div>
+
   </div>
 
   <ng-include src="'views/templates/managePlaces/editSlot.html'" sb-include-replace />
@@ -56,5 +81,11 @@
 
   <edited-place-new-slot-dialog trigger="newSlotTrigger" new-slot="newSlot" dialog-title="{{dialogOptions.title}}"
                                 on-save="dialogOptions.onSave()"/>
+
+  <edited-place-new-slot-schedule-dialog trigger="newSlotScheduleTrigger" new-slot-schedule="newSlotSchedule" dialog-title="{{dialogOptions.title}}"
+                                         on-save="dialogOptions.onSave()"/>
+
+  <edited-place-slot-copy-paste-dialog trigger="slotCopyPasteTrigger" slot-copy-paste="slotCopyPaste" dialog-title="{{dialogOptions.title}}"
+                                       on-save="dialogOptions.onSave()"/>
 
 </div>

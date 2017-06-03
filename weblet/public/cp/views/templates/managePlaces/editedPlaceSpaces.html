@@ -1,7 +1,8 @@
 <div class="place-spaces container-fluid" ng-show="showContent">
 
   <div class="row">
-    <button class="btn btn-xs btn-success col-sm-2" ng-click="addRootSpace()"><i class="fa fa-plus fa-fw"></i> Space</button>
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addRootSpace()" ng-show="editedPlace.template == 'default'"><i class="fa fa-plus fa-fw"></i> Space</button>
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addRootSpace()" ng-show="editedPlace.template == 'waterski'"><i class="fa fa-plus fa-fw"></i> Season</button>
     <a href class="col-sm-2" ng-repeat="space in editedPlace.spaces" ng-click="editSpace(space)">{{space.name}}</a>
   </div>
 

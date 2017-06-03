@@ -44,7 +44,7 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
           }
 
         } ~
-        pathPrefix("search") {
+        path("search") {
 
           get {
             parameters('deep ? getDeepFields,
@@ -126,6 +126,26 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute {
         }
 
       } ~
+      path("spaces" / "search") {
+
+        get {
+          parameters('deep ? getDeepFields,
+                     'deep_spaces.as[Boolean].?,
+                     'deep_prices.as[Boolean].?) {
+            (deep,
+             deep_spaces,
+             deep_prices) =>
+
+              parameterSeq { attributes =>
+                completeByActor[Seq[vo.Space]](placesActor, SearchSpacesIN(placeId, attributes.filterNot(p => Seq("and", "or", "deep", "deep_spaces", "deep_prices").contains(p._1)),
+                                                                           joinOR = attributes.exists(p => p._1 == "or"),
+                                                                           profile,
+                                                                           deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+              }
+          }
+        }
+
+      } ~
       pathPrefix("spaces" / Segment) { spaceId =>
         pathEnd {
 
@@ -198,21 +218,19 @@ trait SpacesInnerPricesRoute {
 
       } ~
       pathPrefix("prices" / Segment) { priceId =>
-        pathEnd {
 
-          patch {
-            entity(as[vo.UpdatePrice]) { entity =>
-              completeByActor[vo.Price](placesActor, UpdatePriceIN(placeId, spaceId, priceId, entity, profile))
-            }
-          } ~
-          get {
-            completeByActor[vo.Price](placesActor, GetPriceIN(placeId, spaceId, priceId, profile))
-          } ~
-          delete {
-            completeByActor[EmptyEntity](placesActor, DeletePriceIN(placeId, spaceId, priceId, profile))
+        patch {
+          entity(as[vo.UpdatePrice]) { entity =>
+            completeByActor[vo.Price](placesActor, UpdatePriceIN(placeId, spaceId, priceId, entity, profile))
           }
-
+        } ~
+        get {
+          completeByActor[vo.Price](placesActor, GetPriceIN(placeId, spaceId, priceId, profile))
+        } ~
+        delete {
+          completeByActor[EmptyEntity](placesActor, DeletePriceIN(placeId, spaceId, priceId, profile))
         }
+
       }
 
 }

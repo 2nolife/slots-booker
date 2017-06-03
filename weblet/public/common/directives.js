@@ -37,6 +37,7 @@ app.directive('sbDatepicker', function () {
     link: function (scope, element, attrs, ctrl) {
       element.datepicker({
         dateFormat: 'dd/mm/yy',
+        firstDay: 1,
         onSelect: function (date) {
           ctrl.$setViewValue(date)
           scope.$apply()

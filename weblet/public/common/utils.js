@@ -94,7 +94,6 @@ sb.utils = {
     return value.length == 5 && num >= 0 && num <= 2400 ? ''+num : null
   },
 
-
   /** args -> UTC Date (no daylight saving) */
   dateUTC: function(/*num*/ year, /*num*/ month, /*num*/ day) {
     return new Date(Date.UTC(year, month, day))
@@ -146,6 +145,21 @@ sb.utils = {
     return sb.utils.dateToStr(result)
   },
 
+  /** 20170105 -> 20170102 (monday) */
+  weekFirstDate: function(/*str*/ value) {
+    var date = sb.utils.strToDate(value)
+        weekday = date.getDay(),
+        add = weekday == 0 ? -6 : -weekday+1
+    return sb.utils.addDaysDate(value, add)
+  },
+
+  /** 20170105 -> 20170108 (sunday) */
+  weekLastDate: function(/*str*/ value) {
+    var date = sb.utils.strToDate(value)
+        weekday = date.getDay(),
+        add = weekday == 0 ? 0 : -weekday+7
+    return sb.utils.addDaysDate(value, add)
+  },
 
   /** 20170123 -> Wednesday */
   weekdayAsWord: function(/*str*/ value) {
@@ -170,6 +184,25 @@ sb.utils = {
     return date1 < date2 ? -1 : date1 > date2 ? 1 : time1 < time2 ? -1 : time1 > time2 ? 1 : 0
   },
 
+  /** 20170123,20170125 -> 2 */
+  diffDaysDate: function(/*str*/ value1, /*str*/ value2) {
+    var curDate = value1
+        diff = 0
+    while (parseInt(curDate) < parseInt(value2)) {
+      diff++
+      curDate = sb.utils.addDaysDate(curDate, 1)
+    }
+    return diff
+  },
+
+  /** 1230,45 -> 1315, 22:00,125 -> 0005 */
+  addMinutesTime: function(/*str|num*/ value, /*num*/ add) {
+    var str = ('0000'+value).slice(-4),
+        minutes = parseInt(str.substr(0,2))*60+parseInt(str.substr(2,2))+add,
+        result = Math.floor(minutes/60)*100+Math.floor(minutes%60)
+    while (result >= 2400) result -= 2400
+    return ('0000'+result).slice(-4)
+  },
 
   apiCode: function(/*obj*/ response) {
     var arr = (response.headers('x-api-code') || '').split(",")
@@ -210,17 +243,19 @@ sb.utils = {
 
   numberX100: function(/*num*/ value, /*bool*/ alwaysShowPence) {
     // 230 -> 2.30
-    var result = '0'
-    if (value) {
-      var pound = Math.floor(value/100), pence = value-pound*100
-      var paddedPence = pence > 0 || alwaysShowPence ? '.'+('00'+pence).slice(-2) : ''
-      result = pound+paddedPence
-    }
+    value = value || 0
+    var pound = Math.floor(value/100), pence = value-pound*100,
+        paddedPence = pence > 0 || alwaysShowPence ? '.'+('00'+pence).slice(-2) : '',
+        result = pound+paddedPence
     return result
   },
 
   apiStatusOK: function(/*str*/ status) {
     return status == 'success' || status == 'noop'
+  },
+
+  percent: function(/*num*/ now, /*num*/ total) {
+    return Math.round(((now / total)*100))
   }
 
 }

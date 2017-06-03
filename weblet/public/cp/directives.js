@@ -21,7 +21,7 @@ app.directive('triggeredNavTabs', function() {
 
     template:
       '<ul class="nav nav-tabs {{class}}">' +
-      '  <li ng-class="{active: selectedIndex == $index}" ng-repeat="name in names">' +
+      '  <li ng-class="{active: selectedIndex == $index}" ng-repeat="name in names" ng-show="name">' +
       '    <a href ng-click="select($index)">{{name}}</a>' +
       '  </li>' +
       '</ul>',
@@ -32,7 +32,8 @@ app.directive('triggeredNavTabs', function() {
     scope: {
       tabs: '@', /*csv*/
       indexVar: '@', /*str*/
-      class: '@' /*str*/
+      class: '@', /*str*/
+      resetTrigger: '=' /*any*/
     },
 
     link: function(scope, element, attrs) {
@@ -41,7 +42,7 @@ app.directive('triggeredNavTabs', function() {
           unwatch()
 
           scope.selectedIndex = -1
-          scope.names = newValue.split(',')
+          scope.names = newValue.split(',').map(function(v) { return $.trim(v) })
 
           scope.select = function(/*num*/ index) {
             scope.selectedIndex = index
@@ -49,6 +50,10 @@ app.directive('triggeredNavTabs', function() {
           }
 
         }
+      })
+
+      scope.$watch('resetTrigger', function(newValue, oldValue) {
+        scope.select(-1)
       })
     }
 
@@ -64,8 +69,7 @@ app.directive('confirmDialog', function(sb_modalDialogService, $rootScope) {
     templateUrl: 'views/templates/confirmDialog.html',
 
     link: function(scope, element, attrs) {
-      var dialogElement = element.find('.confirm-dialog')
-      var dialogHandle = sb_modalDialogService.registerDialog('#'+sb.utils.elementID(dialogElement))
+      var dialogHandle = cp.utils.modalDialog('.confirm-dialog', element, sb_modalDialogService)
 
       function show(/*obj*/ data) {
         scope.text = data.text
@@ -135,11 +139,42 @@ app.directive('userFinderDialog', function(sb_apiUsersService, sb_modalDialogSer
     controller: controller,
 
     link: function(scope, element, attrs) {
-      var dialogElement = element.find('.user-finder-dialog')
-      var dialogHandle = sb_modalDialogService.registerDialog('#'+sb.utils.elementID(dialogElement))
+      var dialogHandle = cp.utils.modalDialog('.user-finder-dialog', element, sb_modalDialogService)
 
       scope.$watch('trigger', function(newValue, oldValue) {
         if (newValue) dialogHandle.show()
+      })
+    }
+
+  }
+})
+
+app.directive('slotsCalendar', function(sb_apiUsersService, sb_modalDialogService) {
+
+  var controller = function($scope) {
+
+    $scope.onCalendarSet = function() {
+
+    }
+
+  }
+
+  return {
+
+    restrict: 'E',
+    replace: true,
+
+    scope: {
+      calendar: '=' /*SlotsCalendar*/
+    },
+
+    templateUrl: 'views/templates/slotsCalendar.html',
+
+    controller: controller,
+
+    link: function(scope, element, attrs) {
+      scope.$watch('calendar', function(newValue, oldValue) {
+        if (newValue) scope.onCalendarSet()
       })
     }
 

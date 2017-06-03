@@ -18,12 +18,7 @@ cp.classes = {
       _this.owner = source.owner
       _this.moderators = source.moderators
 
-      _this.url = _this.attributes.url
-      _this.email = _this.attributes.email
-      _this.primaryNumber = _this.attributes.primary_number
-      _this.clientKey = _this.attributes.client_key
-      _this.externalKey = _this.attributes.external_key
-      _this.negativeBalance = _this.attributes.negative_balance
+      _this.template = ((_this.attributes || {}).prm0 || {}).template || 'default'
 
       makeAttributesArray()
 
@@ -45,7 +40,9 @@ cp.classes = {
         { key: 'url',              name: 'URL',              value: f(a.url),              type: 'text',  write: true  },
         { key: 'email',            name: 'Email',            value: f(a.email),            type: 'email', write: true  },
         { key: 'primary_number',   name: 'Primary number',   value: f(a.primary_number),   type: 'text',  write: true  },
-        { key: 'negative_balance', name: 'Negative balance', value: f(a.negative_balance), type: 'bool',  write: true  }
+        { key: 'negative_balance', name: 'Negative balance', value: f(a.negative_balance), type: 'bool',  write: true  },
+        { key: 'prm0', name: 'Parameter 0', value: f(a.prm0), type: 'text', write: true  },
+        { key: 'prm1', name: 'Parameter 1', value: f(a.prm1), type: 'text', write: true  }
       ]
     }
 
@@ -102,6 +99,8 @@ cp.classes = {
       _this.name = source.name
       _this.parentSpaces = getParentSpaces()
       _this.attributes = source.attributes
+
+      _this.template = ((_this.attributes || {}).prm0 || {}).template || 'default'
 
       makeAttributesArray()
 
@@ -237,16 +236,32 @@ cp.classes = {
 
   },
 
+  NewPlace: function() {
+
+    var _this = this
+
+    this.name = null
+    this.template = null
+
+    this.toApiEntity = function() {
+      var entity = { name: _this.name }
+      if (_this.template) entity.attributes = { prm0: { template: _this.template }}
+      return entity
+    }
+
+  },
+
   NewSpace: function() {
 
     var _this = this
 
     this.name = null
+    this.template = null
 
     this.toApiEntity = function() {
-      return {
-        name: _this.name
-      }
+      var entity = { name: _this.name }
+      if (_this.template) entity.attributes = { prm0: { template: _this.template }}
+      return entity
     }
 
   },
@@ -288,7 +303,8 @@ cp.classes = {
         dateFrom: sb.utils.formatDate(_this.dateFrom),
         dateTo: sb.utils.formatDate(_this.dateTo),
         timeFrom: sb.utils.formatTime(_this.timeFrom),
-        timeTo: sb.utils.formatTime(_this.timeTo)
+        timeTo: sb.utils.formatTime(_this.timeTo),
+        weekday: sb.utils.weekdayAsWord(_this.dateFrom)
       }
     }
 
@@ -336,9 +352,11 @@ cp.classes = {
     this.dateTo = null
     this.timeFrom = null
     this.timeTo = null
+    this.attributes = null
+    this.prices = null
 
     this.toApiEntity = function() {
-      return {
+      var entity = {
         place_id: _this.placeId,
         space_id: _this.spaceId,
         name: _this.name,
@@ -347,6 +365,291 @@ cp.classes = {
         time_from: _this.timeFrom,
         time_to: _this.timeTo
       }
+      if (_this.attributes) entity.attributes = _this.attributes
+      return entity
+    }
+
+  },
+
+  NewSlotPrice: function(/*str*/ slotId) {
+
+    var _this = this
+
+    this.slotId = slotId
+    this.name = null
+    this.amount = null
+    this.currency = null
+    this.attributes = null
+
+    this.toApiEntity = function() {
+      var entity = {
+        name: _this.name,
+        amount: _this.amount,
+        currency: _this.currency
+      }
+      if (_this.attributes) entity.attributes = _this.attributes
+      return entity
+    }
+
+  },
+
+  NewSlotSchedule: function(/*str*/ placeId, /*str*/ spaceId, sb_apiSlotsService) {
+
+    var _this = this
+
+    this.placeId = placeId
+    this.spaceId = spaceId
+    this.name = null
+    this.dateFrom = null
+    this.dateTo = null
+    this.timeFrom = null
+    this.timeTo = null
+    this.timePeriod = null // minutes
+
+    this.newSlots = null
+    this.progress = {
+      now: 0,
+      total: 0,
+      percent: 0
+    }
+
+    function makeNewSlots() {
+      var slots = [],
+          curDate = _this.dateFrom
+      while (curDate <= _this.dateTo) {
+
+        var curTime = _this.timeFrom
+        while (curTime < _this.timeTo) {
+
+          var plusTime = parseInt(sb.utils.addMinutesTime(curTime, _this.timePeriod))
+          if (plusTime <= curTime || plusTime == 0000) plusTime = 2400
+
+          var slot = new cp.classes.NewSlot()
+          slot.name = _this.name
+          slot.dateFrom = slot.dateTo = curDate
+          slot.timeFrom = curTime
+          slot.timeTo = plusTime
+          slots.push(slot)
+
+          curTime = plusTime
+        }
+
+        curDate = parseInt(sb.utils.addDaysDate(curDate, 1))
+      }
+
+      return slots
+    }
+
+    this.ready = function() {
+      _this.newSlots = makeNewSlots()
+      _this.progress.total = _this.newSlots.length
+    }
+
+    this.createNewSlots = function(/*fn*/ callback) {
+      var n = _this.progress.total
+      _this.newSlots.forEach(function(/*NewSlot*/ newSlot) {
+        sb_apiSlotsService.addSlot(newSlot.toApiEntity(), function() {
+          _this.progress.now++
+          _this.progress.percent = sb.utils.percent(_this.progress.now, _this.progress.total)
+          if (--n == 0) callback()
+        })
+      })
+    }
+
+  },
+
+  SlotCopyPaste: function(sb_apiSlotsService) {
+
+    var _this = this
+
+    this.base = 'day' // day|week|range
+    this.copy = {
+      space: null, /*Space*/
+      dateFrom: null,
+      dateTo: null
+    }
+    this.paste = {
+      spaces: null, /*[Space]*/
+      dateFrom: null,
+      dateTo: null
+    }
+
+    this.newSlots = null
+    this.progress = {
+      now: 0,
+      total: 0,
+      percent: 0,
+      created: 0,
+      updated: 0
+    }
+
+    function fetchSlotsByDate(/*str*/ placeId, /*str*/ spaceId, /*num*/ dateFrom, /*num*/ dateTo, /*fn*/ callback) {
+      var searchOptions = {
+        placeId: placeId,
+        spaceId: spaceId,
+        from: dateFrom,
+        to: dateTo
+      }
+      sb_apiSlotsService.findSlots(searchOptions,
+        function(/*[Slot]*/ slots) {
+          var n = slots.length
+          if (n == 0) callback([])
+          slots.forEach(function(slot) {
+            slot.refresh('prices', true, function() {
+              if (--n == 0) callback(slots)
+            })
+          })
+        })
+    }
+
+    function filterSlotsByDate(/*num*/ date, /*Slot|NewSlot*/ slots) {
+      return $.grep(slots, function(slot) { return slot.dateFrom == date })
+    }
+
+    function filterSlotsByTime(/*num*/ time, /*Slot|NewSlot*/ slots) {
+      return $.grep(slots, function(slot) { return slot.timeFrom == time })
+    }
+
+    function filterSlotsByWeekday(/*num*/ date, /*Slot|NewSlot*/ slots) {
+      var weekday = sb.utils.weekdayAsWord(date),
+          mixed = $.grep(slots, function(slot) { return sb.utils.weekdayAsWord(slot.dateFrom) == weekday }),
+          weekdayDate = mixed.length ? mixed[0].dateFrom : null
+      return filterSlotsByDate(weekdayDate, slots)
+    }
+
+    function makeNewSlots(/*[Slot]*/ srcSlots) {
+      var trgSlots = [],
+          srcDate = _this.copy.dateFrom,
+          trgDate = _this.paste.dateFrom
+
+      while (trgDate <= _this.paste.dateTo) {
+        var daySlots = []
+        if (_this.base == 'day') daySlots = filterSlotsByDate(srcDate, srcSlots)
+        if (_this.base == 'week') daySlots = filterSlotsByWeekday(trgDate, srcSlots)
+        if (_this.base == 'range') {
+          daySlots = filterSlotsByDate(srcDate, srcSlots)
+          srcDate = parseInt(sb.utils.addDaysDate(srcDate, 1))
+          if (srcDate > _this.copy.dateTo) srcDate = _this.copy.dateFrom
+        }
+
+        daySlots.forEach(function(srcSlot) {
+          var slot = new cp.classes.NewSlot()
+          slot.name = srcSlot.name
+          slot.dateFrom = slot.dateTo = trgDate
+          slot.timeFrom = srcSlot.timeFrom
+          slot.timeTo = srcSlot.timeTo
+          slot.attributes = srcSlot.attributes
+          slot.prices = srcSlot.prices.map(function(/*Price*/ srcPrice) {
+            var price = new cp.classes.NewSlotPrice()
+            price.name = srcPrice.name
+            price.amount = srcPrice.amount
+            price.currency = srcPrice.currency
+            price.attributes = srcPrice.attributes
+            return price
+          })
+          trgSlots.push(slot)
+        })
+
+        trgDate = parseInt(sb.utils.addDaysDate(trgDate, 1))
+      }
+
+      return trgSlots
+    }
+
+    function createOrUpdateSlot(/*Space*/ space, /*NewSlot*/ newSlot, /*Slot*/ oldSlot, /*fn*/ callback) {
+      var f = oldSlot ?
+        sb_apiSlotsService.patchSlot.bind(null, oldSlot.id) :
+        sb_apiSlotsService.addSlot.bind(null)
+      var entity = $.extend(true, newSlot.toApiEntity(), { place_id: space.placeId, space_id: space.id })
+
+      f(entity, function(/*Slot*/ slot) {
+        if (oldSlot) _this.progress.updated++
+        else _this.progress.created++
+
+        if (oldSlot)
+          oldSlot.prices.forEach(function(/*Price*/ price) {
+            sb_apiSlotsService.deletePrice(price.slotId, price.id, function() {})
+          })
+
+        newSlot.prices.forEach(function(/*NewSlotPrice*/ price) {
+          sb_apiSlotsService.addPrice(slot.id, price.toApiEntity(), function() {})
+        })
+
+        callback()
+      })
+    }
+
+    this.ready = function(/*fn*/ callback) {
+      fetchSlotsByDate(_this.copy.space.placeId, _this.copy.space.id, _this.copy.dateFrom, _this.copy.dateTo, function(/*[Slot]*/ slots) {
+        var trgSpaces = $.grep(_this.paste.spaces, function(/*Space*/ space) { return space.selected })
+        _this.newSlots = makeNewSlots(slots)
+        _this.progress.total = _this.newSlots.length * trgSpaces.length
+        callback()
+      })
+    }
+
+    this.createNewSlots = function(/*fn*/ callback) {
+      var trgSlots = _this.newSlots,
+          trgDate = _this.paste.dateFrom,
+          trgSpaces = $.grep(_this.paste.spaces, function(/*Space*/ space) { return space.selected }),
+          n = _this.progress.total
+
+      while (trgDate <= _this.paste.dateTo) {
+
+        (function scope() {
+          var daySlots = filterSlotsByDate(trgDate, trgSlots)
+          trgSpaces.forEach(function(/*Space*/ trgSpace) {
+            fetchSlotsByDate(trgSpace.placeId, trgSpace.id, trgDate, trgDate, function(/*[Slot]*/ oldSlots) {
+
+              daySlots.forEach(function(/*NewSlot*/ newSlot) {
+                var slots = filterSlotsByTime(newSlot.timeFrom, oldSlots),
+                    oldSlot = slots.length ? slots[0] : null
+                createOrUpdateSlot(trgSpace, newSlot, oldSlot, function() {
+                  _this.progress.now++
+                  _this.progress.percent = sb.utils.percent(_this.progress.now, _this.progress.total)
+                  if (--n == 0) callback()
+                })
+              })
+
+            })
+          })
+        })()
+
+        trgDate = parseInt(sb.utils.addDaysDate(trgDate, 1))
+      }
+    }
+
+  },
+
+  SlotsCalendar: function(/*num*/ dateFrom, /*num*/ dateTo, /*[Slot]*/ slots) {
+
+    var _this = this
+
+    this.from = parseInt(sb.utils.weekFirstDate(dateFrom)) // start of the week
+    this.to = parseInt(sb.utils.weekLastDate(dateTo)) // end of the week
+    this.weeks = []
+
+    {
+      var group = {},
+          weeks = [],
+          curDate = _this.from
+
+      slots.forEach(function(slot) {
+        group[slot.dateFrom] = group[slot.dateFrom] || []
+        group[slot.dateFrom].push(slot)
+      })
+
+      while (curDate <= _this.to) {
+        if (curDate == parseInt(sb.utils.weekFirstDate(curDate))) weeks.push([])
+        weeks[weeks.length-1].push({ date: curDate, slots: group[curDate] || [], include: dateInRange(curDate) })
+        curDate = parseInt(sb.utils.addDaysDate(curDate, 1))
+      }
+
+      _this.weeks = weeks
+    }
+
+    function dateInRange(/*num*/ date) {
+      return date >= dateFrom && date <= dateTo
     }
 
   }

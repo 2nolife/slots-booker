@@ -149,22 +149,20 @@ trait SlotsInnerBookingsRoute {
       }
 
     } ~
-    pathPrefix("bookings" / Segment) { bookingId =>
-      pathEnd {
+    path("bookings" / Segment) { bookingId =>
 
-        patch {
-          entity(as[vo.UpdateBooking]) { entity =>
-            def update(userProfile: ProfileRemote): Route =
-              completeByActor[vo.Booking](slotsActor, UpdateBookingIN(slotId, bookingId, entity, userProfile))
+      patch {
+        entity(as[vo.UpdateBooking]) { entity =>
+          def update(userProfile: ProfileRemote): Route =
+            completeByActor[vo.Booking](slotsActor, UpdateBookingIN(slotId, bookingId, entity, userProfile))
 
-            entity.as_profile_id.map(authenticateSystemToken(systemToken, _) { update }).getOrElse { update(profile) }
-          }
-        } ~
-        get {
-          completeByActor[vo.Booking](slotsActor, GetBookingIN(slotId, bookingId, profile))
+          entity.as_profile_id.map(authenticateSystemToken(systemToken, _) { update }).getOrElse { update(profile) }
         }
-
+      } ~
+      get {
+        completeByActor[vo.Booking](slotsActor, GetBookingIN(slotId, bookingId, profile))
       }
+
     }
 
 }
@@ -186,22 +184,20 @@ trait SlotsInnerPricesRoute {
       }
 
     } ~
-    pathPrefix("prices" / Segment) { priceId =>
-      pathEnd {
+    path("prices" / Segment) { priceId =>
 
-        patch {
-          entity(as[vo.UpdatePrice]) { entity =>
-            completeByActor[vo.Price](slotsActor, UpdatePriceIN(slotId, priceId, entity, profile))
-          }
-        } ~
-        get {
-          completeByActor[vo.Price](slotsActor, GetPriceIN(slotId, priceId, profile))
-        } ~
-        delete {
-          completeByActor[EmptyEntity](slotsActor, DeletePriceIN(slotId, priceId, profile))
+      patch {
+        entity(as[vo.UpdatePrice]) { entity =>
+          completeByActor[vo.Price](slotsActor, UpdatePriceIN(slotId, priceId, entity, profile))
         }
-
+      } ~
+      get {
+        completeByActor[vo.Price](slotsActor, GetPriceIN(slotId, priceId, profile))
+      } ~
+      delete {
+        completeByActor[EmptyEntity](slotsActor, DeletePriceIN(slotId, priceId, profile))
       }
+
     }
 
 }

@@ -52,7 +52,7 @@ object PlacesDb {
                             spaceFields = customSpaceFields(deep_spaces, deep_prices))
 }
 
-trait PlacesDb extends PlaceCRUD with SpaceCRUD with PriceCRUD with PlaceSearch
+trait PlacesDb extends PlaceCRUD with SpaceCRUD with PriceCRUD with PlaceSearch with SpaceSearch
 
 trait PlaceCRUD {
   def placeById(placeId: String, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
@@ -84,8 +84,12 @@ trait PlaceSearch {
   def searchPlaces(byAttributes: Seq[(String,String)], joinOR: Boolean, fields: PlaceFields = defaultPlaceFields): Seq[vo.Place]
 }
 
+trait SpaceSearch {
+  def searchSpaces(placeId: String, byAttributes: Seq[(String,String)], joinOR: Boolean, fields: SpaceFields): Seq[vo.Space]
+}
+
 class MongoPlacesDb(client: MongoClient, dbName: String) extends PlacesDb with VoFactory with MongoQueries
-  with PlaceCrudImpl with SpaceCrudImpl with PriceCrudImpl with PlaceSearchImpl {
+  with PlaceCrudImpl with SpaceCrudImpl with PriceCrudImpl with PlaceSearchImpl with SpaceSearchImpl {
 
   private val db = client(dbName)
   val places = db(MS)
@@ -228,6 +232,8 @@ trait PlaceCrudImpl {
     places.
       insert(place)
 
+    attributes.foreach(a => mergeJsObject(finderById(place.idString), places, "attributes", a.value))
+
     entryCreated(place.idString, places)
 
     placeById(place.idString, fields).get
@@ -297,7 +303,7 @@ trait SpaceCrudImpl {
     spaces.
       insert(space)
 
-    //addToArray(finderById(parentPlaceId), places, "spaces", space.idString)
+    attributes.foreach(a => mergeJsObject(finderById(space.idString), spaces, "attributes", a.value))
 
     entryCreated(space.idString, spaces)
 
@@ -316,7 +322,7 @@ trait SpaceCrudImpl {
     spaces.
       insert(space)
 
-    //addToArray(finderById(parentSpaceId), spaces, "spaces", space.idString)
+    attributes.foreach(a => mergeJsObject(finderById(space.idString), spaces, "attributes", a.value))
 
     entryCreated(space.idString, spaces)
 
@@ -403,6 +409,8 @@ trait PriceCrudImpl {
     prices.
       insert(price)
 
+    attributes.foreach(a => mergeJsObject(finderById(price.idString), prices, "attributes", a.value))
+
     entryCreated(price.idString, prices)
 
     priceById(price.idString).get
@@ -417,6 +425,17 @@ trait PlaceSearchImpl {
     places
       .find(finderByAttributes(byAttributes, joinOR))
       .map(asPlace(_, fields))
+      .toSeq
+
+}
+
+trait SpaceSearchImpl {
+  self: MongoPlacesDb =>
+
+  override def searchSpaces(placeId: String, byAttributes: Seq[(String,String)], joinOR: Boolean, fields: SpaceFields): Seq[vo.Space] =
+    spaces
+      .find(("place_id" $eq placeId) ++ finderByAttributes(byAttributes, joinOR))
+      .map(asSpace(_, fields))
       .toSeq
 
 }

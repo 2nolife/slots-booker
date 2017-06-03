@@ -87,8 +87,14 @@ class SlotsActor(val slotsDb: SlotsDb, val placesBaseUrl: String, val systemToke
   val bookedOwner = (p: vo.Booked, profile: ProfileRemote) => p.profile_id.contains(profile.profile_id)
   val placeModerator = (place: vo.ext.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
 
+  def permitAttributes(obj: vo.CreateSlot, place: vo.ext.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("slot"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
   def permitAttributes(obj: vo.UpdateSlot, place: vo.ext.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("slot"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
+
+  def permitAttributes(obj: vo.CreatePrice, place: vo.ext.Place, profile: ProfileRemote): Boolean =
+    au.permit(obj, voAttributes("price"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
 
   def permitAttributes(obj: vo.UpdatePrice, place: vo.ext.Place, profile: ProfileRemote): Boolean =
     au.permit(obj, voAttributes("price"), ap.defaultWrite(profile, _ => placeModerator(place, profile)))._1
@@ -113,12 +119,14 @@ trait AmendSlot {
       lazy val (codeA, myPlace) = placeFromMsPlaces(place_id)
       lazy val (codeB, mySpace) = spaceFromMsPlaces(place_id, space_id)
       lazy val spaceNotFound = mySpace.isEmpty
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canCreate = placeModerator(myPlace.get, profile) || profile.isSuper
 
       def create(): Option[vo.Slot] = Some(slotsDb.createSlot(place_id, space_id, obj))
 
       val (code, slot) =
         if (spaceNotFound) (codeB, None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
         else if (canCreate) (ApiCode.CREATED, create())
         else (ApiCode(SC_FORBIDDEN), None)
 
@@ -226,6 +234,7 @@ trait AmendPrice {
       lazy val (codeB, mySpace) = spaceFromMsPlaces(mySlot.get.place_id, mySlot.get.space_id)
       lazy val slotNotFound = mySlot.isEmpty
       lazy val spaceNotFound = mySpace.isEmpty
+      lazy val forbidAttributes = !permitAttributes(obj, myPlace.get, profile)
       lazy val canCreate = placeModerator(myPlace.get, profile) || profile.isSuper
 
       def create(): Option[vo.Price] = Some(slotsDb.createPrice(mySlot.get.slot_id, obj))
@@ -233,6 +242,7 @@ trait AmendPrice {
       val (code, price) =
         if (slotNotFound) (ApiCode(SC_NOT_FOUND), None)
         else if (spaceNotFound) (codeB, None)
+        else if (forbidAttributes) (ApiCode(SC_FORBIDDEN), None)
         else if (canCreate) (ApiCode.CREATED, create())
         else (ApiCode(SC_FORBIDDEN), None)
 

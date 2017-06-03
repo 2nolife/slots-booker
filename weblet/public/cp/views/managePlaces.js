@@ -5,12 +5,8 @@ app.service('managePlacesService', function(sb_apiPlacesService) {
     if (force || !service.cachedPlaces) {
       sb_apiPlacesService.getPlaces(function(/*[Place]*/ places) {
 
-          service.cachedPlaces = places
-          callback(service.cachedPlaces)
-
-          places.forEach(function(place) {
-            place.refresh('owner')
-          })
+        service.cachedPlaces = places
+        callback(service.cachedPlaces)
 
       })
     } else {
@@ -20,34 +16,67 @@ app.service('managePlacesService', function(sb_apiPlacesService) {
 
 })
 
-app.controller('managePlacesController', function($scope, $rootScope, managePlacesService, $timeout, $routeParams, $location, sb_notifyService) {
+app.controller('managePlacesController', function($scope, $rootScope, managePlacesService, sb_apiPlacesService, $timeout, $routeParams, $location, sb_notifyService) {
 
-  var paramPlaceId = $routeParams.placeId
+  var handles = {},
+      paramPlaceId = $routeParams.placeId
 
-  function loadPlaces(/*bool*/ force) {
+  function placeChange(/*str*/ key, /*Place*/ place) {
+    //console.log('place change invoked: '+place.id+' '+key)
+    if (!place.owner) place.refresh('owner')
+  }
+
+  function removePlaceChangeHandle(/*Place*/ place) {
+    var key = 'placeChange_'+place.id
+    if (handles[key]) place.onChangeCallback.remove(handles[key])
+  }
+
+  function setPlaceChangeHandle(/*Place*/ place) {
+    var key = 'placeChange_'+place.id
+    removePlaceChangeHandle(key)
+    handles[key] = place.onChangeCallback.add(placeChange)
+  }
+
+  $scope.$on('$destroy', function() {
+    ($scope.listedPlaces || []).forEach(function(place) {
+      removePlaceChangeHandle(place)
+    })
+  })
+
+  function loadPlaces(/*bool*/ force, /*str*/ editPlaceId) {
     $scope.loadPlacesSpin = true
     managePlacesService.loadPlaces(force, function(/*[Place]*/ places) {
       $timeout(function() { $scope.loadPlacesSpin = false }, 1000)
       
       $scope.listedPlaces = places
-      if (paramPlaceId) editPlaceByParam()
+      $scope.listedPlaces.forEach(function(place) {
+        placeChange('?', place)
+        setPlaceChangeHandle(place)
+      })
+      if (editPlaceId) editPlaceById(editPlaceId)
 
     })
   }
 
-  function editPlaceByParam() {
+  function editPlaceById(/*str*/ placeId) {
     delete $scope.editedPlace
-    var p = $.grep($scope.listedPlaces, function(place) { return paramPlaceId == place.id })
+    var p = $.grep($scope.listedPlaces, function(place) { return placeId == place.id })
     if (p.length) $scope.editedPlace = new cp.classes.EditedPlace(p[0])
   }
 
-  $scope.reloadPlaces = function() {
-    loadPlaces(true)
+  function resetToListedPlaces() {
+    delete $scope.newPlaceTrigger
+    delete $scope.newPlaceGuideTrigger
+    delete $scope.editedPlace
+  }
+
+  $scope.reloadPlaces = function(/*str*/ editPlaceId) {
+    resetToListedPlaces()
+    loadPlaces(true, editPlaceId)
   }
 
   $scope.showListedPlaces = function() {
-    delete $scope.newPlaceTrigger
-    delete $scope.editedPlace
+    resetToListedPlaces()
     $location.path('/manage-places')
   }
 
@@ -59,15 +88,47 @@ app.controller('managePlacesController', function($scope, $rootScope, managePlac
     })
   }
 
-  $scope.dummy = function() {
-    sb_notifyService.featureNotImplemented()
+  $scope.deleteEditedPlace = function() {
+    function confirmed() {
+      sb_apiPlacesService.deletePlace($scope.editedPlace.id, function() {
+        sb_notifyService.notify('Deleted', 'success')
+        $scope.reloadPlaces()
+      })
+    }
+    $rootScope.$broadcast('dialog.delete', { text: 'Delete place '+$scope.editedPlace.name, onConfirm: confirmed })
   }
 
-  $scope.newPlace = function() {
+  $scope.newPlaceGuide = function() {
+    $scope.newPlaceGuideTrigger = Math.random()
+  }
+
+  $scope.addPlace = function(/*str*/ template) {
+    var title = 'Add a new Place'
+        name = ''
+
+    if (template == 'waterski') {
+      title = 'Add a new Water Ski Club'
+      name = 'WSC'
+    }
+
+    $scope.dialogOptions = {
+      title: title,
+      onSave: saveNewPlace
+    }
+    $scope.newPlace = new cp.classes.NewPlace()
+    $scope.newPlace.name = name
+    $scope.newPlace.template = template
     $scope.newPlaceTrigger = Math.random()
   }
 
-  loadPlaces()
+  function saveNewPlace() {
+    sb_apiPlacesService.addPlace($scope.newPlace.toApiEntity(), function(/*Place*/ place) {
+      sb_notifyService.notify('Created', 'success')
+      $scope.reloadPlaces(place.id)
+    })
+  }
+
+  loadPlaces(false, paramPlaceId)
 })
 
 app.directive('editedPlaceProperties', function() {
@@ -132,9 +193,9 @@ app.directive('editedPlaceSpaces', function($rootScope) {
       })
     }
 
-    $scope.newPrice = function() {
+    $scope.addPrice = function() {
       $scope.dialogOptions = {
-        title: 'Add a New Price',
+        title: 'Add a new Price',
         onSave: saveNewPrice
       }
       $scope.editedPrice = new cp.classes.EditedPrice()
@@ -173,21 +234,43 @@ app.directive('editedPlaceSpaces', function($rootScope) {
       })
     }
 
-    $scope.addSpace = function() {
+    $scope.addSpace = function(/*str*/ template) {
+      var title = 'Add a new Space',
+          name = ''
+
+      if ($scope.editedPlace.template = 'waterski') {
+        title = 'Add a new Lake'
+        name = 'Lake'
+        template = template || 'lake'
+      }
+
       $scope.dialogOptions = {
-        title: 'Add a New Space',
+        title: title,
         onSave: saveNewSpace
       }
       $scope.newSpace = new cp.classes.NewSpace()
+      $scope.newSpace.name = name
+      $scope.newSpace.template = template
       $scope.newSpaceTrigger = Math.random()
     }
 
-    $scope.addRootSpace = function() {
+    $scope.addRootSpace = function(/*str*/ template) {
+      var title = 'Add a new Root Space',
+          name = ''
+
+      if ($scope.editedPlace.template = 'waterski') {
+        title = 'Add a new Season'
+        name = 'Season '+sb.utils.todayDate().substring(0,4)
+        template = template || 'season'
+      }
+
       $scope.dialogOptions = {
-        title: 'Add a New Root Space',
+        title: title,
         onSave: saveNewRootSpace
       }
       $scope.newSpace = new cp.classes.NewSpace()
+      $scope.newSpace.name = name
+      $scope.newSpace.template = template
       $scope.newSpaceTrigger = Math.random()
     }
 
@@ -353,8 +436,7 @@ app.directive('editedPlaceEditPriceDialog', function(sb_modalDialogService) {
     controller: controller,
 
     link: function(scope, element, attrs) {
-      var dialogElement = element.find('.edited-place-edit-price-dialog')
-      var dialogHandle = sb_modalDialogService.registerDialog('#'+sb.utils.elementID(dialogElement))
+      var dialogHandle = cp.utils.modalDialog('.edited-place-edit-price-dialog', element, sb_modalDialogService)
 
       function trigger() {
         if (scope.trigger && scope.editedPrice) {
@@ -398,8 +480,7 @@ app.directive('editedPlaceNewSpaceDialog', function(sb_modalDialogService) {
     controller: controller,
 
     link: function(scope, element, attrs) {
-      var dialogElement = element.find('.edited-place-new-space-dialog')
-      var dialogHandle = sb_modalDialogService.registerDialog('#'+sb.utils.elementID(dialogElement))
+      var dialogHandle = cp.utils.modalDialog('.edited-place-new-space-dialog', element, sb_modalDialogService)
 
       function trigger() {
         if (scope.trigger && scope.newSpace) {
@@ -414,11 +495,57 @@ app.directive('editedPlaceNewSpaceDialog', function(sb_modalDialogService) {
   }
 })
 
+app.directive('newPlaceDialog', function(sb_modalDialogService) {
+
+  var controller = function($scope) {
+
+    $scope.onNewPlaceSet = function() {
+    }
+
+    $scope.submit = function() {
+      $scope.onSave()
+    }
+
+  }
+
+  return {
+
+    restrict: 'E',
+
+    scope: {
+      trigger: '=', /*any*/
+      newPlace: '=', /*NewPlace*/
+      dialogTitle: '@',
+      onSave: '&'
+    },
+
+    templateUrl: 'views/templates/managePlaces/newPlaceDialog.html',
+
+    controller: controller,
+
+    link: function(scope, element, attrs) {
+      var dialogHandle = cp.utils.modalDialog('.new-place-dialog', element, sb_modalDialogService)
+
+      function trigger() {
+        if (scope.trigger && scope.newPlace) {
+          scope.onNewPlaceSet()
+          dialogHandle.show()
+        }
+      }
+      scope.$watch('trigger', trigger)
+      scope.$watch('newPlace', trigger)
+    }
+
+  }
+})
+
 app.directive('editedSpaceSlots', function($rootScope) {
 
-  var controller = function($scope, sb_notifyService, sb_apiSlotsService) {
+  var controller = function($scope, sb_notifyService, sb_apiSpacesService, sb_apiSlotsService) {
 
     $scope.dateFilter = { from: sb.utils.formatDate(sb.utils.todayDate()), to: sb.utils.formatDate(sb.utils.todayDate()) }
+    $scope.searchPeriod = 'day'
+    $scope.viewSlotsMode = 'calendar'
 
     $scope.changeDateFilter = function(/*str*/ action) {
       var parsedDateFilter = parseDateFilter()
@@ -431,16 +558,28 @@ app.directive('editedSpaceSlots', function($rootScope) {
       if (action == 'month') fromDate = sb.utils.monthFirstDate(todayMid), toDate = sb.utils.monthLastDate(todayMid)
       if (action == 'month-1') fromDate = sb.utils.monthFirstDate(sb.utils.addDaysDate(mid, -30)), toDate = sb.utils.monthLastDate(sb.utils.addDaysDate(mid, -30))
       if (action == 'month+1') fromDate = sb.utils.monthFirstDate(sb.utils.addDaysDate(mid, +30)), toDate = sb.utils.monthLastDate(sb.utils.addDaysDate(mid, +30))
+      if (action == 'week') fromDate = sb.utils.weekFirstDate(today), toDate = sb.utils.weekLastDate(today)
+      if (action == 'week-1') fromDate = sb.utils.weekFirstDate(sb.utils.addDaysDate(day, -7)), toDate = sb.utils.weekLastDate(sb.utils.addDaysDate(day, -7))
+      if (action == 'week+1') fromDate = sb.utils.weekFirstDate(sb.utils.addDaysDate(day, +7)), toDate = sb.utils.weekLastDate(sb.utils.addDaysDate(day, +7))
 
       $scope.dateFilter.from = sb.utils.formatDate(fromDate)
       $scope.dateFilter.to = sb.utils.formatDate(toDate)
       $scope.applyDateFilter()
     }
 
-    $scope.applyDateFilter = function() {
+    function applyDateFilterAndThen(/*bool*/ force, /*fn*/ callback) {
       delete $scope.editedSlot
+      delete $scope.toggledSlots
+      delete $scope.slotsCalendar
       var parsedDateFilter = parseDateFilter()
-      $scope.editedSpace.refreshSlotsByDate(parsedDateFilter.from, parsedDateFilter.to, true)
+      $scope.editedSpace.refreshSlotsByDate(parsedDateFilter.from, parsedDateFilter.to, force, function() {
+        $scope.slotsCalendar = new cp.classes.SlotsCalendar(parsedDateFilter.from, parsedDateFilter.to, $scope.editedSpace.slots)
+        if (callback) callback()
+      })
+    }
+
+    $scope.applyDateFilter = function() {
+      applyDateFilterAndThen(true)
     }
 
     function parseDateFilter() {
@@ -468,9 +607,9 @@ app.directive('editedSpaceSlots', function($rootScope) {
       })
     }
 
-    $scope.newPrice = function() {
+    $scope.addPrice = function() {
       $scope.dialogOptions = {
-        title: 'Add a New Price',
+        title: 'Add a new Price',
         onSave: saveNewPrice
       }
       $scope.editedPrice = new cp.classes.EditedPrice()
@@ -511,7 +650,7 @@ app.directive('editedSpaceSlots', function($rootScope) {
 
     $scope.addSlot = function() {
       $scope.dialogOptions = {
-        title: 'Add a New Slot',
+        title: 'Add a new Slot',
         onSave: saveNewSlot
       }
       var slot = new cp.classes.NewSlot($scope.editedSpace.placeId, $scope.editedSpace.id),
@@ -527,7 +666,7 @@ app.directive('editedSpaceSlots', function($rootScope) {
         sb_notifyService.notify('Saved', 'success')
         delete $scope.editedSlot
         $scope.dateFilter = { from: sb.utils.formatDate(slot.dateFrom), to: sb.utils.formatDate(slot.dateTo) }
-        $scope.editedSpace.refreshSlotsByDate(slot.dateFrom, slot.dateTo, true, function() {
+        applyDateFilterAndThen(true, function() {
           var slots = $.grep($scope.editedSpace.slots, function(s) { return slot.id == s.id })
           if (slots.length) $scope.editedSlot = slots[0]
         })
@@ -538,17 +677,101 @@ app.directive('editedSpaceSlots', function($rootScope) {
       function confirmed() {
         sb_apiSlotsService.deleteSlot($scope.editedSlot.id, function() {
           sb_notifyService.notify('Deleted', 'success')
-          delete $scope.editedSlot
           $scope.applyDateFilter()
         })
       }
       $rootScope.$broadcast('dialog.delete', { text: 'Delete slot '+$scope.editedSlot.name, onConfirm: confirmed })
     }
 
+    $scope.addSlotSchedule = function() {
+      $scope.dialogOptions = {
+        title: 'Setup a new Schedule',
+        onSave: saveNewSlotSchedule
+      }
+      var schedule = new cp.classes.NewSlotSchedule($scope.editedSpace.placeId, $scope.editedSpace.id, sb_apiSlotsService),
+          parsedDateFilter = parseDateFilter()
+      schedule.dateFrom = parsedDateFilter.from
+      schedule.dateTo = parsedDateFilter.to
+      $scope.newSlotSchedule = schedule
+      $scope.newSlotScheduleTrigger = Math.random()
+    }
+
+    function saveNewSlotSchedule() {
+      var schedule = $scope.newSlotSchedule
+      schedule.ready()
+      function confirmed() {
+        schedule.createNewSlots(function() {
+          sb_notifyService.notify('Saved', 'success')
+          $scope.dateFilter = { from: sb.utils.formatDate(schedule.dateFrom), to: sb.utils.formatDate(schedule.dateFrom) } // show the first day
+          $scope.applyDateFilter()
+        })
+      }
+      $rootScope.$broadcast('dialog.confirm', { text: 'A total of '+schedule.progress.total+' slots will be created', onConfirm: confirmed })
+    }
+
+    $scope.copySlots = function() {
+      var editedSpace = $scope.editedSpace,
+          template = editedSpace.template,
+          slotCopyPaste = new cp.classes.SlotCopyPaste(sb_apiSlotsService),
+          parsedDateFilter = parseDateFilter()
+
+      sb_apiSpacesService.findSpaces(editedSpace.placeId, { attributes: [{ 'prm0.template': template }] }, function(/*[Space]*/ spaces) {
+        var trgSpaces = $.grep(spaces, function(space) { return space.id != editedSpace.id })
+        trgSpaces.splice(0, 0, editedSpace)
+        trgSpaces.forEach(function(space) { space.selected = true })
+
+        $scope.dialogOptions = {
+          title: 'Copy Slots',
+          onSave: saveSlotCopyPaste
+        }
+
+        slotCopyPaste.copy.dateFrom = parsedDateFilter.from
+        slotCopyPaste.copy.dateTo = parsedDateFilter.from
+        slotCopyPaste.copy.space = editedSpace
+        slotCopyPaste.paste.spaces = trgSpaces
+        $scope.slotCopyPaste = slotCopyPaste
+        $scope.slotCopyPasteTrigger = Math.random()
+      })
+    }
+
+    function saveSlotCopyPaste() {
+      var slotCopyPaste = $scope.slotCopyPaste
+      slotCopyPaste.ready(function() {
+        function confirmed() {
+          slotCopyPaste.createNewSlots(function() {
+            sb_notifyService.notify('Saved', 'success')
+            $scope.dateFilter = { from: sb.utils.formatDate(slotCopyPaste.paste.dateFrom), to: sb.utils.formatDate(slotCopyPaste.paste.dateFrom) } // show the first day
+            $scope.applyDateFilter()
+          })
+        }
+        $rootScope.$broadcast('dialog.confirm', { text: 'A total of '+slotCopyPaste.progress.total+' slots will be created or updated', onConfirm: confirmed })
+      })
+    }
+
+    $scope.deleteSlots = function() {
+      var slots = $.grep($scope.editedSpace.slots, function(slot) { return slot.selected }),
+          n = slots.length
+      function confirmed() {
+        slots.forEach(function(/*EditedSlot*/ slot) {
+          sb_apiSlotsService.deleteSlot(slot.id, function() {
+            if (--n == 0) {
+              sb_notifyService.notify('Deleted', 'success')
+              $scope.applyDateFilter()
+            }
+          })
+        })
+      }
+      $rootScope.$broadcast('dialog.delete', { text: 'Delete selected '+slots.length+' slots', onConfirm: confirmed })
+    }
+
+    $scope.toggleSlots = function() {
+      $scope.editedSpace.slots.forEach(function(slot) {
+        slot.selected = $scope.toggledSlots
+      })
+    }
+
     $scope.onEditedSpaceSet = function() {
-      delete $scope.editedSlot
-      var parsedDateFilter = parseDateFilter()
-      $scope.editedSpace.refreshSlotsByDate(parsedDateFilter.from, parsedDateFilter.to)
+      applyDateFilterAndThen(false)
     }
 
   }
@@ -595,8 +818,7 @@ app.directive('editedPlaceNewSlotDialog', function(sb_modalDialogService) {
     controller: controller,
 
     link: function(scope, element, attrs) {
-      var dialogElement = element.find('.edited-place-new-slot-dialog')
-      var dialogHandle = sb_modalDialogService.registerDialog('#'+sb.utils.elementID(dialogElement))
+      var dialogHandle = cp.utils.modalDialog('.edited-place-new-slot-dialog', element, sb_modalDialogService)
 
       function trigger() {
         if (scope.trigger && scope.newSlot) {
@@ -606,6 +828,136 @@ app.directive('editedPlaceNewSlotDialog', function(sb_modalDialogService) {
       }
       scope.$watch('trigger', trigger)
       scope.$watch('newSlot', trigger)
+    }
+
+  }
+})
+
+app.directive('editedPlaceNewSlotScheduleDialog', function(sb_modalDialogService) {
+
+  var controller = function($scope) {
+
+    $scope.onNewSlotScheduleSet = function() {
+      $scope.dateFrom = sb.utils.formatDate($scope.newSlotSchedule.dateFrom)
+      $scope.dateTo = sb.utils.formatDate($scope.newSlotSchedule.dateTo)
+      if (!$scope.timeFrom) $scope.timeFrom = '8:00'
+      if (!$scope.timeTo) $scope.timeTo = '20:00'
+      if (!$scope.timePeriod) $scope.timePeriod = '60'
+    }
+
+    $scope.submit = function() {
+      var slotSchedule = $scope.newSlotSchedule
+      slotSchedule.dateFrom = sb.utils.safeParseInt(sb.utils.parseDate($scope.dateFrom))
+      slotSchedule.dateTo = sb.utils.safeParseInt(sb.utils.parseDate($scope.dateTo))
+      slotSchedule.timeFrom = sb.utils.safeParseInt(sb.utils.parseTime($scope.timeFrom))
+      slotSchedule.timeTo = sb.utils.safeParseInt(sb.utils.parseTime($scope.timeTo))
+      slotSchedule.timePeriod = sb.utils.safeParseInt($scope.timePeriod < 5 ? 5 : $scope.timePeriod > 60*24 ? 60*24 : $scope.timePeriod) // minutes
+      $scope.onSave()
+    }
+
+  }
+
+  return {
+
+    restrict: 'E',
+
+    scope: {
+      trigger: '=', /*any*/
+      newSlotSchedule: '=', /*NewSlotSchedule*/
+      dialogTitle: '@',
+      onSave: '&'
+    },
+
+    templateUrl: 'views/templates/managePlaces/editedPlaceNewSlotScheduleDialog.html',
+
+    controller: controller,
+
+    link: function(scope, element, attrs) {
+      var dialogHandle = cp.utils.modalDialog('.edited-place-new-slot-schedule-dialog', element, sb_modalDialogService)
+
+      function trigger() {
+        if (scope.trigger && scope.newSlotSchedule) {
+          scope.onNewSlotScheduleSet()
+          dialogHandle.show()
+        }
+      }
+      scope.$watch('trigger', trigger)
+      scope.$watch('newSlotSchedule', trigger)
+    }
+
+  }
+})
+
+app.directive('editedPlaceSlotCopyPasteDialog', function(sb_modalDialogService) {
+
+  var controller = function($scope) {
+
+    $scope.fixDates = function() {
+      if (!$scope.slotCopyPaste) return
+
+      var base = $scope.slotCopyPaste.base,
+          from = sb.utils.parseDate($scope.copy.dateFrom),
+          plus6 = sb.utils.addDaysDate(from, 6)
+      if (base == 'day') $scope.copy.dateTo = $scope.copy.dateFrom
+      if (base == 'week') $scope.copy.dateTo = sb.utils.formatDate(plus6)
+
+      var to = sb.utils.parseDate($scope.copy.dateTo),
+          diff = sb.utils.diffDaysDate(from, to)
+          pasteFrom = sb.utils.addDaysDate(to, 1),
+          paste6 = sb.utils.addDaysDate(to, 1+diff)
+      $scope.paste.dateFrom = sb.utils.formatDate(pasteFrom)
+      $scope.paste.dateTo = sb.utils.formatDate(paste6)
+    }
+
+    $scope.onSlotCopyPasteSet = function() {
+      $scope.copy = {
+        dateFrom: sb.utils.formatDate($scope.slotCopyPaste.copy.dateFrom),
+        dateTo: sb.utils.formatDate($scope.slotCopyPaste.copy.dateTo)
+      }
+      $scope.paste = {}
+      $scope.fixDates()
+    }
+
+    $scope.submit = function() {
+      var slotCopyPaste = $scope.slotCopyPaste
+      slotCopyPaste.copy.dateFrom = sb.utils.safeParseInt(sb.utils.parseDate($scope.copy.dateFrom))
+      slotCopyPaste.copy.dateTo = sb.utils.safeParseInt(sb.utils.parseDate($scope.copy.dateTo))
+      slotCopyPaste.paste.dateFrom = sb.utils.safeParseInt(sb.utils.parseDate($scope.paste.dateFrom))
+      slotCopyPaste.paste.dateTo = sb.utils.safeParseInt(sb.utils.parseDate($scope.paste.dateTo))
+      $scope.onSave()
+    }
+
+    $scope.$watch('copy.dateFrom', $scope.fixDates)
+    $scope.$watch('copy.dateTo', $scope.fixDates)
+
+  }
+
+  return {
+
+    restrict: 'E',
+
+    scope: {
+      trigger: '=', /*any*/
+      slotCopyPaste: '=', /*SlotCopyPaste*/
+      dialogTitle: '@',
+      onSave: '&'
+    },
+
+    templateUrl: 'views/templates/managePlaces/editedPlaceSlotCopyPasteDialog.html',
+
+    controller: controller,
+
+    link: function(scope, element, attrs) {
+      var dialogHandle = cp.utils.modalDialog('.edited-place-slot-copy-paste-dialog', element, sb_modalDialogService)
+
+      function trigger() {
+        if (scope.trigger && scope.slotCopyPaste) {
+          scope.onSlotCopyPasteSet()
+          dialogHandle.show()
+        }
+      }
+      scope.$watch('trigger', trigger)
+      scope.$watch('slotCopyPaste', trigger)
     }
 
   }
@@ -679,4 +1031,3 @@ cp.managePlaces = {
   }
 
 }
-

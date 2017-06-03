@@ -819,7 +819,8 @@ sb.classes.inner = {
     }
 
     this.remove = function(/*str*/ handle) {
-      delete callbacks[handle]
+      if (!callbacks[handle]) console.log('No handle found to remove: '+handle)
+      else delete callbacks[handle]
     }
 
     this.trigger = function(/*str*/ key, /*obj*/ src, /*any*/ arg) {

@@ -572,6 +572,66 @@ class MsPlaceSpacesSpec extends BaseMsPlacesSpec {
     spaceAttrsB shouldBe JsObject(Map("kez_rw" -> JsString("value_e"), "kez_rwp" -> JsString("value_f")))
   }
 
+  "GET to /places/{id}/spaces/search?{attribute_name}={?}" should "list found spaces by attributes joined by 'and' condition" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId)
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+    mongoSetSpaceAttributes(spaceIdA, """{"key_rw": "value_c", "key": "value_d"}""")
+    mongoSetSpaceAttributes(spaceIdB, """{"key_rw": "value_a", "key": "value_e"}""")
+
+    val baseUrl = s"$placesBaseUrl/places/$placeId/spaces/search"
+    val headers = authHeaderSeq("testuser2")
+
+    val urlA = s"$baseUrl?key_rw=value_a"
+    val spacesA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesA.map(_.space_id) should contain only spaceIdB
+
+    val urlB = s"$baseUrl?key=value*"
+    val spacesB = (When getTo urlB withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesB.map(_.space_id) should contain allOf(spaceIdA, spaceIdB)
+
+    val urlC = s"$baseUrl?key_rw=value_a&key=value_e"
+    val spacesC = (When getTo urlC withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesC.map(_.space_id) should contain only spaceIdB
+
+    val urlD = s"$baseUrl?key_rw=value_a&deep=false"
+    val spacesD = (When getTo urlD withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesD.map(_.space_id) should contain only spaceIdB
+  }
+
+  "GET to /places/{id}/spaces/search?{attribute_name}={?}" should "list found spaces by attributes joined by 'or' condition" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val priceId = mongoCreateSpacePrice(placeId, spaceId)
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId)
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+    mongoSetSpaceAttributes(spaceIdA, """{"key_rw": "value_c", "key": "value_d"}""")
+    mongoSetSpaceAttributes(spaceIdB, """{"key_rw": "value_a", "key": "value_e"}""")
+
+    val baseUrl = s"$placesBaseUrl/places/$placeId/spaces/search"
+    val headers = authHeaderSeq("testuser2")
+
+    val urlA = s"$baseUrl?key_rw=value_a&key_rw=value_c&or"
+    val spacesA = (When getTo urlA withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesA.map(_.space_id) should contain allOf(spaceIdA, spaceIdB)
+
+    val urlB = s"$baseUrl?key_rw=value_a&key=value_d&or"
+    val spacesB = (When getTo urlB withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesB.map(_.space_id) should contain allOf(spaceIdA, spaceIdB)
+
+    val urlC = s"$baseUrl?key_rw=value_a&key=value_e&or"
+    val spacesC = (When getTo urlC withHeaders headers expect() code SC_OK).withBody[Seq[vo.Space]]
+
+    spacesC.map(_.space_id) should contain only spaceIdB
+  }
+
 }
 
 class MsPlaceSpacePricesSpec extends BaseMsPlacesSpec {

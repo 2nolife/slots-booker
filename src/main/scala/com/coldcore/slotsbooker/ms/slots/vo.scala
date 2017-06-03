@@ -24,8 +24,8 @@ object CreateBooked extends DefaultJsonProtocol { implicit val format = jsonForm
 case class UpdateBooked(as_profile_id: String, status: Option[Int], booking_ids: Option[Seq[String]], paid: Option[Boolean])
 object UpdateBooked extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
 
-case class CreatePrice(name: String, amount: Int, currency: String)
-object CreatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+case class CreatePrice(name: String, amount: Int, currency: String, attributes: Option[Attributes])
+object CreatePrice extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
 
 case class UpdatePrice(name: Option[String], amount: Option[Int], currency: Option[String],
                        roles: Option[Seq[String]], attributes: Option[Attributes])
@@ -48,8 +48,9 @@ case class Slot(slot_id: String, place_id: String, space_id: String,
 object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat13(apply) }
 
 case class CreateSlot(place_id: String, space_id: String, name: String,
-                      date_from: Int, date_to: Int, time_from: Int, time_to: Int)
-object CreateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat7(apply) }
+                      date_from: Int, date_to: Int, time_from: Int, time_to: Int,
+                      attributes: Option[Attributes])
+object CreateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
 case class UpdateSlot(name: Option[String],
                       date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],

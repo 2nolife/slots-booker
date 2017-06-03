@@ -174,7 +174,7 @@ function CinemaSeat(/*Space*/ source, /*CinemaPlace*/ cinemaPlace, /*CinemaHall*
   }
 
   function slotsByDay(/*num*/ daysInAdvance) {
-    var today = parseInt(sb.utils.todayDate())
+    var today = parseInt(sb.utils.todayDate()),
         array = []
     for (var n = 0; n < daysInAdvance; n++) {
       var date = parseInt(sb.utils.addDaysDate(today, n)),
