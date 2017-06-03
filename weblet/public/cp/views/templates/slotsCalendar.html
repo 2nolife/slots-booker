@@ -1,0 +1,14 @@
+<div class="slots-calendar container-fluid">
+  <div class="row" ng-repeat="week in calendar.weeks">
+    <div class="day" ng-repeat="day in week" ng-class="{exclude: !day.include}">
+      <p class="date">
+        <span>{{day.date | sb_numberAsDate}}</span>
+        <span>{{day.date | sb_numberAsWeekday}}</span>
+      </p>
+      <p class="slot" ng-repeat="slot in day.slots" ng-class="{booked: slot.bookStatus > 0}" >
+        <span>{{slot.formatted.timeFrom}}</span>
+        <span>{{slot.name}}</span>
+      </p>
+    </div>
+  </div>
+</div>

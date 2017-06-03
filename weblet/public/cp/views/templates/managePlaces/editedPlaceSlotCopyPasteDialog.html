@@ -1,0 +1,70 @@
+<div randomScopeID class="modal fade edited-place-slot-copy-paste-dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <button class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">{{dialogTitle}}</h4>
+      </div>
+
+      <div class="modal-body">
+        <form class="form-horizontal">
+          <fieldset>
+            <div class="form-group">
+              <label class="control-label col-sm-3"></label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <div class="radio">
+                    <label><input type="radio" name="selectedBase" ng-model="slotCopyPaste.base" value="day" ng-click="fixDates()"/> Multiply a single day</label>
+                  </div>
+                  <div class="radio">
+                    <label><input type="radio" name="selectedBase" ng-model="slotCopyPaste.base" value="week" ng-click="fixDates()"/> Match days of the week</label>
+                  </div>
+                  <div class="radio">
+                    <label><input type="radio" name="selectedBase" ng-model="slotCopyPaste.base" value="range" ng-click="fixDates()"/> Use a date range</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Copy range</label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <input class="form-control" type="text" ng-model="copy.dateFrom" sb-datepicker />
+                  <span class="input-group-addon">to</span>
+                  <input class="form-control" type="text" ng-model="copy.dateTo" sb-datepicker ng-readonly="slotCopyPaste.base != 'range'"/>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Paste range</label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <input class="form-control" type="text" ng-model="paste.dateFrom" sb-datepicker />
+                  <span class="input-group-addon">to</span>
+                  <input class="form-control" type="text" ng-model="paste.dateTo" sb-datepicker />
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Target</label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <div class="checkbox" ng-repeat="space in slotCopyPaste.paste.spaces">
+                    <label><input type="checkbox" ng-model="space.selected"/>{{space.name}}</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-success" data-dismiss="modal" ng-click="submit()"><i class="fa fa-check fa-fw"></i> Save</button>
+        <button class="btn btn-default" data-dismiss="modal"><i class="fa fa-ban fa-fw"></i> Cancel</button>
+      </div>
+
+    </div>
+  </div>
+</div>
