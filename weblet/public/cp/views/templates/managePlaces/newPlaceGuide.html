@@ -3,13 +3,21 @@
     <button class="btn btn-primary" ng-click="showListedPlaces()"><i class="fa fa-long-arrow-left fa-fw"></i> Back</button>
   </div>
 
-  <div class="template" ng-click="addPlace()">
-    <h3>Default</h3>
+  <div class="place">
+    <h3>
+      Default
+      <a href ng-click="addPlace()"><i class="fa fa-edit fa-fw"></i> Create</a>
+    </h3>
+    <img src=""/>
     <p>A new place with no pre-configured settings.</p>
   </div>
 
-  <div class="template" ng-click="addPlace('waterski')">
-    <h3>Water ski club</h3>
+  <div class="place">
+    <h3>
+      Water Ski Club
+      <a href ng-click="addPlace('waterski')"><i class="fa fa-edit fa-fw"></i> Create</a>
+    </h3>
+    <img src=""/>
     <p>You have a lake and boat to entertain customers. Boat tow slalom, wakeboards, inflatable rings.</p>
   </div>
 

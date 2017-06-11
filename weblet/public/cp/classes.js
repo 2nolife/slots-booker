@@ -17,14 +17,14 @@ cp.classes = {
       _this.address = source.address || {}
       _this.owner = source.owner
       _this.moderators = source.moderators
+      _this.owner = source.owner
 
       _this.template = ((_this.attributes || {}).prm0 || {}).template || 'default'
 
       makeAttributesArray()
 
-      if (key == '*') {
-        delete _this.spaces
-      }
+      if (key == '*' || !_this.rid) _this.rid = Math.random()
+      if (key == 'spaces') wrapSpaces()
     }
 
     applyChangesFromSource()
@@ -68,17 +68,14 @@ cp.classes = {
     }
 
     this.refreshSpaces = function(/*bool*/ force, /*fn*/ callback) {
-      source.refresh('spaces', force, wrapSpaces.bind(null, force, callback))
+      source.refresh('spaces', force, callback)
     }
 
-    function wrapSpaces(/*bool*/ force, /*fn*/ callback, /*str*/ status) {
-      if (sb.utils.apiStatusOK(status) && (force || !(_this.spaces || []).length)) {
-        var spaces = (source.spaces || []).map(function(space) { return new cp.classes.EditedSpace(space) })
-        spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
-        _this.spaces = spaces
-        _this.onChangeCallback.trigger('spaces-loaded', _this)
-      }
-      if (callback) callback()
+    function wrapSpaces() {
+      var spaces = source.spaces.map(function(space) { return new cp.classes.EditedSpace(space) })
+      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.spaces = spaces
+      _this.onChangeCallback.trigger('spaces-wrap', _this)
     }
 
   },
@@ -104,11 +101,10 @@ cp.classes = {
 
       makeAttributesArray()
 
-      if (key == '*') {
-        delete _this.spaces
-        delete _this.prices
-        delete _this.slots
-      }
+      if (key == '*' || !_this.rid) _this.rid = Math.random()
+      if (key == 'spaces') wrapSpaces()
+      if (key == 'prices') wrapPrices()
+      if (key == 'slots') wrapSlots()
     }
 
     applyChangesFromSource()
@@ -135,31 +131,25 @@ cp.classes = {
     }
 
     this.refreshPrices = function(/*bool*/ force, /*fn*/ callback) {
-      source.refresh('prices', force, wrapPrices.bind(null, force, callback))
+      source.refresh('prices', force, callback)
     }
 
-    function wrapPrices(/*bool*/ force, /*fn*/ callback, /*str*/ status) {
-      if (sb.utils.apiStatusOK(status) && (force || !(_this.prices || []).length)) {
-        var prices = (source.prices || []).map(function(price) { return new cp.classes.EditedPrice(price) })
-        prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
-        _this.prices = prices
-        _this.onChangeCallback.trigger('prices-loaded', _this)
-      }
-      if (callback) callback()
+    function wrapPrices() {
+      var prices = (source.prices || []).map(function(price) { return new cp.classes.EditedPrice(price) })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.prices = prices
+      _this.onChangeCallback.trigger('prices-wrap', _this)
     }
 
     this.refreshSpaces = function(/*bool*/ force, /*fn*/ callback) {
-      source.refresh('spaces', force, wrapSpaces.bind(null, force, callback))
+      source.refresh('spaces', force, callback)
     }
 
-    function wrapSpaces(/*bool*/ force, /*fn*/ callback, /*str*/ status) {
-      if (sb.utils.apiStatusOK(status) && (force || !(_this.spaces || []).length)) {
-        var spaces = (source.spaces || []).map(function(space) { return new cp.classes.EditedSpace(space, _this) })
-        spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
-        _this.spaces = spaces
-        _this.onChangeCallback.trigger('spaces-loaded', _this)
-      }
-      if (callback) callback()
+    function wrapSpaces() {
+      var spaces = source.spaces.map(function(space) { return new cp.classes.EditedSpace(space, _this) })
+      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.spaces = spaces
+      _this.onChangeCallback.trigger('spaces-wrap', _this)
     }
 
     this.refreshSlotsByDateTime = function(/*str|num*/ date, /*str|num*/ time, /*fn*/ callback) {
@@ -168,18 +158,13 @@ cp.classes = {
 
     this.refreshSlotsByDate = function(/*str|num*/ from, /*str|num*/ to, /*bool*/ force, /*fn*/ callback) {
       source.slotsFilter = { from: from ? parseInt(from) : sb.utils.todayDate(), to: to ? parseInt(to) : sb.utils.todayDate() }
-      source.refreshRetry('slots', force, function(/*str*/ status) {
-        wrapSlots(force, callback, status)
-      })
+      source.refreshRetry('slots', force, callback)
     }
 
-    function wrapSlots(/*bool*/ force, /*fn*/ callback, /*str*/ status) {
-      if (sb.utils.apiStatusOK(status) && (force || !(_this.slots || []).length)) {
-        var slots = (source.slots || []).map(function(slot) { return new cp.classes.EditedSlot(slot, _this) })
-        _this.slots = slots
-        _this.onChangeCallback.trigger('slots-loaded', _this)
-      }
-      if (callback) callback()
+    function wrapSlots() {
+      var slots = source.slots.map(function(slot) { return new cp.classes.EditedSlot(slot, _this) })
+      _this.slots = slots
+      _this.onChangeCallback.trigger('slots-wrap', _this)
     }
 
     this.refresh = function(/*fn*/ callback) {
@@ -289,9 +274,10 @@ cp.classes = {
 
       makeAttributesArray()
 
-      if (key == '*') {
-        delete _this.prices
-      }
+      if (key == '*' || !_this.rid) _this.rid = Math.random()
+      if (key == 'prices') wrapPrices()
+      if (key == 'bookings') wrapBookings()
+      if (key == 'activeBookings') wrapActiveBooking()
     }
 
     applyChangesFromSource()
@@ -318,17 +304,33 @@ cp.classes = {
     }
 
     this.refreshPrices = function(/*bool*/ force, /*fn*/ callback) {
-      source.refresh('prices', force, wrapPrices.bind(null, force, callback))
+      source.refresh('prices', force, callback)
     }
 
-    function wrapPrices(/*bool*/ force, /*fn*/ callback, /*str*/ status) {
-      if (sb.utils.apiStatusOK(status) && (force || !(_this.prices || []).length)) {
-        var prices = (source.prices || []).map(function(price) { return new cp.classes.EditedPrice(price) })
-        prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
-        _this.prices = prices
-        _this.onChangeCallback.trigger('prices-loaded', _this)
-      }
-      if (callback) callback()
+    function wrapPrices() {
+      var prices = source.prices.map(function(price) { return new cp.classes.EditedPrice(price) })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.prices = prices
+      _this.onChangeCallback.trigger('prices-wrap', _this)
+    }
+
+    this.refreshBookings = function(/*bool*/ force, /*fn*/ callback) {
+      source.refresh('bookings', force, callback)
+    }
+
+    function wrapBookings() {
+      var bookings = source.bookings.map(function(booking) { return new cp.classes.EditedBooking(booking) })
+      _this.bookings = bookings.reverse()
+      _this.onChangeCallback.trigger('bookings-wrap', _this)
+    }
+
+    this.refreshActiveBooking = function(/*bool*/ force, /*fn*/ callback) {
+      source.refresh('activeBookings', force, callback)
+    }
+
+    function wrapActiveBooking() {
+      _this.activeBooking = source.activeBookings.length ? new cp.classes.EditedBooking(source.activeBookings[0]) : null
+      _this.onChangeCallback.trigger('active-booking-wrap', _this)
     }
 
     this.refresh = function(/*fn*/ callback) {
@@ -400,10 +402,10 @@ cp.classes = {
     this.placeId = placeId
     this.spaceId = spaceId
     this.name = null
-    this.dateFrom = null
-    this.dateTo = null
-    this.timeFrom = null
-    this.timeTo = null
+    this.dateFrom = null /*num*/
+    this.dateTo = null /*num*/
+    this.timeFrom = null /*num*/
+    this.timeTo = null /*num*/
     this.timePeriod = null // minutes
 
     this.newSlots = null
@@ -424,7 +426,7 @@ cp.classes = {
           var plusTime = parseInt(sb.utils.addMinutesTime(curTime, _this.timePeriod))
           if (plusTime <= curTime || plusTime == 0000) plusTime = 2400
 
-          var slot = new cp.classes.NewSlot()
+          var slot = new cp.classes.NewSlot(_this.placeId, _this.spaceId)
           slot.name = _this.name
           slot.dateFrom = slot.dateTo = curDate
           slot.timeFrom = curTime
@@ -465,13 +467,13 @@ cp.classes = {
     this.base = 'day' // day|week|range
     this.copy = {
       space: null, /*Space*/
-      dateFrom: null,
-      dateTo: null
+      dateFrom: null, /*num*/
+      dateTo: null /*num*/
     }
     this.paste = {
       spaces: null, /*[Space]*/
-      dateFrom: null,
-      dateTo: null
+      dateFrom: null, /*num*/
+      dateTo: null /*num*/
     }
 
     this.newSlots = null
@@ -650,6 +652,42 @@ cp.classes = {
 
     function dateInRange(/*num*/ date) {
       return date >= dateFrom && date <= dateTo
+    }
+
+  },
+
+  EditedBooking: function(/*Booking*/ source) {
+
+    var _this = this
+
+    this.source = source
+
+    this.onChangeCallback = source.onChangeCallback
+
+    function applyChangesFromSource() {
+      _this.id = source.id
+      _this.profileId = source.profileId
+      _this.user = source.user
+      _this.price = source.price
+      _this.reference = source.reference
+      _this.status = source.status
+      _this.attributes = source.attributes
+    }
+
+    applyChangesFromSource()
+
+    source.onChangeCallback.add(applyChangesFromSource)
+
+    this.refreshUser = function() {
+      source.refresh('user')
+    }
+
+    this.refreshPrice = function() {
+      source.refresh('price')
+    }
+
+    this.refreshReference = function() {
+      source.refresh('reference')
     }
 
   }

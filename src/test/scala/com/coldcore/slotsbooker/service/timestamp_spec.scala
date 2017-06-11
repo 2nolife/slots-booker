@@ -27,15 +27,29 @@ class TimestampSpec extends FlatSpec with Matchers with BeforeAndAfter {
     c.set(Calendar.MILLISECOND, 0)
     Timestamp.asString(c) shouldBe "20170325000000000"
 
+    Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"))       shouldBe "20170325"+"200146"+"000"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"+"000")) shouldBe "20170325"+"200146"+"000"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"+"001")) shouldBe "20170325"+"200146"+"001"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"+"021")) shouldBe "20170325"+"200146"+"021"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"+"321")) shouldBe "20170325"+"200146"+"321"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"200146"+"320")) shouldBe "20170325"+"200146"+"320"
 
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146))      shouldBe "20170325"+"200146"+"000"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146,   0)) shouldBe "20170325"+"200146"+"000"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146,   1)) shouldBe "20170325"+"200146"+"001"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146,  21)) shouldBe "20170325"+"200146"+"021"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146, 321)) shouldBe "20170325"+"200146"+"321"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 200146, 320)) shouldBe "20170325"+"200146"+"320"
+
+    Timestamp.asString(Timestamp.asCalendar("20170325"+"000046")) shouldBe "20170325"+"000046"+"000"
     Timestamp.asString(Timestamp.asCalendar("20170325"+"000000")) shouldBe "20170325"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar("10010101"+"000000")) shouldBe "10010101"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar("00010101"+"000000")) shouldBe "00010101"+"000000"+"000"
+
+    Timestamp.asString(Timestamp.asCalendar(20170325, 46)) shouldBe "20170325"+"000046"+"000"
+    Timestamp.asString(Timestamp.asCalendar(20170325,  0)) shouldBe "20170325"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar(10010101,  0)) shouldBe "10010101"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar(   10101,  0)) shouldBe "00010101"+"000000"+"000"
   }
 
   "dateString" should "return yyyyMMdd" in {

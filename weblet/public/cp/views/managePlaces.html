@@ -2,22 +2,13 @@
 
   <h1 class="top">Manage Places</h1>
 
-  <div class="listed-places" ng-show="!editedPlace && !newPlaceGuideTrigger">
+  <div ng-show="!editedPlace && !newPlaceGuideTrigger">
     <div class="btn-group">
       <button class="btn btn-primary" ng-click="newPlaceGuide()"><i class="fa fa-cube fa-fw"></i> Add new</button>
       <button class="btn btn-default" ng-click="reloadPlaces()"><i class="fa fa-refresh fa-fw {{loadPlacesSpin ? 'fa-spin' : ''}}"></i> Refresh</button>
     </div>
 
-    <div class="place" ng-repeat="place in listedPlaces">
-      <h3>
-        {{place.name}}
-        <a href="#/manage-places/{{place.id}}"><i class="fa fa-edit fa-fw"></i> Edit</a>
-      </h3>
-      <img src=""/>
-      <p><span>Belongs to</span> {{place.owner.username}}, {{place.owner.fullName}}</p>
-      <p ng-show="place.address"><span>Located at</span> {{place.address.line1}}, {{place.address.town}}, {{place.address.postcode}}</p>
-      <p><span>Status</span> <i class="text-success fa fa-circle fa-fw"></i> Active</p>
-    </div>
+    <listed-places places="listedPlaces" go-link="manage-places" go-title="Edit" />
   </div>
 
   <ng-include src="'views/templates/managePlaces/newPlaceGuide.html'" sb-include-replace />

@@ -1,0 +1,9 @@
+<div class="place-spaces container-fluid gap-top" ng-show="showContent">
+
+  <div class="row">
+    <a href class="col-sm-2" ng-repeat="space in editedPlace.spaces" ng-click="editSpace(space)">{{space.name}}</a>
+  </div>
+
+  <ng-include src="'views/templates/manageBookings/editSpace.html'" sb-include-replace />
+
+</div>

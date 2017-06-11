@@ -246,7 +246,7 @@ trait QuoteSlots {
       collectSlots(selected.map(_.slot_id), slotId => slotFromMsSlots(slotId, withPrices = true))
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
-      if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(SC_CONFLICT) else Right(SC_OK)
+      if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_not_bookable)) else Right(SC_OK)
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
       val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
@@ -258,13 +258,12 @@ trait QuoteSlots {
         val past = (f: vo.ext.Slot => (Int, Int)) =>
           slots
             .map(f)
-            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time)) }
+            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
             .exists(localAsLong >=)
 
         val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
         val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
-
-        if (fromPast || toPast) Left(SC_CONFLICT) else Right(SC_OK)
+        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
       }
     }
 
@@ -279,7 +278,7 @@ trait QuoteSlots {
             (slot.prices.isEmpty || slot.prices.get.map(_.price_id).contains(sp.price_id.orNull))
           }
         }
-      if (valid.contains(false)) Left(SC_CONFLICT) else Right(SC_OK)
+      if (valid.contains(false)) Left(ApiCode(SC_CONFLICT, 'slot_price_invalid)) else Right(SC_OK)
     }
 
     def step6(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
@@ -329,7 +328,7 @@ trait QuoteSlots {
       val selected = existing.get.prices.getOrElse(Nil).map(sp => SelectedPrice(sp.slot_id, sp.price_id))
       val (code, quote) = getQuote(selected, profileId)
       if (quote.isEmpty) (code, None)
-      else if (existing.get != quote.get.copy(quote_id = quoteId, status = existing.get.status)) (SC_CONFLICT, None)
+      else if (existing.get != quote.get.copy(quote_id = quoteId, status = existing.get.status)) (ApiCode(SC_CONFLICT, 'generated_quote_mismatch), None)
       else (SC_OK, existing)
     }
   }
@@ -344,7 +343,7 @@ trait RefundSlots {
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
-      if (slots.exists(_.book_status.get == slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slots_contain_bookable)) else Right(SC_OK)
+      if (slots.exists(_.book_status.get == slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_bookable)) else Right(SC_OK)
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
     val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
@@ -356,21 +355,21 @@ trait RefundSlots {
         val past = (f: vo.ext.Slot => (Int, Int)) =>
           slots
             .map(f)
-            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time)) }
+            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
             .exists(localAsLong >=)
 
         val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
         val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
 
-        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slots_contain_expired)) else Right(SC_OK)
+        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
       }
     }
 
     def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.Reference]] = { // get references for slots
       val references = slots.flatMap(_.booked).flatMap(booked => bookingDb.referenceByBookedId(booked.booked_id, quote = true))
-      if (references.size != slots.size) Left(ApiCode(SC_CONFLICT, 'refs_slots_mismatch))
-      else if (references.map(_.place_id).exists(slots.head.place_id !=)) Left(ApiCode(SC_CONFLICT, 'refs_place_mismatch))
-      else if (references.map(_.profile_id.get).exists(profileId !=)) Left(ApiCode(SC_CONFLICT, 'refs_profile_mismatch))
+      if (references.size != slots.size) Left(ApiCode(SC_CONFLICT, 'ref_slot_mismatch))
+      else if (references.map(_.place_id).exists(slots.head.place_id !=)) Left(ApiCode(SC_CONFLICT, 'ref_place_mismatch))
+      else if (references.map(_.profile_id.get).exists(profileId !=)) Left(ApiCode(SC_CONFLICT, 'ref_profile_mismatch))
       else Right(references.distinct)
     }
 
@@ -394,8 +393,8 @@ trait RefundSlots {
 
       val conflictedA = !incomplete.forall(slotIds.contains)
       val conflictedB = !promoted.forall(slotIds.contains)
-      if (conflictedA) Left(ApiCode(SC_CONFLICT, 'quotes_complete_not_all))
-      else if (conflictedB) Left(ApiCode(SC_CONFLICT, 'quotes_deal_not_all))
+      if (conflictedA) Left(ApiCode(SC_CONFLICT, 'quote_incomplete)) // unpaid quote contains not all slots
+      else if (conflictedB) Left(ApiCode(SC_CONFLICT, 'quote_promoted)) // promoted quote contains not all slots
       else Right(cancellable)
     }
 
@@ -453,7 +452,7 @@ trait BookSlots {
     def step0(): Either[ApiCode, vo.Quote] = { // check quote
       val (code, quote) = verifyQuote(quoteId, profileId)
       if (quote.isEmpty) Left(code)
-      else if (quote.get.status.get != quoteStatus('inactive)) Left(SC_CONFLICT)
+      else if (quote.get.status.get != quoteStatus('inactive)) Left(ApiCode(SC_CONFLICT, 'quote_active))
       else Right(quote.get)
     }
 
@@ -463,7 +462,7 @@ trait BookSlots {
     }
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
-      if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(SC_CONFLICT) else Right(SC_OK)
+      if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_not_bookable)) else Right(SC_OK)
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Booked] = { // create Booked object
       val slotIds = slots.map(_.slot_id)
@@ -554,7 +553,7 @@ trait BookSlots {
     def step0(): Either[ApiCode, vo.Refund] = { // check refund
       val (code, refund) = verifyRefund(refundId, profileId)
       if (refund.isEmpty) Left(code)
-      else if (refund.get.status.get != quoteStatus('inactive)) Left(SC_CONFLICT)
+      else if (refund.get.status.get != quoteStatus('inactive)) Left(ApiCode(SC_CONFLICT, 'refund_active))
       else Right(refund.get)
     }
 
@@ -564,12 +563,12 @@ trait BookSlots {
     }
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
-      if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(SC_CONFLICT) else Right(SC_OK)
+      if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(ApiCode(SC_CONFLICT, 'slot_bookable)) else Right(SC_OK)
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Booked]] = { // check slots Booked objects belong to a user and have proper status
       val booked = slots.map(_.booked.get).distinct
       if (booked.exists(_.profile_id.get != profileId)) Left(SC_FORBIDDEN)
-      else if (booked.exists(_.status.get != bookedStatus('booked))) Left(SC_CONFLICT)
+      else if (booked.exists(_.status.get != bookedStatus('booked))) Left(ApiCode(SC_CONFLICT, 'booked_status_mismatch))
       else Right(booked)
     }
 
@@ -685,12 +684,12 @@ trait BookSlots {
       collectSlots(slotIds, slotId => slotFromMsSlots(slotId, withBooked = true))
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
-      if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(SC_CONFLICT) else Right(SC_OK)
+      if (slots.exists(_.book_status.get != slotBookStatus('booked))) Left(ApiCode(SC_CONFLICT, 'slot_bookable)) else Right(SC_OK)
 
     def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots Booked objects belong to a user and have proper status
       val booked = slots.map(_.booked.get)
       if (booked.exists(_.profile_id.get != profileId)) Left(SC_FORBIDDEN)
-      else if (booked.exists(_.status.get != bookedStatus('booked))) Left(SC_CONFLICT)
+      else if (booked.exists(_.status.get != bookedStatus('booked))) Left(ApiCode(SC_CONFLICT, 'booked_invalid_status))
       else Right(SC_OK)
     }
 

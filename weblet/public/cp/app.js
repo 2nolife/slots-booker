@@ -12,6 +12,8 @@ app.config(function($routeProvider, $httpProvider) {
 //    .when('/manage-users', { templateUrl: 'views/manageUsers.html', controller: 'manageUsersController' })
     .when('/manage-places', { templateUrl: 'views/managePlaces.html', controller: 'managePlacesController' })
     .when('/manage-places/:placeId', { templateUrl: 'views/managePlaces.html', controller: 'managePlacesController' })
+    .when('/manage-bookings', { templateUrl: 'views/manageBookings.html', controller: 'manageBookingsController' })
+    .when('/manage-bookings/:placeId', { templateUrl: 'views/manageBookings.html', controller: 'manageBookingsController' })
     .otherwise({ redirectTo: '/dashboard' })
 
   $httpProvider.interceptors.push('sb_authInterceptor')

@@ -34,15 +34,21 @@ trait Constants {
   private def toApiCodes(codes: (Symbol, Int) *): Map[Symbol, String] = codes.map { case (s, code) => (s, MS+"-"+code) }.toMap
 
   val apiCodes = toApiCodes(
-    'slots_contain_bookable -> 1,
-    'slots_contain_expired -> 2,
-    'refs_slots_mismatch -> 3,
-    'refs_place_mismatch -> 4,
-    'refs_profile_mismatch -> 5,
-    'quotes_complete_not_all -> 6,
-    'quotes_deal_not_all -> 7,
+    'slot_bookable -> 1,
+    'slot_expired -> 2,
+    'ref_slot_mismatch -> 3,
+    'ref_place_mismatch -> 4,
+    'ref_profile_mismatch -> 5,
+    'quote_incomplete -> 6,
+    'quote_promoted -> 7,
     'refund_requires_payment -> 8,
-    'generated_refund_mismatch -> 9
+    'generated_refund_mismatch -> 9,
+    'slot_not_bookable -> 10,
+    'slot_price_invalid -> 11,
+    'generated_quote_mismatch -> 12,
+    'quote_active -> 13,
+    'refund_active -> 14,
+    'booked_status_mismatch -> 15
   )
 
   implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)

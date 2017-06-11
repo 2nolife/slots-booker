@@ -1,0 +1,12 @@
+<div class="listed-places-fragment">
+  <div class="place" ng-repeat="place in places">
+    <h3>
+      {{place.name}}
+      <a href="#/{{goLink}}/{{place.id}}"><i class="fa fa-edit fa-fw"></i> {{goTitle}}</a>
+    </h3>
+    <img src=""/>
+    <p><span>Belongs to</span> {{place.owner.username}}, {{place.owner.fullName}}</p>
+    <p ng-show="place.address"><span>Located at</span> {{place.address.line1}}, {{place.address.town}}, {{place.address.postcode}}</p>
+    <p><span>Status</span> <i class="text-success fa fa-circle fa-fw"></i> Active</p>
+  </div>
+</div>

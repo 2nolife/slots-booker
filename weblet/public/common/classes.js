@@ -406,6 +406,7 @@ sb.classes = {
     this.applyChangesToSource = function() {
       changesToSource.field('name')
       changesToSource.field('bookings')
+      changesToSource.field('activeBookings')
       changesToSource.field('prices')
       changesToSource.field('attributes', {})
 
@@ -530,6 +531,7 @@ sb.classes = {
     function applyChangesFromSource() {
       _this.id = source.booking_id
       _this.slotId = source.slot_id
+      _this.profileId = source.profile_id
       _this.name = source._name || source.name
       _this.status = source._status || source.status
       _this.user = source._user
@@ -741,6 +743,7 @@ sb.classes = {
     this.source = source
 
     this.id = source.quote_id
+    this.profileId = source.profile_id
     this.status = source.status
     this.amount = source.amount
     this.currency = source.currency
@@ -753,6 +756,7 @@ sb.classes = {
     this.source = source
 
     this.id = source.refund_id
+    this.profileId = source.profile_id
     this.status = source.status
     this.amount = source.amount
     this.currency = source.currency
@@ -765,6 +769,7 @@ sb.classes = {
     this.source = source
 
     this.id = source.reference_id
+    this.profileId = source.profile_id
     this.ref = source.ref
     this.quote = source.quote ? new sb.classes.Quote(source.quote) : null
     this.refund = source.refund ? new sb.classes.Refund(source.refund) : null

@@ -1,0 +1,38 @@
+<div ng-show="showContent">
+
+  <div class="row">
+    <div class="col-sm-10">
+
+      <date-filter from="dateFilter.from" to="dateFilter.to" on-change="onDateFilterChange(from, to)"/>
+
+    </div>
+    <div class="col-sm-2">
+
+      <div class="btn-group">
+        <button class="btn btn-default" ng-click="viewSlotsMode = 'table'" ng-class="{active: viewSlotsMode == 'table'}"><i class="fa fa-list"></i></button>
+        <button class="btn btn-default" ng-click="viewSlotsMode = 'calendar'" ng-class="{active: viewSlotsMode == 'calendar'}"><i class="fa fa-calendar"></i></button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="row gap-top" ng-show="!editedSlot">
+    <button class="btn btn-success btn-xs" ng-click="bookSelected()"><i class="fa fa-money fa-fw"></i> Book</button>
+    <button class="btn btn-warning btn-xs" ng-click="refundSelected()"><i class="fa fa-credit-card fa-fw"></i> Refund</button>
+  </div>
+
+  <div class="row" ng-show="!editedSlot && editedSpace.slots.length && viewSlotsMode == 'table'">
+    <slots-table slots="editedSpace.slots" on-slot="editSlot(slot)"/>
+  </div>
+
+  <div class="row gap-top" ng-show="!editedSlot && viewSlotsMode == 'calendar'">
+    <slots-calendar calendar="slotsCalendar" on-slot="editSlot(slot)"/>
+  </div>
+
+  <ng-include src="'views/templates/manageBookings/editSlot.html'" sb-include-replace />
+
+  <user-finder-dialog trigger="userFinderTrigger" on-user="onUserSubmit(user)"/>
+
+  <slots-prices-dialog trigger="slotsPricesTrigger" slots="selectedSlots" on-submit="onSlotsPricesSubmit()"/>
+
+</div>

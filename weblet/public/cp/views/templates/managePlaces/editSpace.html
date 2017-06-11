@@ -9,9 +9,9 @@
   </div>
 
   <div class="row">
-    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Spaces,Prices,Slots" index-var="spaceMenuTab"                             ng-show="editedPlace.template == 'default'"/>
-    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Lakes, Prices,"      index-var="spaceMenuTab" reset-trigger='editedSpace' ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'season'"/>
-    <triggered-nav-tabs class="menu-tabs" tabs="Properties,,      Prices,Slots" index-var="spaceMenuTab" reset-trigger='editedSpace' ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'lake'" />
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Spaces,Prices,Slots" index-var="spaceMenuTab"                             reset-trigger="editedSpace" ng-show="editedPlace.template == 'default'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,Lakes, Prices,"      index-var="spaceMenuTab" reset-trigger='editedSpace' reset-trigger="editedSpace" ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'season'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs="Properties,,      Prices,Slots" index-var="spaceMenuTab" reset-trigger='editedSpace' reset-trigger="editedSpace" ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'lake'" />
   </div>
 
   <div class="row" ng-show="spaceMenuTab == 0">

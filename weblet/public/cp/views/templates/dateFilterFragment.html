@@ -1,0 +1,29 @@
+<div class="date-filter-fragment container-fluid">
+  <div class="row">
+    <div class="col-sm-6">
+      <div class="input-group">
+        <input type="text" class="form-control" ng-model="dates.from" sb-datepicker />
+        <span class="input-group-addon">to</span>
+        <input type="text" class="form-control" ng-model="dates.to" sb-datepicker />
+        <span class="input-group-btn">
+          <button type="button" class="btn btn-default" ng-click="submit()"><i class="fa fa-search"></i></button>
+        </span>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="btn-group">
+        <button class="btn btn-default" ng-click="change(searchPeriod+'-1')"><i class="fa fa-play fa-flip-horizontal"></i></button>
+        <button class="btn btn-default" ng-click="change('day')" ng-show="searchPeriod == 'day'">Today</button>
+        <button class="btn btn-default" ng-click="change('week')" ng-show="searchPeriod == 'week'">This week</button>
+        <button class="btn btn-default" ng-click="change('month')" ng-show="searchPeriod == 'month'">This month</button>
+        <button class="btn btn-default dropdown-toggle slot-period" data-toggle="dropdown"><i class="fa fa-caret-down"></i></button>
+        <ul class="dropdown-menu">
+          <li><a href ng-click="searchPeriod = 'day'">Daily</a></li>
+          <li><a href ng-click="searchPeriod = 'week'">Weekly</a></li>
+          <li><a href ng-click="searchPeriod = 'month'">Monthly</a></li>
+        </ul>
+        <button class="btn btn-default" ng-click="change(searchPeriod+'+1')"><i class="fa fa-play"></i></button>
+      </div>
+    </div>
+  </div>
+</div>

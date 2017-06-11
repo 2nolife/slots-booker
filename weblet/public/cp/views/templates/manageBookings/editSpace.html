@@ -1,0 +1,22 @@
+<div class="edited-space" ng-show="editedSpace">
+
+  <div class="row gap-top">
+    <ul class="col-sm-12 breadcrumb">
+      <li ng-repeat="space in editedSpace.parentSpaces"><a href ng-click="editSpace(space)">{{space.name}}</a></li>
+      <li>{{editedSpace.name}}</li>
+    </ul>
+  </div>
+
+  <div class="row">
+    <triggered-nav-tabs class="menu-tabs" tabs="Spaces,Slots" index-var="spaceMenuTab"                             reset-trigger="editedSpace.rid" ng-show="editedPlace.template == 'default'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs="Lakes,"       index-var="spaceMenuTab" reset-trigger='editedSpace' reset-trigger="editedSpace.rid" ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'season'"/>
+    <triggered-nav-tabs class="menu-tabs" tabs=",Slots"       index-var="spaceMenuTab" reset-trigger='editedSpace' reset-trigger="editedSpace.rid" ng-show="editedPlace.template == 'waterski' && editedSpace.template == 'lake'" />
+  </div>
+
+  <div class="row" ng-show="spaceMenuTab == 0">
+    <a href class="col-sm-2" ng-repeat="space in editedSpace.spaces" ng-click="editSpace(space)">{{space.name}}</a>
+  </div>
+
+  <mb-edited-space-slots trigger="spaceMenuTab == 1" edited-space="editedSpace" />
+
+</div>

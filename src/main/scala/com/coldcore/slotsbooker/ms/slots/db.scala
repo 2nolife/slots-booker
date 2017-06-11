@@ -193,7 +193,8 @@ trait SlotsCrudImpl {
       "date_from" -> date_from,
       "date_to" -> date_to,
       "time_from" -> time_from,
-      "time_to" -> time_to)
+      "time_to" -> time_to,
+      "book_status" -> slotBookStatus('bookable))
 
     slots.
       insert(slot)

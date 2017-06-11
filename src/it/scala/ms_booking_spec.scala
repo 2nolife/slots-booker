@@ -55,8 +55,8 @@ abstract class BaseMsBookingSpec extends FlatSpec with BeforeAndAfterAll with Be
     val now = ts.asCalendar
     val (from, to) = (ts.addMinutes(ts.copy(now), fromOffsetMinutes), ts.addMinutes(ts.copy(now), toOffsetMinutes))
     mongoUpdateSlot(slotId,
-      dateFrom = Some(ts.dateString(from).toInt), timeFrom = Some(ts.timeString(from).toInt),
-      dateTo = Some(ts.dateString(to).toInt), timeTo = Some(ts.timeString(to).toInt))
+      dateFrom = Some(ts.dateString(from).toInt), timeFrom = Some(ts.timeString(from).toInt/100),
+      dateTo = Some(ts.dateString(to).toInt), timeTo = Some(ts.timeString(to).toInt/100))
   }
 }
 
