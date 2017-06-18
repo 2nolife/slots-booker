@@ -180,7 +180,9 @@ trait SlotsInnerPricesRoute {
         }
       } ~
       get {
-        completeByActor[Seq[vo.Price]](slotsActor, GetPricesIN(slotId, profile))
+        parameters('effective ?) { effective =>
+          completeByActor[Seq[vo.Price]](slotsActor, GetPricesIN(slotId, effective, profile))
+        }
       }
 
     } ~

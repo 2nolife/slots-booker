@@ -235,8 +235,14 @@ app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClass
         })
   }
 
-  service.refreshPrices = function(/*str*/ placeId, /*str*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/places/'+placeId+'/spaces/'+spaceId+'/prices')
+  service.refreshPrices = function(/*str*/ placeId, /*str*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
+    options = $.extend(true, {}, options)
+
+    var query = ''
+    if (options.effective != undefined) query += '&effective'
+    if (query) query = '?'+query.substring(1)
+
+    $http.get('/api/places/'+placeId+'/spaces/'+spaceId+'/prices'+query)
       .then(
         function successCallback(response) {
           var prices = response.data
@@ -400,8 +406,14 @@ app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassW
         })
   }
 
-  service.refreshPrices = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback) {
-    $http.get('/api/slots/'+slotId+'/prices')
+  service.refreshPrices = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
+    options = $.extend(true, {}, options)
+
+    var query = ''
+    if (options.effective != undefined) query += '&effective'
+    if (query) query = '?'+query.substring(1)
+
+    $http.get('/api/slots/'+slotId+'/prices'+query)
       .then(
         function successCallback(response) {
           var prices = response.data
@@ -662,6 +674,24 @@ app.service('sb_apiPaymentsService', function($http, sb_apiHelper, $q, sb_apiCla
 
 })
 
+app.service('sb_apiMembersService', function($http, sb_apiHelper, $q, sb_apiClassWrap) {
+  var service = this
+
+  service.getPlaceMember = function(/*str*/ placeId, /*str|optional*/ profileId, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.get('/api/members/member?place_id='+placeId+(profileId ? '&profile_id='+profileId : ''))
+      .then(
+        function successCallback(response) {
+          var member = response.data
+          callback(sb_apiClassWrap.wrap(member, 'member'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+})
+
 app.service('sb_apiClassWrap', function($injector) {
   var service = this
 
@@ -674,6 +704,7 @@ app.service('sb_apiClassWrap', function($injector) {
       apiSpacesService: $injector.get('sb_apiSpacesService'),
       apiSlotsService: $injector.get('sb_apiSlotsService'),
       apiPaymentsService: $injector.get('sb_apiPaymentsService'),
+      apiMembersService: $injector.get('sb_apiMembersService'),
       apiClassService: $injector.get('sb_apiClassService')
     }
   }
@@ -715,6 +746,9 @@ app.service('sb_apiClassWrap', function($injector) {
         break
       case 'account':
         clz = new sb.classes.Account(json, sc)
+        break
+      case 'member':
+        clz = new sb.classes.Member(json, sc)
         break
     }
 

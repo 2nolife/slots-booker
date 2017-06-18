@@ -213,7 +213,9 @@ trait SpacesInnerPricesRoute {
           }
         } ~
         get {
-          completeByActor[Seq[vo.Price]](placesActor, GetPricesIN(placeId, spaceId, profile))
+          parameters('effective ?) { effective =>
+            completeByActor[Seq[vo.Price]](placesActor, GetPricesIN(placeId, spaceId, effective, profile))
+          }
         }
 
       } ~

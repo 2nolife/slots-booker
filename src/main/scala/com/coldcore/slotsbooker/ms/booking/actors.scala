@@ -31,15 +31,16 @@ trait ReferenceCommands {
 }
 
 object BookingActor extends QuoteCommands with SlotsCommands with ReferenceCommands {
-  def props(bookingDb: BookingDb, placesBaseUrl: String, slotsBaseUrl: String, systemToken: String, restClient: RestClient): Props =
-    Props(new BookingActor(bookingDb, placesBaseUrl, slotsBaseUrl, systemToken, restClient))
+  def props(bookingDb: BookingDb, placesBaseUrl: String, slotsBaseUrl: String, membersBaseUrl: String, systemToken: String, restClient: RestClient): Props =
+    Props(new BookingActor(bookingDb, placesBaseUrl, slotsBaseUrl, membersBaseUrl, systemToken, restClient))
 }
 
-class BookingActor(bookingDb: BookingDb, placesBaseUrl: String, slotsBaseUrl: String, systemToken: String,
+class BookingActor(bookingDb: BookingDb, placesBaseUrl: String, slotsBaseUrl: String, membersBaseUrl: String, systemToken: String,
                    restClient: RestClient) extends Actor with ActorLogging with MsgInterceptor
   with QuoteReceive with RefundReceive with SlotsReceive with ReferenceReceive {
 
-  val bookingService: BookingService = new BookingServiceImpl(bookingDb, placesBaseUrl, slotsBaseUrl, systemToken, restClient)(context.system)
+  val bookingService: BookingService =
+    new BookingServiceImpl(bookingDb, placesBaseUrl, slotsBaseUrl, membersBaseUrl, systemToken, restClient)(context.system)
 
   def receive =
     quoteReceive orElse

@@ -11,7 +11,8 @@
     "slots":    "http://localhost:8023",
     "booking":  "http://localhost:8025",
     "payments": "http://localhost:8026",
-    "paypal":   "http://localhost:8027"
+    "paypal":   "http://localhost:8027",
+    "members":  "http://localhost:8028"
   }
 
 }

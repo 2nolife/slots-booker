@@ -81,6 +81,7 @@ trait SystemStart extends BaseURLs {
     booking.start.run
     payments.start.run
     paypal.start.run
+    members.start.run
 
     // wait till all micro services start
     val restClient = new RestClient
@@ -112,9 +113,11 @@ trait BaseURLs {
   val bookingBaseUrl = "http://localhost:8025"
   val paymentsBaseUrl = "http://localhost:8026"
   val paypalBaseUrl = "http://localhost:8027"
+  val membersBaseUrl = "http://localhost:8028"
 
   val baseUrls =
-    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: paymentsBaseUrl :: paypalBaseUrl :: Nil
+    authBaseUrl :: profilesBaseUrl :: placesBaseUrl :: slotsBaseUrl :: bookingBaseUrl :: paymentsBaseUrl ::
+    paypalBaseUrl :: membersBaseUrl :: Nil
 }
 
 /** MongoDB client and operations. */
@@ -149,6 +152,8 @@ trait MongoTables {
   lazy val mongoQuotes: MongoCollection = mongoDB(booking.Constants.MS+"-quotes")
   lazy val mongoRefunds: MongoCollection = mongoDB(booking.Constants.MS+"-refunds")
   lazy val mongoReferences: MongoCollection = mongoDB(booking.Constants.MS+"-references")
+
+  lazy val mongoMembers: MongoCollection = mongoDB(members.Constants.MS)
 }
 
 /** MongoDB users setup. */
@@ -368,8 +373,9 @@ trait MongoCreate {
     mongoBookings
       .findAndModify(finderById(bookingId), $set("attributes" -> asDBObject(attributes)))
 
-  def mongoCreateSlotPrice(placeId: String, spaceId: String, slotId: String, name: String = "Price A",
-                           amount: Int = 1700, currency: String = "GBP"): String = {
+  def mongoCreateSlotPrice(placeId: String, spaceId: String, slotId: String,
+                           name: String = "Price A", amount: Int = 1700, currency: String = "GBP",
+                           member_level: Int = 0): String = {
     val price = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
@@ -377,7 +383,8 @@ trait MongoCreate {
       "slot_id" -> slotId,
       "name" -> name,
       "amount" -> amount,
-      "currency" -> currency)
+      "currency" -> currency,
+      "member_level" -> member_level)
     mongoSlotPrices
       .insert(price)
 
@@ -387,14 +394,16 @@ trait MongoCreate {
   }
 
   def mongoCreateSpacePrice(placeId: String, spaceId: String,
-                            name: String = "Default Price", amount: Int = 1700, currency: String = "GBP"): String = {
+                            name: String = "Default Price", amount: Int = 1700, currency: String = "GBP",
+                            member_level: Int = 0): String = {
     val price = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
       "space_id" -> spaceId,
       "name" -> name,
       "amount" -> amount,
-      "currency" -> currency)
+      "currency" -> currency,
+      "member_level" -> member_level)
 
     mongoPrices
       .insert(price)
@@ -426,6 +435,19 @@ trait MongoCreate {
       )))
     mongoAccounts
       .insert(account)
+  }
+
+  def mongoCreateMember(placeId: String, level: Int = 1, username: String = "testuser"): String = {
+    val member = MongoDBObject(
+      "test" -> true,
+      "place_id" -> placeId,
+      "profile_id" -> mongoProfileId(username),
+      "level" -> level)
+
+    mongoMembers
+      .insert(member)
+
+    member.idString
   }
 
   def mongoCreateFreeRefund(placeId: String, slotsIds: Seq[String], quoteIds: Seq[String], status: Int = 0, username: String = "testuser"): String = {
@@ -640,6 +662,7 @@ trait MongoCleaner {
         mongoQuotes ::
         mongoRefunds ::
         mongoReferences ::
+        mongoMembers ::
         Nil
       ).foreach(_.remove("place_id" $eq placeId))
 

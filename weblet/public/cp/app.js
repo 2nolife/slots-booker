@@ -9,11 +9,12 @@ app.config(function($routeProvider, $httpProvider) {
   $routeProvider
     .when('/sign-in', { templateUrl: 'views/signIn.html', controller: 'signInController' })
     .when('/dashboard', { templateUrl: 'views/dashboard.html', controller: 'dashboardController' })
-//    .when('/manage-users', { templateUrl: 'views/manageUsers.html', controller: 'manageUsersController' })
     .when('/manage-places', { templateUrl: 'views/managePlaces.html', controller: 'managePlacesController' })
     .when('/manage-places/:placeId', { templateUrl: 'views/managePlaces.html', controller: 'managePlacesController' })
     .when('/manage-bookings', { templateUrl: 'views/manageBookings.html', controller: 'manageBookingsController' })
     .when('/manage-bookings/:placeId', { templateUrl: 'views/manageBookings.html', controller: 'manageBookingsController' })
+    .when('/manage-members', { templateUrl: 'views/manageMembers.html', controller: 'manageBookingsController' })
+    .when('/manage-members/:placeId', { templateUrl: 'views/manageMembers.html', controller: 'manageMembersController' })
     .otherwise({ redirectTo: '/dashboard' })
 
   $httpProvider.interceptors.push('sb_authInterceptor')

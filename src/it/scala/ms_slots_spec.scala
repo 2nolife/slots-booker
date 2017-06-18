@@ -802,6 +802,31 @@ class MsSlotsPricesSpec extends BaseMsSlotsSpec {
     prices(1).name.get shouldBe "Wakeboard"
   }
 
+  "GET to /slots/{id}/prices?effective" should "list prices within a slot or parent spaces" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotIdA = mongoCreateSlot(placeId, spaceId)
+    val slotIdB = mongoCreateSlot(placeId, spaceId)
+    val priceId1 = mongoCreateSpacePrice(placeId, spaceId)
+    val priceId2 = mongoCreateSpacePrice(placeId, spaceId)
+    val priceIdA = mongoCreateSlotPrice(placeId, spaceId, slotIdA)
+
+    val urlA = s"$slotsBaseUrl/slots/$slotIdA/prices?effective"
+    val pricesA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
+
+    pricesA.map(_.price_id) should contain only priceIdA
+
+    val urlB = s"$slotsBaseUrl/slots/$slotIdB/prices?effective"
+    val pricesB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
+
+    pricesB.map(_.price_id) should contain only (priceId1, priceId2)
+
+    val urlC = s"$slotsBaseUrl/slots/$slotIdB/prices"
+    val pricesC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
+
+    pricesC.size shouldBe 0
+  }
+
   "GET to /slots/{id}/prices/{id}" should "return a price" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)

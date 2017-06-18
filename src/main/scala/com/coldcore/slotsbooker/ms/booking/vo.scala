@@ -52,7 +52,7 @@ object ReferencePaid extends DefaultJsonProtocol { implicit val format = jsonFor
 package ext {
 
   case class Price(price_id: String, place_id: String, space_id: String, slot_id: Option[String], name: Option[String],
-                   amount: Option[Int], currency: Option[String], roles: Option[Seq[String]])
+                   amount: Option[Int], currency: Option[String], member_level: Option[Int])
   object Price extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
   case class Booking(booking_id: String, place_id: String, space_id: String, slot_id: String, profile_id: Option[String],
@@ -88,6 +88,9 @@ package ext {
 
   case class Place(place_id: String, profile_id: String, moderators: Option[Seq[String]], datetime: Option[DateTime])
   object Place extends DefaultJsonProtocol { implicit val format = jsonFormat4(apply) }
+
+  case class Member(profile_id: String, place_id: String, level: Option[Int])
+  object Member extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
 
   case class CreateSlotBooking(as_profile_id: String, name: String)
   object CreateSlotBooking extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }

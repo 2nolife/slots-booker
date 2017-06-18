@@ -108,6 +108,53 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
     quoteD.amount.get shouldBe 1600
   }
 
+  "POST to /booking/quote" should "return a quote for selected slots with member prices" in {
+    val placeId = mongoCreatePlace()
+    val spaceId1 = mongoCreateSpace(placeId)
+    val spaceId2 = mongoCreateSpace(placeId)
+    val slotIdA = mongoCreateSlot(placeId, spaceId1)
+    val slotIdB = mongoCreateSlot(placeId, spaceId1)
+    val priceId0 = mongoCreateSpacePrice(placeId, spaceId1, amount = 1200)
+    val priceId1 = mongoCreateSpacePrice(placeId, spaceId1, amount = 800, member_level = 1)
+    val priceIdA1 = mongoCreateSlotPrice(placeId, spaceId1, slotIdA, amount = 1600, member_level = 1)
+    val priceIdA2 = mongoCreateSlotPrice(placeId, spaceId1, slotIdA, amount = 1000, member_level = 2)
+    val priceIdA3 = mongoCreateSlotPrice(placeId, spaceId1, slotIdA, amount = 600, member_level = 3)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
+    mongoCreateMember(placeId, level = 2, username = "testuser2")
+
+    val url = s"$bookingBaseUrl/booking/quote"
+
+    val headers2 = authHeaderSeq("testuser2") // member with level 2
+    val headers0 = authHeaderSeq("testuser3") // not a member
+
+    // member, multiple slots with prices level 1 and 0
+    val jsonA = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceIdA1" }, { "slot_id": "$slotIdB", "price_id": "$priceId0" }] }"""
+    val quoteA = (When postTo url entity jsonA withHeaders headers2 expect() code SC_CREATED).withBody[vo.Quote]
+
+    quoteA.prices.get.map(sp => sp.slot_id -> sp.amount.get) should contain only ((slotIdA, 1600), (slotIdB, 1200))
+
+    // member, multiple slots with prices level 2 and 1
+    val jsonB = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceIdA2" }, { "slot_id": "$slotIdB", "price_id": "$priceId1" }] }"""
+    val quoteB = (When postTo url entity jsonB withHeaders headers2 expect() code SC_CREATED).withBody[vo.Quote]
+
+    quoteB.prices.get.map(sp => sp.slot_id -> sp.amount.get) should contain only ((slotIdA, 1000), (slotIdB, 800))
+
+    // member, multiple slots with prices level 3 and 1
+    val jsonE = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceIdA3" }, { "slot_id": "$slotIdB", "price_id": "$priceId1" }] }"""
+    When postTo url entity jsonE withHeaders headers2 expect() code SC_CONFLICT withApiCode "ms-booking-16"
+
+    // not a member, single slot with price level 0
+    val jsonC = s"""{ "selected": [{ "slot_id": "$slotIdB", "price_id": "$priceId0" }] }"""
+    val quoteC = (When postTo url entity jsonC withHeaders headers0 expect() code SC_CREATED).withBody[vo.Quote]
+
+    quoteC.prices.get.map(sp => sp.slot_id -> sp.amount.get) should contain only ((slotIdB, 1200))
+
+    // not a member, multiple slots with prices level 1 and 0
+    val jsonD = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceIdA1" }, { "slot_id": "$slotIdB", "price_id": "$priceId0" }] }"""
+    When postTo url entity jsonD withHeaders headers0 expect() code SC_CONFLICT withApiCode "ms-booking-16"
+  }
+
   "POST to /booking/quote" should "give 404 if any of the slots does not exist" in {
     val placeId = mongoCreatePlace()
 
@@ -121,16 +168,23 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
     val spaceId = mongoCreateSpace(placeId)
     val slotIdA = mongoCreateSlot(placeId, spaceId)
     val slotIdB = mongoCreateSlot(placeId, spaceId)
+    val priceId1 = mongoCreateSpacePrice(placeId, spaceId)
     val priceIdA = mongoCreateSlotPrice(placeId, spaceId, slotIdA)
     val priceIdB = mongoCreateSlotPrice(placeId, spaceId, slotIdB)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
 
     val url = s"$bookingBaseUrl/booking/quote"
 
     val jsonA = s"""{ "selected": [{ "slot_id": "$slotIdA" }] }"""
-    When postTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity jsonA withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-11"
 
     val jsonB = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceIdB" }] }"""
-    When postTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-11"
+
+    val jsonC = s"""{ "selected": [{ "slot_id": "$slotIdA", "price_id": "$priceId1" }] }"""
+    When postTo url entity jsonC withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-11"
+
   }
 
   "POST to /booking/quote" should "give 409 if any of the slots is booked" in {
@@ -138,10 +192,12 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
     val spaceId = mongoCreateSpace(placeId)
     val slotIdA = mongoCreateSlot(placeId, spaceId)
     val slotIdB = mongoCreateSlot(placeId, spaceId, bookStatus = 1)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
 
     val url = s"$bookingBaseUrl/booking/quote"
     val json = s"""{ "selected": [{ "slot_id": "$slotIdA" }, { "slot_id": "$slotIdB" }] }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-10"
   }
 
   "POST to /booking/quote" should "give 409 if a slot time is in the past" in {
@@ -152,7 +208,7 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
 
     val url = s"$bookingBaseUrl/booking/quote"
     val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-2"
   }
 
   "POST to /booking/quote" should "give 409 if a slot time is in the past compared to place local time" in {
@@ -164,7 +220,7 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
 
     val url = s"$bookingBaseUrl/booking/quote"
     val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-2"
   }
 
 }
@@ -239,7 +295,7 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/refund"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotIdA"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-6"
   }
 
   "POST to /booking/refund" should "give 404 if any of the slots does not exist" in {
@@ -269,7 +325,7 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/refund"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-1"
   }
 
   "POST to /booking/refund" should "give 409 if any of the slots is booked by another user" in {
@@ -290,7 +346,7 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/refund"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-5"
   }
 
   "POST to /booking/refund" should "give 409 if a slot time is in the past" in {
@@ -305,7 +361,7 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/refund"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotId"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-2"
   }
 
   "POST to /booking/refund" should "give 409 if a slot time is in the past compared to place local time" in {
@@ -322,7 +378,7 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/refund"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotId"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-2"
   }
 
 }
@@ -388,7 +444,7 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
 
     val url = s"$bookingBaseUrl/booking/book"
     val json = s"""{ "slot_ids": ["$slotId"] }"""
-    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-10"
   }
 
   "POST to /booking/book" should "give 404 if any of the slots does not exist" in {
@@ -409,11 +465,13 @@ class MsBookingBookSpec extends BaseMsBookingSpec {
     val slotIdB = mongoCreateSlot(placeId, spaceId)
     mongoCreateSpacePrice(placeId, spaceId, "Default adult", amount = 1200)
     mongoCreateSpacePrice(placeId, spaceId, "Default child", amount = 800)
+    updateSlotTime(slotIdA)
+    updateSlotTime(slotIdB)
 
     val url = s"$bookingBaseUrl/booking/book"
     val json = s"""{ "slot_ids": ["$slotIdA","$slotIdB"] }"""
     val headers = authHeaderSeq("testuser2")
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-11"
   }
 
 }
@@ -522,7 +580,7 @@ class MsBookingCancelSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/cancel"
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotIdA", "$slotIdB"] }"""
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-5"
   }
 
   "POST to /booking/cancel" should "give 409 if slots required payment without refund" in {
@@ -536,7 +594,7 @@ class MsBookingCancelSpec extends BaseMsBookingSpec {
     val url = s"$bookingBaseUrl/booking/cancel"
     val json = s"""{ "slot_ids": ["$slotIdA", "$slotIdB"] }"""
     val headers = authHeaderSeq("testuser2")
-    When postTo url entity json withHeaders headers expect() code SC_CONFLICT
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-8"
   }
 
 }

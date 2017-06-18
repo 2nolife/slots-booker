@@ -19,7 +19,7 @@
       <td ng-click="clicked(slot)" class="slot-date">{{slot.formatted.weekday}}</td>
       <td ng-click="clicked(slot)" class="slot-date"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></td>
       <td ng-click="clicked(slot)" class="slot-date"><span>{{slot.formatted.dateTo}}</span> <span>{{slot.formatted.timeTo}}</span></td>
-      <td ng-click="clicked(slot)"><i ng-show="slot.bookStatus > 0" data-toggle="tooltip" title="Booked" class="fa fa-user"></i></td>
+      <td ng-click="clicked(slot)"><i ng-show="slot.bookStatus" data-toggle="tooltip" title="Booked" class="fa fa-user"></i></td>
     </tr>
 
   </tbody>

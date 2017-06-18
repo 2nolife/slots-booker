@@ -201,3 +201,50 @@ h1.top {
   float: right;
   margin: 0 5px;
 }
+
+.slots-prices-dialog .table th.c1 {
+  width: 160px;
+}
+
+.slots-prices-dialog .table th.c2 {
+  width: 120px;
+}
+
+.slots-prices-dialog .table th.c3 {
+  width: 200px;
+}
+
+.slots-prices-dialog .table th.c4 {
+  text-align: right;
+}
+
+.slots-prices-dialog .table td span {
+  display:inline-block;
+}
+
+.slots-prices-dialog .table td.c1 span {
+  padding-top: 8px;
+  font-weight: 500;
+}
+
+.slots-prices-dialog .table td.c1 span:first-child {
+  width: 80px;
+}
+
+.slots-prices-dialog .table td .c2 {
+  width: 120px;
+}
+
+.slots-prices-dialog .table td .c2 .sign {
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+.slots-prices-dialog .table td .c3 {
+  width: 260px;
+}
+
+.slots-prices-dialog .credit span:first-child {
+  margin-right: 5px;
+  font-size: 12px;
+}

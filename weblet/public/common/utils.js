@@ -256,6 +256,15 @@ sb.utils = {
 
   percent: function(/*num*/ now, /*num*/ total) {
     return Math.round(((now / total)*100))
+  },
+
+  currencySign: function(/*str*/ currency) {
+    var sign = currency
+    switch (currency) {
+      case 'USD': sign = '$'; break
+      case 'GBP': sign = '£'; break //tod EUR
+    }
+    return sign
   }
 
 }

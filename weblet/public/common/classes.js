@@ -175,6 +175,21 @@ sb.classes = {
       } else callback('noop')
     }
 
+    /** get space effective prices from API (expands the source object) */
+    function refreshEffectivePrices(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.effectivePrices || force) {
+
+        sc.apiSpacesService.refreshPrices(_this.placeId, _this.id,
+          function(/*[Price]*/ prices) {
+            _this.effectivePrices = prices
+            _this.applyChangesToSource()
+          },
+          callback,
+          { effective: '' })
+
+      } else callback('noop')
+    }
+
     /** get space inner spaces first space from API (expands the source object) */
     function refreshFirstSpace(/*bool*/ force, /*fn*/ callback) {
       if (!_this.spaces || force) {
@@ -255,6 +270,10 @@ sb.classes = {
           f = refreshPrices
           break
 
+        case 'effectivePrices':
+          f = refreshEffectivePrices
+          break
+
         case 'slots':
           f = refreshSlots
           break
@@ -274,6 +293,7 @@ sb.classes = {
       changesToSource.field('name')
       changesToSource.field('spaces')
       changesToSource.field('prices')
+      changesToSource.field('effectivePrices')
       changesToSource.field('attributes', {})
 
       if (source._slots != _this.slots) {
@@ -310,6 +330,7 @@ sb.classes = {
       _this.timeFrom = source._time_from || source.time_from
       _this.timeTo = source._time_to || source.time_to
       _this.prices = source._prices
+      _this.effectivePrices = source._effectivePrices
       _this.bookings = source._bookings
       _this.activeBookings = source._activeBookings
       _this.attributes = source._attributes || source.attributes || {}
@@ -331,6 +352,21 @@ sb.classes = {
             _this.applyChangesToSource()
           },
           callback)
+
+      } else callback('noop')
+    }
+
+    /** get slot effective prices from API (expands the source object) */
+    function refreshEffectivePrices(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.effectivePrices || force) {
+
+        sc.apiSlotsService.refreshPrices(_this.id,
+          function(/*[Price]*/ prices) {
+            _this.effectivePrices = prices
+            _this.applyChangesToSource()
+          },
+          callback,
+          { effective: '' })
 
       } else callback('noop')
     }
@@ -384,6 +420,10 @@ sb.classes = {
           f = refreshPrices
           break
 
+        case 'effectivePrices':
+          f = refreshEffectivePrices
+          break
+
         case 'bookings':
           f = refreshBookings
           break
@@ -408,6 +448,7 @@ sb.classes = {
       changesToSource.field('bookings')
       changesToSource.field('activeBookings')
       changesToSource.field('prices')
+      changesToSource.field('effectivePrices')
       changesToSource.field('attributes', {})
 
       if (
@@ -445,8 +486,6 @@ sb.classes = {
     function applyChangesFromSource() {
       _this.id = source.price_id
       _this.placeId = source.place_id
-
-      // belongs to a Space
       _this.spaceId = source.space_id
 
       // belongs to a Slot
@@ -455,6 +494,7 @@ sb.classes = {
       _this.name = source._name || source.name
       _this.amount = source._amount || source.amount
       _this.currency = source._currency || source.currency
+      _this.memberLevel = source._memberLevel || source.member_level || 0
       _this.attributes = source._attributes || source.attributes || {}
     }
 
@@ -507,6 +547,7 @@ sb.classes = {
       changesToSource.field('name')
       changesToSource.field('amount')
       changesToSource.field('currency')
+      changesToSource.field('memberLevel')
       changesToSource.field('attributes', {})
     }
 
@@ -805,6 +846,15 @@ sb.classes = {
       var arr = $.grep(_this.currencies, function(c) { return c.currency == currency })
       return arr.length ? arr[0] : { currency: currency, attributes: {} }
     }
+
+  },
+
+  Member: function(/*json*/ source, /*services*/ sc) { // read-only
+
+    this.sc = sc
+    this.source = source
+
+    this.level = source.level || 0
 
   }
 

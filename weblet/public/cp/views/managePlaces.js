@@ -301,7 +301,7 @@ app.directive('editedPlaceModerators', function($rootScope) {
       $scope.userFinderTrigger = Math.random()
     }
 
-    $scope.removeModerator = function(/*User*/ user) {
+    $scope.removeModerator = function(/*EditedUser*/ user) {
       var moderatorIds = [].concat($scope.editedPlace.source.moderatorIds)
       moderatorIds.splice(moderatorIds.indexOf(user.id), 1)
       patchAndRefresh(moderatorIds)
@@ -841,9 +841,3 @@ app.directive('editedPlaceSlotCopyPasteDialog', function(sb_modalDialogService) 
 
   }
 })
-
-var cp = cp || {}
-
-cp.managePlaces = {
-
-}

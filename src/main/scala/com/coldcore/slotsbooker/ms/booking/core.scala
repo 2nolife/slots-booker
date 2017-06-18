@@ -22,7 +22,8 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val restClient = createRestClient(config)
 
-    val bookingActor = system.actorOf(BookingActor.props(bookingDb, config.placesBaseUrl, config.slotsBaseUrl, config.systemToken, restClient).withRouter(FromConfig), name = MS)
+    val bookingActor = system.actorOf(BookingActor.props(bookingDb, config.placesBaseUrl, config.slotsBaseUrl, config.membersBaseUrl,
+                                      config.systemToken, restClient).withRouter(FromConfig), name = MS)
 
     new BookingRestService(config.hostname, config.port, config.systemToken, bookingActor, externalAuthActor(config, restClient))
   }
@@ -44,11 +45,12 @@ trait Constants {
     'refund_requires_payment -> 8,
     'generated_refund_mismatch -> 9,
     'slot_not_bookable -> 10,
-    'slot_price_invalid -> 11,
+    'price_invalid -> 11,
     'generated_quote_mismatch -> 12,
     'quote_active -> 13,
     'refund_active -> 14,
-    'booked_status_mismatch -> 15
+    'booked_status_mismatch -> 15,
+    'low_member_level -> 16
   )
 
   implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)

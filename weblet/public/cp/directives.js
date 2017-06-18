@@ -97,7 +97,7 @@ app.directive('confirmDialog', function(sb_modalDialogService, $rootScope) {
   }
 })
 
-app.directive('userFinderDialog', function(sb_apiUsersService, sb_modalDialogService) {
+app.directive('userFinderDialog', function(sb_apiUsersService, sb_apiMembersService, sb_modalDialogService) {
 
   var controller = function($scope) {
 
@@ -111,11 +111,18 @@ app.directive('userFinderDialog', function(sb_apiUsersService, sb_modalDialogSer
           join: 'or'
         },
         function(/*[User]*/ users) {
-          $scope.foundUsers = users
+          $scope.foundUsers = users.map(function(user) { return new cp.classes.EditedUser(user) })
+
+          if ($scope.placeId) {
+            $scope.foundUsers.forEach(function(user) {
+              user.memberFor($scope.placeId)
+            })
+          }
+
         })
     }
 
-    $scope.selectUser = function(/*User*/ user) {
+    $scope.selectUser = function(/*EditedUser*/ user) {
       $scope.selectedUser = user
     }
 
@@ -131,6 +138,7 @@ app.directive('userFinderDialog', function(sb_apiUsersService, sb_modalDialogSer
 
     scope: {
       trigger: '=',
+      placeId: '=', /*str*/
       onUser: '&'
     },
 
@@ -364,15 +372,27 @@ app.directive('slotsPricesDialog', function(sb_modalDialogService) {
       var slots = $scope.slots,
           n = slots.length
       slots.forEach(function(/*EditedSlot*/ slot) {
-        slot.refreshPrices(false, function() {
-          var selected = $.grep(slot.prices, function(price) { return price == slot.selectedPrice })
-          if (!selected.length && slot.prices.length) slot.selectedPrice = slot.prices[0]
+        slot.refreshEffectivePrices(false, function() {
+          var selected = $.grep(slot.effectivePrices, function(price) { return price == slot.selectedPrice })
+          if (!selected.length && slot.effectivePrices.length) slot.selectedPrice = slot.effectivePrices[0]
         })
       })
     }
 
     $scope.onSlotsSet = function() {
       refreshPrices()
+    }
+
+    $scope.onUserOrPlaceSet = function() {
+      delete $scope.member
+      if ($scope.user && $scope.placeId) {
+        $scope.user.memberFor($scope.placeId, false, function() {
+          $scope.member = $scope.user.members[$scope.placeId]
+        })
+        $scope.user.balanceFor($scope.placeId, false, function() {
+          $scope.balance = $scope.user.balances[$scope.placeId]
+        })
+      }
     }
 
     $scope.submit = function() {
@@ -388,6 +408,8 @@ app.directive('slotsPricesDialog', function(sb_modalDialogService) {
     scope: {
       trigger: '=',
       slots: '=', /*[EditedSlot]*/
+      user: '=', /*[EditedUser]*/
+      placeId: '=', /*str*/
       onSubmit: '&'
     },
 
@@ -399,6 +421,8 @@ app.directive('slotsPricesDialog', function(sb_modalDialogService) {
       var dialogHandle = cp.utils.modalDialog('.slots-prices-dialog', element, sb_modalDialogService)
       scope.$watch('trigger', function(newValue, oldValue) { if (newValue) dialogHandle.show() })
       scope.$watch('slots', function(newValue, oldValue) { if (newValue) scope.onSlotsSet() })
+      scope.$watch('user', function(newValue, oldValue) { if (newValue) scope.onUserOrPlaceSet() })
+      scope.$watch('placeId', function(newValue, oldValue) { if (newValue) scope.onUserOrPlaceSet() })
     }
 
   }

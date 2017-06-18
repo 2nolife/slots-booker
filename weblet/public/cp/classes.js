@@ -104,6 +104,7 @@ cp.classes = {
       if (key == '*' || !_this.rid) _this.rid = Math.random()
       if (key == 'spaces') wrapSpaces()
       if (key == 'prices') wrapPrices()
+      if (key == 'effectivePrices') wrapEffectivePrices()
       if (key == 'slots') wrapSlots()
     }
 
@@ -134,11 +135,22 @@ cp.classes = {
       source.refresh('prices', force, callback)
     }
 
+    this.refreshEffectivePrices = function(/*bool*/ force, /*fn*/ callback) {
+      source.refresh('effectivePrices', force, callback)
+    }
+
     function wrapPrices() {
-      var prices = (source.prices || []).map(function(price) { return new cp.classes.EditedPrice(price) })
+      var prices = source.prices.map(function(price) { return new cp.classes.EditedPrice(price) })
       prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
       _this.prices = prices
       _this.onChangeCallback.trigger('prices-wrap', _this)
+    }
+
+    function wrapEffectivePrices() {
+      var prices = source.effectivePrices.map(function(price) { return new cp.classes.EditedPrice(price) })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.effectivePrices = prices
+      _this.onChangeCallback.trigger('effective-prices-wrap', _this)
     }
 
     this.refreshSpaces = function(/*bool*/ force, /*fn*/ callback) {
@@ -193,6 +205,7 @@ cp.classes = {
       _this.amount = source.amount
       _this.currency = source.currency
       _this.attributes = source.attributes
+      _this.memberLevel = source.memberLevel
 
       makeAttributesArray()
     }
@@ -215,6 +228,7 @@ cp.classes = {
         name: _this.name,
         amount: _this.amount,
         currency: _this.currency,
+        member_level: parseInt(_this.memberLevel),
         attributes: cp.classes.utils.toApiAttributesEntity(_this.attributesArray).attributes
       }
     }
@@ -276,6 +290,7 @@ cp.classes = {
 
       if (key == '*' || !_this.rid) _this.rid = Math.random()
       if (key == 'prices') wrapPrices()
+      if (key == 'effectivePrices') wrapEffectivePrices()
       if (key == 'bookings') wrapBookings()
       if (key == 'activeBookings') wrapActiveBooking()
     }
@@ -307,11 +322,22 @@ cp.classes = {
       source.refresh('prices', force, callback)
     }
 
+    this.refreshEffectivePrices = function(/*bool*/ force, /*fn*/ callback) {
+      source.refresh('effectivePrices', force, callback)
+    }
+
     function wrapPrices() {
       var prices = source.prices.map(function(price) { return new cp.classes.EditedPrice(price) })
       prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
       _this.prices = prices
       _this.onChangeCallback.trigger('prices-wrap', _this)
+    }
+
+    function wrapEffectivePrices() {
+      var prices = source.effectivePrices.map(function(price) { return new cp.classes.EditedPrice(price) })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      _this.effectivePrices = prices
+      _this.onChangeCallback.trigger('effective-prices-wrap', _this)
     }
 
     this.refreshBookings = function(/*bool*/ force, /*fn*/ callback) {
@@ -668,7 +694,6 @@ cp.classes = {
       _this.id = source.id
       _this.profileId = source.profileId
       _this.user = source.user
-      _this.price = source.price
       _this.reference = source.reference
       _this.status = source.status
       _this.attributes = source.attributes
@@ -682,12 +707,63 @@ cp.classes = {
       source.refresh('user')
     }
 
-    this.refreshPrice = function() {
-      source.refresh('price')
-    }
-
     this.refreshReference = function() {
       source.refresh('reference')
+    }
+
+  },
+
+  EditedUser: function(/*Booking*/ source) {
+
+    var _this = this
+
+    this.sc = source.sc
+    this.source = source
+
+    this.onChangeCallback = source.onChangeCallback
+
+    function applyChangesFromSource(/*str*/ key) {
+      _this.id = source.id
+      _this.username = source.username
+      _this.fullName = source.fullName
+      _this.attributes = source.attributes
+
+      if (key == '*' || !_this.rid) {
+        _this.rid = Math.random()
+        delete _this.members
+        delete _this.balances
+      }
+
+      _this.members = _this.members || {}
+      _this.balances = _this.balances || {}
+    }
+
+    applyChangesFromSource()
+
+    source.onChangeCallback.add(applyChangesFromSource)
+
+    this.refresh = function(/*fn*/ callback) {
+      source.refresh('*', true, callback)
+    }
+
+    this.memberFor = function(/*str*/ placeId, /*bool*/ force, /*fn*/ callback) {
+      if (force) delete _this.members[placeId]
+      if (!_this.members[placeId])
+        _this.sc.apiMembersService.getPlaceMember(placeId, _this.id, function(/*Member*/ member) {
+          _this.members[placeId] = member
+          if (callback) callback()
+        })
+      else if (callback) callback()
+    }
+
+    this.balanceFor = function(/*str*/ placeId, /*bool*/ force, /*fn*/ callback) {
+      if (force) delete _this.balances[placeId]
+      if (!_this.balances[placeId])
+        _this.sc.apiPaymentsService.getUserBalance(placeId, _this.id, function(/*Balance*/ balance) {
+          _this.balances[placeId] = balance
+          if (callback) callback()
+        })
+      else if (callback) callback()
     }
 
   }

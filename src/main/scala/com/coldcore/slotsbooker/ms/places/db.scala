@@ -14,6 +14,8 @@ import ms.places.vo.Implicits._
 import PlacesDb._
 import ms.vo.Attributes
 
+import scala.annotation.tailrec
+
 object PlacesDb {
 
   trait PlaceFields {
@@ -75,6 +77,7 @@ trait SpaceCRUD {
 trait PriceCRUD {
   def priceById(priceId: String): Option[vo.Price]
   def pricesBySpaceId(spaceId: String): Seq[vo.Price]
+  def effectivePricesBySpaceId(spaceId: String): Seq[vo.Price]
   def createPrice(parentSpaceId: String, obj: vo.CreatePrice): vo.Price
   def updatePrice(priceId: String, obj: vo.UpdatePrice): Option[vo.Price]
   def deletePrice(priceId: String): Boolean
@@ -195,9 +198,7 @@ trait VoFactory {
       name = getAs[String]("name"),
       amount = getAs[Int]("amount"),
       currency = getAs[String]("currency"),
-      roles =
-        getAs[Seq[String]]("roles")
-          .noneIfEmpty,
+      member_level = getAs[Int]("member_level"),
       attributes =
         getAs[AnyRef]("attributes")
           .map(json => Attributes(json.toString))
@@ -374,6 +375,17 @@ trait PriceCrudImpl {
       .map(asPrice(_))
       .toSeq
 
+  override def effectivePricesBySpaceId(spaceId: String): Seq[vo.Price] = {
+    @tailrec def f(id: String): Seq[vo.Price] = {
+      spaceById(id, customSpaceFields(deep_spaces = false, deep_prices = true)) match {
+        case space if space.get.prices.isDefined => space.get.prices.get
+        case space if space.get.parent_space_id.isEmpty => Seq.empty
+        case space => f(space.get.parent_space_id.get)
+      }
+    }
+    f(spaceId)
+  }
+
   override def deletePrice(priceId: String) =
     softDeleteOne(finderById(priceId), prices)
 
@@ -383,7 +395,7 @@ trait PriceCrudImpl {
       "name" -> name,
       "amount" -> amount,
       "currency" -> currency,
-      "roles" -> roles.map(MongoDBList(_: _*))
+      "member_level" -> member_level
     ).foreach { case (key, value) =>
       update(finderById(priceId), prices, key, value)
     }
@@ -408,6 +420,12 @@ trait PriceCrudImpl {
 
     prices.
       insert(price)
+
+    Map(
+      "member_level" -> member_level
+    ).foreach { case (key, value) =>
+      update(finderById(price.idString), prices, key, value)
+    }
 
     attributes.foreach(a => mergeJsObject(finderById(price.idString), prices, "attributes", a.value))
 

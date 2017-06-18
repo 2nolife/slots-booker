@@ -47,7 +47,7 @@ trait PriceCommands {
   case class CreatePriceIN(placeId: String, spaceId: String, obj: vo.CreatePrice, profile: ProfileRemote) extends RequestInfo
   case class UpdatePriceIN(placeId: String, spaceId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote) extends RequestInfo
   case class GetPriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
-  case class GetPricesIN(placeId: String, spaceId: String, profile: ProfileRemote) extends RequestInfo
+  case class GetPricesIN(placeId: String, spaceId: String, effective: Option[String], profile: ProfileRemote) extends RequestInfo
   case class DeletePriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
@@ -412,12 +412,13 @@ trait GetPrice {
 
       reply ! CodeEntityOUT(code, exposePrice(price, myPlace, profile))
 
-    case GetPricesIN(placeId, spaceId, profile) =>
+    case GetPricesIN(placeId, spaceId, effective, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
-      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = true))
+      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = false))
       lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
 
-      def read: Option[Seq[vo.Price]] = Some(mySpace.get.prices.getOrElse(Nil))
+      def read: Option[Seq[vo.Price]] =
+        Some(if (effective.isDefined) placesDb.effectivePricesBySpaceId(spaceId) else placesDb.pricesBySpaceId(spaceId))
 
       val (code, prices) =
         if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)

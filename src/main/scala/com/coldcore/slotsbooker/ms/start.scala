@@ -30,6 +30,7 @@ object start {
     booking.start.run
     payments.start.run
     paypal.start.run
+    members.start.run
 
     Await.result(system.whenTerminated, Duration.Inf)
   }

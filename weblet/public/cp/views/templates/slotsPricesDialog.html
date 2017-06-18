@@ -10,15 +10,69 @@
       <div class="modal-body">
         <form class="form-horizontal">
           <fieldset>
-            <div class="form-group" ng-repeat="slot in slots">
-              <label class="control-label col-sm-3 slot-date"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></label>
-              <div class="col-sm-9">
-                <div class="input-group">
-                  <div class="radio" ng-repeat="price in slot.prices">
-                    <label><input type="radio" name="slot_{{slot.id}}" ng-model="slot.selectedPrice" ng-value="price"/> {{price.currency}} {{price.amount | sb_numberX100 : true}} &nbsp; ({{price.name}})</label>
-                  </div>
-                </div>
-              </div>
+            <div class="form-group">
+
+              <table class="table">
+                <thead>
+
+                <tr>
+                  <th>User</th>
+                  <th>Credit</th>
+                  <th>Member</th>
+                </tr>
+
+                </thead>
+                <tbody>
+
+
+                <tr>
+                  <td>{{user.username}}, {{user.fullName}}</td>
+                  <td>
+                    <p class="credit" ng-repeat="credit in balance.credit">
+                      <span>{{credit.currency | sb_currencySign}}</span>
+                      <span>{{credit.amount | sb_numberX100 : true}}</span>
+                    </p>
+                  </td>
+                  <td>{{member.level}}</td>
+                </tr>
+
+                </tbody>
+              </table>
+
+            </div>
+            <div class="form-group">
+
+              <table class="table">
+                <thead>
+
+                <tr>
+                  <th class="c1">Slot</th>
+                  <th class="c2">Price</th>
+                  <th class="c3">Name</th>
+                  <th class="c4">Member</th>
+                </tr>
+
+                </thead>
+                <tbody>
+
+                <tr ng-repeat="slot in slots">
+                  <td class="c1"><span>{{slot.formatted.dateFrom}}</span> <span>{{slot.formatted.timeFrom}}</span></td>
+                  <td colspan="3">
+                    <div class="radio" ng-repeat="price in slot.effectivePrices">
+                      <label class="c2">
+                        <input type="radio" name="slot_{{slot.id}}" ng-model="slot.selectedPrice" ng-value="price"/>
+                        <span class="sign">{{price.currency | sb_currencySign}}</span>
+                        <span class="amount">{{price.amount | sb_numberX100 : true}}</span>
+                      </label>
+                      <span class="c3">{{price.name}}</span>
+                      <span class="c4" ng-show="price.memberLevel">{{price.memberLevel}}</span>
+                    </div>
+                  </td>
+                </tr>
+
+                </tbody>
+              </table>
+
             </div>
           </fieldset>
         </form>

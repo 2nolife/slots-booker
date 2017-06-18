@@ -33,6 +33,19 @@
                 </div>
               </div>
             </div>
+            <div class="form-group">
+              <label class="control-label col-sm-3">Membership</label>
+              <div class="col-sm-9">
+                <div class="input-group">
+                  <div class="radio">
+                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="0"/> No</label>
+                  </div>
+                  <div class="radio">
+                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="1"/> Basic</label>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="form-group" ng-repeat="attr in editedPrice.attributesArray" ng-show="editedPrice.id">
               <label class="control-label col-sm-3">{{attr.name}}</label>
               <div class="col-sm-9">

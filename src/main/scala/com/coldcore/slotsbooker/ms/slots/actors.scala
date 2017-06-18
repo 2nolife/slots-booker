@@ -41,7 +41,7 @@ trait PricesCommands {
   case class CreatePriceIN(slotId: String, obj: vo.CreatePrice, profile: ProfileRemote) extends RequestInfo
   case class UpdatePriceIN(slotId: String, priceId: String, obj: vo.UpdatePrice, profile: ProfileRemote) extends RequestInfo
   case class GetPriceIN(slotId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
-  case class GetPricesIN(slotId: String, profile: ProfileRemote) extends RequestInfo
+  case class GetPricesIN(slotId: String, effective: Option[String], profile: ProfileRemote) extends RequestInfo
   case class DeletePriceIN(slotId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
@@ -64,6 +64,11 @@ trait PlacesMsRestCalls extends SystemRestCalls {
 
   def spaceFromMsPlaces(placeId: String, spaceId: String, withInnerSpaces: Boolean = false): (ApiCode, Option[vo.ext.Space]) =
     restGet[vo.ext.Space](s"$placesBaseUrl/places/$placeId/spaces/$spaceId?deep=false&deep_spaces=$withInnerSpaces")
+
+  def effectivePricesFromMsPlaces(placeId: String, spaceId: String): (ApiCode, Option[Seq[vo.Price]]) = {
+    val (code, prices) = restGet[Seq[vo.ext.Price]](s"$placesBaseUrl/places/$placeId/spaces/$spaceId/prices?effective")
+    if (code not SC_OK) (code, None) else (code, prices.map(_.map(vo.Price(_))))
+  }
 }
 
 object SlotsActor extends SlotsCommands with PricesCommands with BookedCommands with BookingsCommands with SearchCommands {
@@ -312,18 +317,20 @@ trait GetPrice {
 
       reply ! CodeEntityOUT(code, exposePrice(price, mySlot.flatMap(_ => myPlace), profile))
 
-    case GetPricesIN(slotId, profile) =>
+    case GetPricesIN(slotId, effective, profile) =>
       lazy val mySlot = slotsDb.slotById(slotId, customSlotFields(deep_bookings = false, deep_prices = true, deep_booked = false))
       lazy val (codeA, myPlace) = placeFromMsPlaces(mySlot.get.place_id)
       lazy val slotNotFound = mySlot.isEmpty
       lazy val placeNotFound = myPlace.isEmpty
 
-      def read: Option[Seq[vo.Price]] = Some(mySlot.get.prices.getOrElse(Nil))
+      def read: (ApiCode, Option[Seq[vo.Price]]) =
+        if (effective.isDefined && mySlot.get.prices.isEmpty) effectivePricesFromMsPlaces(mySlot.get.place_id, mySlot.get.space_id)
+        else (ApiCode.OK, Some(mySlot.get.prices.getOrElse(Nil)))
 
       val (code, prices) =
         if (slotNotFound) (ApiCode(SC_NOT_FOUND), None)
         else if (placeNotFound) (codeA, None)
-        else (ApiCode.OK, read)
+        else read
 
       reply ! CodeEntityOUT(code, exposePrices(prices, mySlot.flatMap(_ => myPlace), profile))
 

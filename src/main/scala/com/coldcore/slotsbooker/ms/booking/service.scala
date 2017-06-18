@@ -68,6 +68,22 @@ trait SlotsMsRestCalls extends SystemRestCalls {
   def updateBookingWithMsSlots(bookingId: String, slotId: String, status: Option[Int], attributes: Option[Attributes], profileId: Option[String]): (ApiCode, Option[vo.ext.Booking]) =
     restPatch[vo.ext.Booking](s"$slotsBaseUrl/slots/$slotId/bookings/$bookingId", vo.ext.UpdateSlotBooking(status, attributes, profileId))
 
+  def effectivePricesFromMsSlots(slotId: String): (ApiCode, Option[Seq[vo.ext.Price]]) =
+    restGet[Seq[vo.ext.Price]](s"$slotsBaseUrl/slots/$slotId/prices?effective")
+
+}
+
+trait MembersMsRestCalls extends SystemRestCalls {
+  self: {
+    val membersBaseUrl: String
+    val systemToken: String
+    val restClient: RestClient
+  } =>
+
+  /** Get a member from the "members" micro service */
+  def memberFromMsMembers(placeId: String, profileId: String): (ApiCode, Option[vo.ext.Member]) =
+    restGet[vo.ext.Member](s"$membersBaseUrl/members/member?place_id=$placeId&profile_id=$profileId")
+
 }
 
 trait VoFactory {
@@ -99,32 +115,6 @@ trait CollectSlots {
   }
 }
 
-trait CollectSpaces {
-
-  type SpaceProviderFnType = String => (ApiCode, Option[vo.ext.Space])
-
-  /** Get a space with its prices set or try its parent space and so on. */
-  def collectPricedSpace(spaceId: String, providerFn: SpaceProviderFnType): (ApiCode, Option[vo.ext.Space]) = {
-    val (code, space) = providerFn(spaceId)
-    if (code not SC_OK) (code, None)
-    else if (space.get.prices.isDefined) (SC_OK, space)
-    else if (space.get.parent_space_id.isEmpty) (SC_OK, space) // space without a price
-    else collectPricedSpace(space.get.parent_space_id.get, providerFn)
-  }
-
-  /** Get spaces with its prices set (uses the "collectPricedSpace" method), fails if some slot cannot be collected. */
-  def collectPricedSpaces(spaceIds: Seq[String], providerFn: SpaceProviderFnType): Either[ApiCode, Seq[vo.ext.Space]] = {
-    val codesAndSpaces = spaceIds.map(collectPricedSpace(_, providerFn))
-    codesAndSpaces.collectFirst { case (code, None) => code } match {
-      case Some(errorCode) => Left(errorCode)
-      case _ =>
-        val spaces = codesAndSpaces.flatMap { case (_, space) => space }
-        if (!spaces.forall(_.place_id == spaces.head.place_id)) Left(SC_BAD_REQUEST)
-        else Right(spaces)
-    }
-  }
-}
-
 trait BookingService {
   def placeById(placeId: String): (ApiCode, Option[vo.ext.Place])
   def slotById(slotId: String): (ApiCode, Option[vo.ext.Slot])
@@ -147,25 +137,21 @@ trait BookingService {
   val refundStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2)
 }
 
-class BookingServiceImpl(val bookingDb: BookingDb, val placesBaseUrl: String, val slotsBaseUrl: String, val systemToken: String,
+class BookingServiceImpl(val bookingDb: BookingDb,
+                         val placesBaseUrl: String, val slotsBaseUrl: String, val membersBaseUrl: String, val systemToken: String,
                          val restClient: RestClient)(implicit system: ActorSystem)
-    extends BookingService with Logger with PlacesMsRestCalls with SlotsMsRestCalls with CollectSlots with CollectSpaces with VoFactory
+    extends BookingService with Logger with PlacesMsRestCalls with SlotsMsRestCalls with MembersMsRestCalls with CollectSlots with VoFactory
     with Auxiliary with QuoteSlots with RefundSlots with BookSlots {
 
   initLoggingAdapter
 
   def resolveSlotPrices(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = {
-    val (pricedSlots, notPricedSlots) = slots.partition(_.prices.isDefined)
-    val either =
-      if (notPricedSlots.isEmpty) Right(Seq.empty[vo.ext.Space])
-      else collectPricedSpaces(notPricedSlots.map(_.space_id), slotId => spaceFromMsPlaces(slots.head.place_id, slotId, withPrices = true))
-
-    either match {
-      case Left(code) => Left(code)
-      case Right(pricedSpaces) =>
-        val resolvedSlots = notPricedSlots.zip(pricedSpaces).map { case (slot, space) => slot.copy(prices = space.prices) }
-        Right(pricedSlots ++ resolvedSlots)
+    val codesAndSlots = slots.map { slot =>
+      val (code, prices) = effectivePricesFromMsSlots(slot.slot_id)
+      (code, slot.copy(prices = prices))
     }
+
+    codesAndSlots.map(_._1).find(_ not SC_OK).map(Left(_)).getOrElse(Right(codesAndSlots.map(_._2)))
   }
 
 }
@@ -242,8 +228,8 @@ trait QuoteSlots {
 
   /** Generate a new Quote for selected slots and prices without saving it to a database. */
   private def getQuote(selected: Seq[vo.SelectedPrice], profileId: String): (ApiCode, Option[vo.Quote]) = {
-    def step1(): Either[ApiCode, Seq[vo.ext.Slot]] = // get all slots, Prices object filled
-      collectSlots(selected.map(_.slot_id), slotId => slotFromMsSlots(slotId, withPrices = true))
+    def step1(): Either[ApiCode, Seq[vo.ext.Slot]] = // get all slots
+      collectSlots(selected.map(_.slot_id), slotId => slotFromMsSlots(slotId))
 
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_not_bookable)) else Right(SC_OK)
@@ -270,18 +256,27 @@ trait QuoteSlots {
     def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot prices
       resolveSlotPrices(slots)
 
-    def step5(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check prices validity
-      val valid =
-        resolvedSlots.map { slot =>
-          selected.exists { sp =>
-            sp.slot_id == slot.slot_id &&
-            (slot.prices.isEmpty || slot.prices.get.map(_.price_id).contains(sp.price_id.orNull))
-          }
-        }
-      if (valid.contains(false)) Left(ApiCode(SC_CONFLICT, 'slot_price_invalid)) else Right(SC_OK)
+    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Member] = {// membership
+      val (code, member) = memberFromMsMembers(slots.head.place_id, profileId)
+      if (code not SC_OK) Left(code) else Right(member.get)
     }
 
-    def step6(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
+    def step6(resolvedSlots: Seq[vo.ext.Slot], member: vo.ext.Member): Either[ApiCode, _] = { // check prices validity
+      val priceLevels =
+        resolvedSlots.flatMap { slot =>
+          selected.collectFirst { case sp if sp.slot_id == slot.slot_id =>
+            val price = slot.prices.getOrElse(Nil).find(_.price_id == sp.price_id.orNull)
+            if (slot.prices.getOrElse(Nil).isEmpty && sp.price_id.isEmpty) Some(0)
+            else if (price.isDefined) price.map(_.member_level.getOrElse(0))
+            else None
+          }
+        }
+      if (priceLevels.contains(None)) Left(ApiCode(SC_CONFLICT, 'price_invalid))
+      else if (priceLevels.flatten.exists(_ > member.level.getOrElse(0))) Left(ApiCode(SC_CONFLICT, 'low_member_level))
+      else Right(SC_OK)
+    }
+
+    def step7(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
       val pairs =
         selected.map { sp =>
           resolvedSlots
@@ -298,8 +293,9 @@ trait QuoteSlots {
         _             <- step2(slots).right
         _             <- step3(slots).right
         resolvedSlots <- step4(slots).right
-        _             <- step5(resolvedSlots).right
-        prices        <- step6(resolvedSlots).right
+        member        <- step5(slots).right
+        _             <- step6(resolvedSlots, member).right
+        prices        <- step7(resolvedSlots).right
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Quote(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),

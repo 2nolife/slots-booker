@@ -198,8 +198,10 @@ Add client IP to the rest of the commands AND replies
 Add generated X header to requests to help with tracking
 See if weblet sets proper X-Forwarded-For header
 Deployment diagram
-Moderator can book paid slots without payment
-Slots inherited prices for bookings "/prices?book" "/book-prices"
+Moderator can book paid slots without payment (special free price)
+Moderator can book paid slots with negative user balance (even if negative is disabled)
+Moderator can book slots of any member level for members and non-members
+Remove shadow _var from source in classes.js as redundant
 
 
 Running in the background

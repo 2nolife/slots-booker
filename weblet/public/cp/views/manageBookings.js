@@ -91,7 +91,6 @@ app.directive('mbEditedSpaceSlots', function($rootScope) {
         var booking = slot.activeBooking /*EditedBooking*/
         if (booking) {
           booking.refreshUser()
-          booking.refreshPrice()
           booking.refreshReference()
         }
       })
@@ -144,26 +143,30 @@ app.directive('mbEditedSpaceSlots', function($rootScope) {
     }
 
     function book(/*[EditedSlot]*/ slots) {
-      var profileId = null
+      var selectedUser = null
       function selectUser() { // step 1 (dialog)
+        $scope.selectedSlots = slots
         $scope.userFinderTrigger = Math.random()
-        $scope.onUserSubmit = function(/*User*/ user) {
+        $scope.onUserSubmit = function(/*EditedUser*/ user) {
           delete $scope.onUserSubmit
-          profileId = user.id
+          delete $scope.selectedSlots
+          selectedUser = user
           slotsPrices()
         }
       }
       function slotsPrices() { // step 2 (dialog)
         $scope.selectedSlots = slots
+        $scope.selectedUser = selectedUser
         $scope.slotsPricesTrigger = Math.random()
         $scope.onSlotsPricesSubmit = function() {
           delete $scope.onSlotsPricesSubmit
           delete $scope.selectedSlots
+          delete $scope.selectedUser
           bookSlots()
         }
       }
       function bookSlots() { // step 3
-        bookingService.calculateQuote(slots, profileId, function(/*{}*/ hash) {
+        bookingService.calculateQuote(slots, user.id, function(/*{}*/ hash) {
           var amount = hash.quote.currency+' '+sb.utils.numberX100(hash.quote.amount, true)
           $rootScope.$broadcast('dialog.confirm', { text: 'Book '+slots.length+' slots for '+amount, onConfirm: bookSlotsWithCredit.bind(null, hash) })
         })
@@ -178,7 +181,7 @@ app.directive('mbEditedSpaceSlots', function($rootScope) {
             sb_notifyService.notify('Booked', 'success')
           })
       }
-      selectUser()
+      if (slots.length) selectUser()
     }
 
     $scope.bookSingle = function() {
@@ -204,9 +207,3 @@ app.directive('mbEditedSpaceSlots', function($rootScope) {
   return cp.manageDirectives.editedSpaceDirective('manageBookings/editedSpaceSlots', controller)
 
 })
-
-var cp = cp || {}
-
-cp.manageBookings = {
-
-}

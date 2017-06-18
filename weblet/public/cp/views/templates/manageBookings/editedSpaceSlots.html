@@ -31,8 +31,8 @@
 
   <ng-include src="'views/templates/manageBookings/editSlot.html'" sb-include-replace />
 
-  <user-finder-dialog trigger="userFinderTrigger" on-user="onUserSubmit(user)"/>
+  <user-finder-dialog trigger="userFinderTrigger" place-id="selectedSlots[0].placeId" on-user="onUserSubmit(user)"/>
 
-  <slots-prices-dialog trigger="slotsPricesTrigger" slots="selectedSlots" on-submit="onSlotsPricesSubmit()"/>
+  <slots-prices-dialog trigger="slotsPricesTrigger" slots="selectedSlots" place-id="selectedSlots[0].placeId" user="selectedUser" on-submit="onSlotsPricesSubmit()"/>
 
 </div>
