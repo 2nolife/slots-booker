@@ -1,9 +1,6 @@
 package com.coldcore.slotsbooker
 package test
 
-import java.text.SimpleDateFormat
-import java.util.Date
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.Authorization
 import ms.http.RestClient
@@ -250,31 +247,31 @@ trait MongoCreate {
     place.idString
   }
 
-  def mongoCreateSpace(placeId: String, name: String = "Small Lake"): String = {
+  def mongoCreateSpace(placeId: String, name: String = "Small Lake",
+                       bookBounds: Option[places.vo.Bounds] = None, cancelBounds: Option[places.vo.Bounds] = None): String = {
     val space = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
-      "name" -> name)
+      "name" -> name
+    )
     mongoSpaces
       .insert(space)
 
-    //addToArray(finderById(placeId), mongoPlaces, "spaces", space.idString)
+    Map(
+      "book_bounds" -> bookBounds.map(asMongoObject),
+      "cancel_bounds" -> cancelBounds.map(asMongoObject)
+    ).foreach { case (key, value) =>
+      update(finderById(space.idString), mongoSpaces, key, value)
+    }
 
     space.idString
   }
 
-  def mongoCreateInnerSpace(placeId: String, parentSpaceId: String, name: String = "Tiny Lake"): String = {
-    val space = MongoDBObject(
-      "test" -> true,
-      "place_id" -> placeId,
-      "parent_space_id" -> parentSpaceId,
-      "name" -> name)
-    mongoSpaces
-      .insert(space)
-
-    //addToArray(finderById(parentSpaceId), mongoSpaces, "spaces", space.idString)
-
-    space.idString
+  def mongoCreateInnerSpace(placeId: String, parentSpaceId: String, name: String = "Tiny Lake",
+                            bookBounds: Option[places.vo.Bounds] = None, cancelBounds: Option[places.vo.Bounds] = None): String = {
+    val spaceId = mongoCreateSpace(placeId, name, bookBounds, cancelBounds)
+    update(finderById(spaceId), mongoSpaces, "parent_space_id", parentSpaceId)
+    spaceId
   }
 
   def mongoSetSpaceAttributes(spaceId: String, attributes: JsObject) =
@@ -291,7 +288,9 @@ trait MongoCreate {
 
   def mongoCreateSlot(placeId: String, spaceId: String, name: String = "Slot A",
                       dateFrom: Int = 0, dateTo: Int = 0, timeFrom: Int = 0, timeTo: Int = 2400,
-                      bookStatus: Int = 0, bookedId: Option[String] = None): String = {
+                      bookStatus: Int = 0,
+                      bookedId: Option[String] = None,
+                      book_bounds: Option[slots.vo.Bounds] = None, cancel_bounds: Option[slots.vo.Bounds] = None): String = {
     val slot = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
@@ -305,6 +304,13 @@ trait MongoCreate {
     mongoSlots
       .insert(slot)
 
+    Map(
+      "book_bounds" -> book_bounds.map(asMongoObject),
+      "cancel_bounds" -> cancel_bounds.map(asMongoObject)
+    ).foreach { case (key, value) =>
+      update(finderById(slot.idString), mongoSlots, key, value)
+    }
+
     if (bookedId.isDefined)
       mongoSlots
         .findAndModify(finderById(slot.idString), $set("booked" -> bookedId.get))
@@ -316,12 +322,15 @@ trait MongoCreate {
     mongoSlots
       .findAndModify(finderById(slotId), $set("attributes" -> asDBObject(attributes)))
 
-  def mongoUpdateSlot(slotId: String, dateFrom: Some[Int], dateTo: Some[Int], timeFrom: Some[Int], timeTo: Some[Int]) =
+  def mongoUpdateSlot(slotId: String, dateFrom: Option[Int], dateTo: Option[Int], timeFrom: Option[Int], timeTo: Option[Int],
+                      bookBounds: Option[slots.vo.Bounds] = None, cancelBounds: Option[slots.vo.Bounds] = None) =
     Map(
       "date_from" -> dateFrom,
       "date_to" -> dateTo,
       "time_from" -> timeFrom,
-      "time_to" -> timeTo
+      "time_to" -> timeTo,
+      "book_bounds" -> bookBounds.map(asMongoObject),
+      "cancel_bounds" -> cancelBounds.map(asMongoObject)
     ).foreach { case (key, value) =>
       update(finderById(slotId), mongoSlots, key, value)
     }
@@ -360,8 +369,6 @@ trait MongoCreate {
     mongoBookings
       .insert(booking)
 
-    //addToArray(finderById(slotId), mongoSlots, "bookings", booking.idString)
-
     if (status == 1)
       mongoSlots
         .findAndModify(finderById(slotId), $set("book_status" -> 1))
@@ -388,8 +395,6 @@ trait MongoCreate {
     mongoSlotPrices
       .insert(price)
 
-    //addToArray(finderById(slotId), mongoSlots, "prices", price.idString)
-
     price.idString
   }
 
@@ -407,8 +412,6 @@ trait MongoCreate {
 
     mongoPrices
       .insert(price)
-
-    //addToArray(finderById(spaceId), mongoSpaces, "prices", price.idString)
 
     price.idString
   }
@@ -564,6 +567,30 @@ trait MongoCreate {
     ).foreach { case (key, value) =>
       update(finderById(id), collection, key, value)
     }
+  }
+
+  def asMongoObject(bound: places.vo.Bound): MongoDBObject = {
+    import bound._
+    val f = (key: String, value: Option[Int]) => value.map(v => MongoDBObject(key -> v)).getOrElse(MongoDBObject())
+    f("date", date) ++ f("time", time) ++ f("before", before)
+  }
+
+  def asMongoObject(bounds: places.vo.Bounds): MongoDBObject = {
+    import bounds._
+    val f = (key: String, value: Option[places.vo.Bound]) => value.map(v => MongoDBObject(key -> asMongoObject(v))).getOrElse(MongoDBObject())
+    f("open", open) ++ f("close", close)
+  }
+
+  def asMongoObject(bound: slots.vo.Bound): MongoDBObject = {
+    import bound._
+    val f = (key: String, value: Option[Int]) => value.map(v => MongoDBObject(key -> v)).getOrElse(MongoDBObject())
+    f("date", date) ++ f("time", time) ++ f("before", before)
+  }
+
+  def asMongoObject(bounds: slots.vo.Bounds): MongoDBObject = {
+    import bounds._
+    val f = (key: String, value: Option[slots.vo.Bound]) => value.map(v => MongoDBObject(key -> asMongoObject(v))).getOrElse(MongoDBObject())
+    f("open", open) ++ f("close", close)
   }
 
 }

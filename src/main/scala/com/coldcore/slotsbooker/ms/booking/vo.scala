@@ -3,6 +3,7 @@ package ms.booking.vo
 
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 import ms.vo.Attributes
+import ms.{BoundsUtil => bu}
 
 case class SlotPrice(slot_id: String, price_id: Option[String], name: Option[String], amount: Option[Int], currency: Option[String])
 object SlotPrice extends DefaultJsonProtocol {
@@ -55,6 +56,12 @@ package ext {
                    amount: Option[Int], currency: Option[String], member_level: Option[Int])
   object Price extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
+  case class Bound(date: Option[Int], time: Option[Int], before: Option[Int])
+  object Bound extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+
+  case class Bounds(open: Option[Bound], close: Option[Bound])
+  object Bounds extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+
   case class Booking(booking_id: String, place_id: String, space_id: String, slot_id: String, profile_id: Option[String],
                      name: Option[String], status: Option[Int], attributes: Option[Attributes])
   object Booking extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
@@ -75,12 +82,13 @@ package ext {
                   name: Option[String],
                   date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
                   bookings: Option[Seq[Booking]], prices: Option[Seq[Price]],
-                  book_status: Option[Int], booked: Option[Booked])
+                  book_status: Option[Int], booked: Option[Booked],
+                  book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
   object Slot extends DefaultJsonProtocol {
-    implicit val format = jsonFormat12(apply)
+    implicit val format = jsonFormat14(apply)
 
     def apply(slotId: String, placeId: String, spaceId: String): Slot =
-      Slot(slotId, placeId, spaceId, None, None, None, None, None, None, None, None, None)
+      Slot(slotId, placeId, spaceId, None, None, None, None, None, None, None, None, None, None, None)
   }
 
   case class DateTime(timezone: Option[String], offset_minutes: Option[Int])
@@ -116,6 +124,22 @@ object Implicits {
     def isModerator(profileId: String): Boolean =
       obj.moderators.getOrElse(Nil).exists(profileId==) || obj.profile_id == profileId
 
+  }
+
+  implicit class BoundExt(obj: ext.Bound) {
+
+    def buBound: bu.Bound = {
+      import obj._
+      bu.Bound(date, time, before)
+    }
+  }
+
+  implicit class SlotExt(obj: ext.Slot) {
+
+    def buDates: bu.Dates = {
+      import obj._
+      bu.Dates(date_from.get, date_to.get, time_from.get, time_to.get)
+    }
   }
 
 }

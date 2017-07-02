@@ -1,7 +1,6 @@
 package com.coldcore.slotsbooker
 package ms.members.db
 
-import ms.vo.Attributes
 import ms.Timestamp
 import ms.db.MongoQueries
 import ms.members.Constants._
@@ -9,17 +8,20 @@ import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.MongoClient
 import com.mongodb.casbah.commons.MongoDBObject
 import ms.members.vo
-import spray.json._
 
-trait MembersDb extends MemberCRUD
+trait MembersDb extends MemberCRUD with Search
 
 trait MemberCRUD {
   def getMember(placeId: String, profileId: String): vo.Member
   def updateMember(placeId: String, profileId: String, obj: vo.UpdateMember): vo.Member
 }
 
+trait Search {
+  def searchMembers(placeId: String): Seq[vo.Member]
+}
+
 class MongoMembersDb(client: MongoClient, dbName: String) extends MembersDb with VoFactory with MongoQueries
-  with MemberCrudImpl {
+  with MemberCrudImpl with SearchImpl {
 
   private val db = client(dbName)
   val members = db(MS)
@@ -83,5 +85,16 @@ trait MemberCrudImpl {
       .map(asMember(_))
       .get
   }
+
+}
+
+trait SearchImpl {
+  self: MongoMembersDb =>
+
+  override def searchMembers(placeId: String): Seq[vo.Member] =
+    members
+      .find(("place_id" $eq placeId) ++ ("level" $gt 0))
+      .map(asMember(_))
+      .toSeq
 
 }

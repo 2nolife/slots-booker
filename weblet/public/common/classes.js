@@ -9,60 +9,75 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.place_id
-      _this.name = source._name || source.name
-      _this.address = source._address || source.address
-      _this.owner = source._owner
-      _this.spaces = source._spaces
-      _this.moderatorIds = source._moderatorIds || source.moderators || []
-      _this.moderators = source._moderators
-      _this.attributes = source._attributes || source.attributes || {}
+      _this.name = _this.name || source.name
+      _this.address = _this.address || source.address
+      _this.owner = _this.owner
+      _this.spaces = _this.spaces
+      _this.moderatorIds = _this.moderatorIds || source.moderators || []
+      _this.moderators = _this.moderators
+      _this.attributes = _this.attributes || source.attributes || {}
+      _this.members = _this.members
     }
 
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
-    /** get place owner from API (expands the source object) */
+    /** get place owner from API */
     function refreshOwner(/*bool*/ force, /*fn*/ callback) {
       if (!_this.owner || force) {
 
         sc.apiUsersService.getUser(source.profile_id,
           function(/*User*/ user) {
             _this.owner = user
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('owner')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get place moderators from API (expands the source object) */
+    /** get place moderators from API */
     function refreshModerators(/*bool*/ force, /*fn*/ callback) {
       if (!_this.moderators || force) {
 
         sc.apiUsersService.getUsers(_this.moderatorIds,
           function(/*[User]*/ users) {
             _this.moderators = users
-            _this.applyChangesToSource()
+            _this.moderatorIds = _this.moderators.map(function(moderator) { return moderator.id })
+            _this.onChangeCallback.trigger('moderators')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get space inner spaces from API (expands the source object) */
+    /** get space inner spaces from API */
     function refreshSpaces(/*bool*/ force, /*fn*/ callback) {
       if (!_this.spaces || force) {
 
         sc.apiSpacesService.refreshSpaces(_this.id, null,
           function(/*[Space]*/ spaces) {
             _this.spaces = spaces
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('spaces')
+          },
+          callback)
+
+      } else callback('noop')
+    }
+
+    /** get place members from API */
+    function refreshMembers(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.members || force) {
+
+        sc.apiMembersService.refreshMembers(_this.id,
+          function(/*[Member]*/ members) {
+            _this.members = members
+            _this.onChangeCallback.trigger('members')
           },
           callback)
 
@@ -97,6 +112,10 @@ sb.classes = {
           f = refreshSpaces
           break
 
+        case 'members':
+          f = refreshMembers
+          break
+
         default:
           console.log('Unknown refresh target: '+target)
       }
@@ -108,24 +127,11 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('name')
-      changesToSource.field('address')
-      changesToSource.field('spaces')
-      changesToSource.field('owner')
-      changesToSource.field('attributes', {})
-
-      if (source._moderators != _this.moderators) {
-        source._moderatorIds = _this.moderatorIds = _this.moderators.map(function(moderator) { return moderator.id })
-        changesToSource.update('moderators')
-      }
-    }
-
     this.copyFrom = function(/*json|Place*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
     }
 
   },
@@ -137,52 +143,51 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.space_id
       _this.placeId = source.place_id
       _this.parentSpaceId = source.parent_space_id
-      _this.name = source._name || source.name
-      _this.prices = source._prices
-      _this.spaces = source._spaces
-      _this.firstSpace = source._firstSpace
-      _this.slots = source._slots
-      _this.slotsFilter = source._slotsFilter || defaultSlotsFilter()
-      _this.attributes = source._attributes || source.attributes || {}
+      _this.name = _this.name || source.name
+      _this.prices = _this.prices
+      _this.spaces = _this.spaces
+      _this.firstSpace = _this.firstSpace
+      _this.slots = _this.slots
+      _this.slotsFilter = _this.slotsFilter || _this._slotsFilter || defaultSlotsFilter()
+      _this.attributes = _this.attributes || source.attributes || {}
     }
 
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
     function defaultSlotsFilter() {
       return { from: sb.utils.todayDate(), to: sb.utils.todayDate(), inner: false }
     }
 
-    /** get space prices from API (expands the source object) */
+    /** get space prices from API */
     function refreshPrices(/*bool*/ force, /*fn*/ callback) {
       if (!_this.prices || force) {
 
         sc.apiSpacesService.refreshPrices(_this.placeId, _this.id,
           function(/*[Price]*/ prices) {
             _this.prices = prices
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('prices')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get space effective prices from API (expands the source object) */
+    /** get space effective prices from API */
     function refreshEffectivePrices(/*bool*/ force, /*fn*/ callback) {
       if (!_this.effectivePrices || force) {
 
         sc.apiSpacesService.refreshPrices(_this.placeId, _this.id,
           function(/*[Price]*/ prices) {
             _this.effectivePrices = prices
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('effectivePrices')
           },
           callback,
           { effective: '' })
@@ -190,14 +195,14 @@ sb.classes = {
       } else callback('noop')
     }
 
-    /** get space inner spaces first space from API (expands the source object) */
+    /** get space inner spaces first space from API */
     function refreshFirstSpace(/*bool*/ force, /*fn*/ callback) {
       if (!_this.spaces || force) {
 
         sc.apiSpacesService.refreshSpaces(_this.placeId, _this.id,
           function(/*[Space]*/ spaces) {
             _this.firstSpace = spaces.length ? spaces[0] : null
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('firstSpace')
           },
           callback,
           { limit: 1 })
@@ -205,24 +210,24 @@ sb.classes = {
       } else callback('noop')
     }
 
-    /** get space inner spaces from API (expands the source object) */
+    /** get space inner spaces from API */
     function refreshSpaces(/*bool*/ force, /*fn*/ callback) {
       if (!_this.spaces || force) {
 
         sc.apiSpacesService.refreshSpaces(_this.placeId, _this.id,
           function(/*[Space]*/ spaces) {
             _this.spaces = spaces
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('spaces')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get space slots from API (expands the source object) */
+    /** get space slots from API */
     function refreshSlots(/*bool*/ force, /*fn*/ callback) {
       var slotsFilterChanged = function() {
-        var slotsFilter = source._slotsFilter || defaultSlotsFilter
+        var slotsFilter = _this._slotsFilter
         return _this.slotsFilter.from != slotsFilter.from || _this.slotsFilter.to != slotsFilter.to ||
                _this.slotsFilter.inner != slotsFilter.inner ||
                _this.slotsFilter.booked != slotsFilter.booked || _this.slotsFilter.paid != slotsFilter.paid
@@ -235,7 +240,8 @@ sb.classes = {
         sc.apiSlotsService.findSlots(searchOptions,
           function(/*[Slot]*/ slots) {
             _this.slots = slots
-            _this.applyChangesToSource()
+            _this._slotsFilter = $.extend(true, {}, _this.slotsFilter)
+            _this.onChangeCallback.trigger('slots')
           },
           callback)
 
@@ -289,24 +295,11 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('name')
-      changesToSource.field('spaces')
-      changesToSource.field('prices')
-      changesToSource.field('effectivePrices')
-      changesToSource.field('attributes', {})
-
-      if (source._slots != _this.slots) {
-        source._slotsFilter = $.extend(true, {}, _this.slotsFilter)
-        changesToSource.update('slots')
-      }
-    }
-
     this.copyFrom = function(/*json|Space*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
     }
 
   },
@@ -318,52 +311,51 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.slot_id
       _this.placeId = source.place_id
       _this.spaceId = source.space_id
-      _this.name = source._name || source.name
-      _this.dateFrom = source._date_from || source.date_from
-      _this.dateTo = source._date_to || source.date_to
-      _this.timeFrom = source._time_from || source.time_from
-      _this.timeTo = source._time_to || source.time_to
-      _this.prices = source._prices
-      _this.effectivePrices = source._effectivePrices
-      _this.bookings = source._bookings
-      _this.activeBookings = source._activeBookings
-      _this.attributes = source._attributes || source.attributes || {}
+      _this.name = _this.name || source.name
+      _this.dateFrom = _this.date_from || source.date_from
+      _this.dateTo = _this.date_to || source.date_to
+      _this.timeFrom = _this.time_from || source.time_from
+      _this.timeTo = _this.time_to || source.time_to
+      _this.prices = _this.prices
+      _this.effectivePrices = _this.effectivePrices
+      _this.bookings = _this.bookings
+      _this.activeBookings = _this.activeBookings
+      _this.attributes = _this.attributes || source.attributes || {}
       _this.bookStatus = source.book_status
     }
 
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
-    /** get slot prices from API (expands the source object) */
+    /** get slot prices from API */
     function refreshPrices(/*bool*/ force, /*fn*/ callback) {
       if (!_this.prices || force) {
 
         sc.apiSlotsService.refreshPrices(_this.id,
           function(/*[Price]*/ prices) {
             _this.prices = prices
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('prices')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get slot effective prices from API (expands the source object) */
+    /** get slot effective prices from API  */
     function refreshEffectivePrices(/*bool*/ force, /*fn*/ callback) {
       if (!_this.effectivePrices || force) {
 
         sc.apiSlotsService.refreshPrices(_this.id,
           function(/*[Price]*/ prices) {
             _this.effectivePrices = prices
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('effectivePrices')
           },
           callback,
           { effective: '' })
@@ -371,28 +363,28 @@ sb.classes = {
       } else callback('noop')
     }
 
-    /** get slot bookings from API (expands the source object) */
+    /** get slot bookings from API */
     function refreshBookings(/*bool*/ force, /*fn*/ callback) {
       if (!_this.bookings || force) {
 
         sc.apiSlotsService.refreshBookings(_this.id,
           function(/*[Booking]*/ bookings) {
             _this.bookings = bookings
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('bookings')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get slot active bookings from API (expands the source object) */
+    /** get slot active bookings from API */
     function refreshActiveBookings(/*bool*/ force, /*fn*/ callback) {
       if (!_this.activeBookings || force) {
 
         sc.apiSlotsService.refreshBookings(_this.id,
           function(/*[Booking]*/ bookings) {
             _this.activeBookings = bookings
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('activeBookings')
           },
           callback,
           { active: '' })
@@ -443,33 +435,11 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('name')
-      changesToSource.field('bookings')
-      changesToSource.field('activeBookings')
-      changesToSource.field('prices')
-      changesToSource.field('effectivePrices')
-      changesToSource.field('attributes', {})
-
-      if (
-        (source._date_from || source.date_from) != _this.dateFrom ||
-        (source._date_to   || source.date_to)   != _this.dateTo   ||
-        (source._time_from || source.time_from) != _this.timeFrom ||
-        (source._time_to   || source.time_to)   != _this.timeTo
-      ) {
-        source._date_from = _this.dateFrom
-        source._date_To   = _this.dateTo
-        source._time_from = _this.timeFrom
-        source._time_to   = _this.timeTo
-        _this.onChangeCallback.trigger('date-time', _this)
-      }
-    }
-
     this.copyFrom = function(/*json|Slot*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
     }
 
   },
@@ -481,7 +451,7 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.price_id
@@ -491,17 +461,16 @@ sb.classes = {
       // belongs to a Slot
       _this.slotId = source.slot_id
 
-      _this.name = source._name || source.name
-      _this.amount = source._amount || source.amount
-      _this.currency = source._currency || source.currency
-      _this.memberLevel = source._memberLevel || source.member_level || 0
-      _this.attributes = source._attributes || source.attributes || {}
+      _this.name = _this.name || source.name
+      _this.amount = _this.amount || source.amount
+      _this.currency = _this.currency || source.currency
+      _this.memberLevel = _this.memberLevel || source.member_level || 0
+      _this.attributes = _this.attributes || source.attributes || {}
     }
 
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
     function refreshThis(/*bool|redundant*/ force, /*fn*/ callback) {
       if (_this.spaceId) {
@@ -543,19 +512,11 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('name')
-      changesToSource.field('amount')
-      changesToSource.field('currency')
-      changesToSource.field('memberLevel')
-      changesToSource.field('attributes', {})
-    }
-
     this.copyFrom = function(/*json|Price*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
     }
 
   },
@@ -567,48 +528,47 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.booking_id
       _this.slotId = source.slot_id
       _this.profileId = source.profile_id
-      _this.name = source._name || source.name
-      _this.status = source._status || source.status
-      _this.user = source._user
-      _this.attributes = source._attributes || source.attributes || {}
-      _this.price = source._price
-      _this.reference = source._reference
-      _this.referenceCancel = source._referenceCancel
+      _this.name = _this.name || source.name
+      _this.status = _this.status || source.status
+      _this.user = _this.user
+      _this.attributes = _this.attributes || source.attributes || {}
+      _this.price = _this.price
+      _this.reference = _this.reference
+      _this.referenceCancel = _this.referenceCancel
     }
 
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
-    /** get booking user from API (expands the source object) */
+    /** get booking user from API */
     function refreshUser(/*bool*/ force, /*fn*/ callback) {
       if (!_this.user || force) {
 
         sc.apiUsersService.getUser(source.profile_id,
           function(/*User*/ user) {
             _this.user = user
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('user')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get booking price from API (expands the source object) */
+    /** get booking price from API */
     function refreshPrice(/*bool*/ force, /*fn*/ callback) {
       if ((!_this.price || force) && _this.attributes.price_id) {
 
         sc.apiSlotsService.getPrice(_this.slotId, _this.attributes.price_id,
           function(/*Price*/ price) {
             _this.price = price
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('price')
           },
           callback)
 
@@ -617,28 +577,28 @@ sb.classes = {
       } else callback('noop')
     }
 
-    /** get booking reference from API (expands the source object) */
+    /** get booking reference from API */
     function refreshReference(/*bool*/ force, /*fn*/ callback) {
       if ((!_this.reference || force) && _this.attributes.ref) {
 
         sc.apiPaymentsService.getReference(_this.attributes.ref, source.profile_id,
           function(/*Reference*/ reference) {
             _this.reference = reference
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('reference')
           },
           callback)
 
       } else callback('noop')
     }
 
-    /** get booking reference from API (expands the source object) */
+    /** get booking reference from API */
     function refreshReferenceCancel(/*bool*/ force, /*fn*/ callback) {
       if ((!_this.referenceCancel || force) && _this.attributes.ref_cancel) {
 
         sc.apiPaymentsService.getReference(_this.attributes.ref_cancel, source.profile_id,
           function(/*Reference*/ reference) {
             _this.referenceCancel = reference
-            _this.applyChangesToSource()
+            _this.onChangeCallback.trigger('referenceCancel')
           },
           callback)
 
@@ -688,20 +648,11 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('name')
-      changesToSource.field('status')
-      changesToSource.field('user')
-      changesToSource.field('price')
-      changesToSource.field('reference')
-      changesToSource.field('attributes', {})
-    }
-
     this.copyFrom = function(/*json|Booking*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
     }
 
   },
@@ -713,15 +664,15 @@ sb.classes = {
     this.sc = sc
     this.source = source
 
-    this.onChangeCallback = new sb.classes.inner.Callbacks()
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
     function applyChangesFromSource() {
       _this.id = source.profile_id
-      _this.username = source._username || source.username
-      _this.email = source._email || source.email
-      _this.roles = source._roles || source.roles || []
-      _this.metadata = source._metadata || source.metadata || {}
-      _this.attributes = source._attributes || source.attributes || {}
+      _this.username = _this.username || source.username
+      _this.email = _this.email || source.email
+      _this.roles = _this.roles || source.roles || []
+      _this.metadata = _this.metadata || source.metadata || {}
+      _this.attributes = _this.attributes || source.attributes || {}
 
       _this.fullName = (function() {
         var firstName = _this.attributes.first_name, lastName = _this.attributes.last_name
@@ -732,7 +683,6 @@ sb.classes = {
     applyChangesFromSource()
 
     var locks = new sb.classes.inner.Locks()
-    var changesToSource = new sb.classes.inner.ChangesToSource(_this, source)
 
     function refreshThis(/*bool|redundant*/ force, /*fn*/ callback) {
       sc.apiUsersService.getUser(_this.id,
@@ -761,24 +711,92 @@ sb.classes = {
       sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
     }
 
-    this.applyChangesToSource = function() {
-      changesToSource.field('username')
-      changesToSource.field('email')
-      changesToSource.field('attributes', {})
-      changesToSource.field('metadata', {})
-      changesToSource.field('roles', [])
-    }
-
     this.copyFrom = function(/*json|User*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
       applyChangesFromSource()
-      _this.onChangeCallback.trigger('*', _this)
+      _this.onChangeCallback.trigger('*')
+    }
+
+  },
+
+  Member: function(/*json*/ source, /*services*/ sc) {
+
+    var _this = this
+
+    this.sc = sc
+    this.source = source
+
+    this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
+
+    function applyChangesFromSource() {
+      _this.profileId = source.profile_id
+      _this.placeId = source.place_id
+      _this.user = _this.user
+      _this.level = _this.level || source.level || 0
+    }
+
+    applyChangesFromSource()
+
+    var locks = new sb.classes.inner.Locks()
+
+    /** get user from API (expands the source object) */
+    function refreshUser(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.user || force) {
+
+        sc.apiUsersService.getUser(source.profile_id,
+          function(/*User*/ user) {
+            _this.user = user
+            _this.onChangeCallback.trigger('user')
+          },
+          callback)
+
+      } else callback('noop')
+    }
+
+    function refreshThis(/*bool|redundant*/ force, /*fn*/ callback) {
+      sc.apiMembersService.getPlaceMember(_this.placeId, _this.profileId,
+        function(/*Member*/ member) {
+          _this.copyFrom(member)
+        },
+        callback)
+    }
+
+    this.refresh = function(/*str*/ target, /*bool*/ force, /*fn*/ callback) {
+      var f, lock = target
+
+      switch (target) {
+        case '*':
+          f = refreshThis
+          break
+
+        case 'user':
+          f = refreshUser
+          break
+
+        default:
+          console.log('Unknown refresh target: '+target)
+      }
+
+      if (f) locks.exec(lock, f.bind(this, force), callback)
+    }
+
+    this.refreshRetry = function(/*str*/ target, /*bool*/ force, /*fn*/ callback, /*num*/ retries) {
+      sc.apiClassService.refreshRetry(_this, target, force, callback, retries)
+    }
+
+    this.copyFrom = function(/*json|Member*/ src) {
+      var json = src.source ? src.source : src
+      sb.utils.replaceInternals(source, json)
+      applyChangesFromSource()
+      _this.onChangeCallback.trigger('*')
     }
 
   },
 
   Quote: function(/*json*/ source, /*services*/ sc) { // read-only
+
+    var _this = this
 
     this.sc = sc
     this.source = source
@@ -788,6 +806,12 @@ sb.classes = {
     this.status = source.status
     this.amount = source.amount
     this.currency = source.currency
+    this.prices = (source.prices || []).map(function(/*json*/ p) { return new sb.classes.Price(p) })
+
+    this.priceFor = function(/*str*/ slotId) {
+      var found = $.grep(_this.prices, function(/*Price*/ price) { return price.slotId == slotId })
+      return found.length ? found[0] : null
+    }
 
   },
 
@@ -801,6 +825,12 @@ sb.classes = {
     this.status = source.status
     this.amount = source.amount
     this.currency = source.currency
+    this.prices = (source.prices || []).map(function(/*json*/ p) { return new sb.classes.Price(p) })
+
+    this.priceFor = function(/*str*/ slotId) {
+      var found = $.grep(_this.prices, function(/*Price*/ price) { return price.slotId == slotId })
+      return found.length ? found[0] : null
+    }
 
   },
 
@@ -847,22 +877,13 @@ sb.classes = {
       return arr.length ? arr[0] : { currency: currency, attributes: {} }
     }
 
-  },
-
-  Member: function(/*json*/ source, /*services*/ sc) { // read-only
-
-    this.sc = sc
-    this.source = source
-
-    this.level = source.level || 0
-
   }
 
 }
 
 sb.classes.inner = {
 
-  Callbacks: function() {
+  Callbacks: function(/*obj*/ src) {
 
     var callbacks = {},
         index = 0
@@ -878,7 +899,7 @@ sb.classes.inner = {
       else delete callbacks[handle]
     }
 
-    this.trigger = function(/*str*/ key, /*obj*/ src, /*any*/ arg) {
+    this.trigger = function(/*str*/ key, /*any*/ arg) {
       Object.values(callbacks).forEach(function(callback) {
         callback(key, src, arg)
       })
@@ -915,26 +936,6 @@ sb.classes.inner = {
       if (this.lock(key)) f(unlockCallback.bind(this))
       else if (callback) callback('locked')
     }
-  },
-
-  ChangesToSource: function(/*class*/ c, /*json*/ source) {
-
-    /** update source '_' field and notify the listeners */
-    this.update = function(/*str*/ key) {
-      source['_'+key] = c[key]
-      c.onChangeCallback.trigger(key, c)
-    }
-
-   /** check if source field changed, test '_' and the original source value */
-    this.changed = function(/*str*/ key, /*any*/ defaultValue) {
-      defaultValue = defaultValue || null
-      return (source['_'+key] || source[key] || defaultValue) != (c[key] || defaultValue)
-    }
-
-    this.field = function(/*str*/ key, /*any*/ defaultValue) {
-      if (this.changed(key, defaultValue)) this.update(key)
-    }
-
   }
 
 }

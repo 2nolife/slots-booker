@@ -43,3 +43,90 @@ app.controller('manageMembersController', function($scope, $rootScope, placesSer
 
   loadPlaces(false, paramPlaceId)
 })
+
+app.directive('editedPlaceMembers', function($rootScope) {
+
+  var controller = function($scope, sb_apiPlacesService, sb_apiMembersService) {
+
+    function refreshMembers(/*bool*/ force) {
+      var editedPlace = $scope.editedPlace
+      editedPlace.refreshMembers(force, function() {
+        editedPlace.members.forEach(function(/*EditedMember*/ member) {
+          member.refreshUser()
+        })
+      })
+    }
+
+    function addMember(/*EditedUser*/ user) {
+      user.memberFor($scope.editedPlace.id, true, function() {
+        var member = user.members[$scope.editedPlace.id] /*EditedMember*/
+        member.level = member.level || 1
+        sb_apiMembersService.patchPlaceMember(member.toApiEntity(), function() {
+          refreshMembers(true)
+        })
+      })
+    }
+
+    $scope.addMember = function() {
+      $scope.onUser = addMember
+      $scope.userFinderTrigger = Math.random()
+    }
+
+    $scope.editMember = function(/*EditedMember*/ member) {
+      $scope.editedMember = member
+      $scope.editMemberTrigger = Math.random()
+    }
+
+    $scope.onMemberSave = function() {
+      sb_apiMembersService.patchPlaceMember($scope.editedMember.toApiEntity(), function() {
+        refreshMembers(true)
+      })
+    }
+
+    $scope.onEditedPlaceSet = function() {
+      refreshMembers(false)
+    }
+
+  }
+
+  return cp.manageDirectives.editedPlaceDirective('manageMembers/editedPlaceMembers', controller)
+
+})
+
+app.directive('editedPlaceEditMemberDialog', function(sb_modalDialogService) {
+
+  var controller = function($scope) {
+
+    $scope.onEditedMemberSet = function() {
+      $scope.level = $scope.editedMember.level
+    }
+
+    $scope.submit = function() {
+      $scope.editedMember.level = parseInt($scope.level)
+      $scope.onSave()
+    }
+
+  }
+
+  return {
+
+    restrict: 'E',
+
+    scope: {
+      trigger: '=', /*any*/
+      editedMember: '=', /*EditedMember*/
+      onSave: '&'
+    },
+
+    templateUrl: 'views/templates/manageMembers/editedPlaceEditMemberDialog.html',
+
+    controller: controller,
+
+    link: function(scope, element, attrs) {
+      var dialogHandle = cp.utils.modalDialog('.edited-place-edit-member-dialog', element, sb_modalDialogService)
+      scope.$watch('trigger', function(newValue, oldValue) { if (newValue) dialogHandle.show() })
+      scope.$watch('editedMember', function(newValue, oldValue) { if (newValue) scope.onEditedMemberSet() })
+    }
+
+  }
+})

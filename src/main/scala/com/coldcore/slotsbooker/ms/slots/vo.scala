@@ -3,6 +3,7 @@ package ms.slots.vo
 
 import ms.vo.Attributes
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import ms.{BoundsUtil => bu}
 
 case class Price(price_id: String, place_id: String, space_id: String, slot_id: String, name: Option[String],
                  amount: Option[Int], currency: Option[String], attributes: Option[Attributes], member_level: Option[Int])
@@ -11,10 +12,38 @@ object Price extends DefaultJsonProtocol {
 
   def apply(p: ext.Price): Price = {
     import p._
-    new Price(slot_id = "?",
-      price_id = price_id, place_id = place_id, space_id = space_id, name = name,
-      amount = amount, currency = currency, attributes = attributes, member_level = member_level)
+    Price(
+      price_id, place_id, space_id, slot_id = "?", name,
+      amount, currency, attributes, member_level)
   }
+}
+
+case class Bound(date: Option[Int], time: Option[Int], before: Option[Int])
+object Bound extends DefaultJsonProtocol {
+  implicit val format = jsonFormat3(apply)
+
+  def apply(p: ext.Bound): Bound = {
+    import p._
+    Bound(date, time, before)
+  }
+}
+
+case class Bounds(date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int], // calculated
+                  open: Option[Bound], close: Option[Bound])
+object Bounds extends DefaultJsonProtocol {
+  implicit val format = jsonFormat6(apply)
+
+  def apply(p: ext.Bounds): Bounds = {
+    import p._
+    Bounds(
+      None, None, None, None,
+      open.map(Bound(_)), close.map(Bound(_)))
+  }
+
+  def apply(open: Option[Bound], close: Option[Bound]): Bounds =
+    Bounds(
+      None, None, None, None,
+      open, close)
 }
 
 case class Booking(booking_id: String, place_id: String, space_id: String, slot_id: String, profile_id: Option[String],
@@ -54,8 +83,9 @@ case class Slot(slot_id: String, place_id: String, space_id: String,
                 name: Option[String],
                 date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
                 bookings: Option[Seq[Booking]], prices: Option[Seq[Price]],
-                book_status: Option[Int], booked: Option[Booked], attributes: Option[Attributes])
-object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat13(apply) }
+                book_status: Option[Int], booked: Option[Booked], attributes: Option[Attributes],
+                book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
+object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat15(apply) }
 
 case class CreateSlot(place_id: String, space_id: String, name: String,
                       date_from: Int, date_to: Int, time_from: Int, time_to: Int,
@@ -64,11 +94,18 @@ object CreateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat
 
 case class UpdateSlot(name: Option[String],
                       date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
-                      attributes: Option[Attributes])
-object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
+                      attributes: Option[Attributes],
+                      book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
+object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
 /** External JSON objects from other micro services. */
 package ext {
+
+  case class Bound(date: Option[Int], time: Option[Int], before: Option[Int])
+  object Bound extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+
+  case class Bounds(open: Option[Bound], close: Option[Bound])
+  object Bounds extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
 
   case class Price(price_id: String, place_id: String, space_id: String, name: Option[String],
                    amount: Option[Int], currency: Option[String], attributes: Option[Attributes], member_level: Option[Int])
@@ -113,7 +150,7 @@ object Implicits {
   implicit class SpaceExt(obj: ext.Space) {
 
     private def flatSpaces(space: ext.Space): Seq[ext.Space] =
-      space +: space.spaces.getOrElse(Nil).flatMap(flatSpaces(_))
+      space +: space.spaces.getOrElse(Nil).flatMap(flatSpaces)
 
     def flatSpaces: Seq[ext.Space] =
       flatSpaces(obj)
@@ -135,6 +172,14 @@ object Implicits {
 
     def hasPriceId(priceId: String): Boolean =
       obj.prices.getOrElse(Nil).exists(_.price_id == priceId)
+  }
+
+  implicit class BoundExt(obj: Bound) {
+
+    def buBound: bu.Bound = {
+      import obj._
+      bu.Bound(date, time, before)
+    }
   }
 
 }

@@ -50,7 +50,9 @@ trait Constants {
     'quote_active -> 13,
     'refund_active -> 14,
     'booked_status_mismatch -> 15,
-    'low_member_level -> 16
+    'low_member_level -> 16,
+    'slot_early_bound -> 17,
+    'slot_late_bound -> 18
   )
 
   implicit def symbolToApiCode(key: Symbol): Option[String] = apiCodes.get(key)

@@ -166,7 +166,7 @@ app.directive('mbEditedSpaceSlots', function($rootScope) {
         }
       }
       function bookSlots() { // step 3
-        bookingService.calculateQuote(slots, user.id, function(/*{}*/ hash) {
+        bookingService.calculateQuote(slots, selectedUser.id, function(/*{}*/ hash) {
           var amount = hash.quote.currency+' '+sb.utils.numberX100(hash.quote.amount, true)
           $rootScope.$broadcast('dialog.confirm', { text: 'Book '+slots.length+' slots for '+amount, onConfirm: bookSlotsWithCredit.bind(null, hash) })
         })

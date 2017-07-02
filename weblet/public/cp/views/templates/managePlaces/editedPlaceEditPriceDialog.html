@@ -38,10 +38,13 @@
               <div class="col-sm-9">
                 <div class="input-group">
                   <div class="radio">
-                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="0"/> No</label>
+                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="0"/>{{ 0 | sb_memberLevelAsWord}}</label>
                   </div>
                   <div class="radio">
-                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="1"/> Basic</label>
+                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="1"/>{{ 1 | sb_memberLevelAsWord}}</label>
+                  </div>
+                  <div class="radio">
+                    <label><input type="radio" name="selectedMember" ng-model="editedPrice.memberLevel" value="2"/>{{ 2 | sb_memberLevelAsWord}}</label>
                   </div>
                 </div>
               </div>

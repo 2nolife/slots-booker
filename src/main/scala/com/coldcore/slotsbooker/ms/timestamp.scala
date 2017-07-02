@@ -12,6 +12,9 @@ object Timestamp {
   def dateString(c: Calendar): String = asString(c).take(8)
   def timeString(c: Calendar): String = asString(c).slice(8, 14)
 
+  def min: Calendar = asCalendar("00010101000000")
+  def max: Calendar = asCalendar("99990101000000")
+
   def asString(c: Calendar): String = { // format: yyyyMMddHHmmssSSS
     val prepend = (i: Int, n: Int) => i.toString.reverse.padTo(n, "0").reverse.mkString
     prepend(c.get(Calendar.YEAR), 4) +
@@ -65,5 +68,8 @@ object Timestamp {
 
   def addHours(c: Calendar, value: Int): Calendar =
     add(c, Calendar.HOUR_OF_DAY, value)
+
+  def addDays(c: Calendar, value: Int): Calendar =
+    add(c, Calendar.DAY_OF_MONTH, value)
 
 }

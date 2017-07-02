@@ -100,7 +100,7 @@ class MsMembersSpec extends BaseMsMembersSpec {
     memberB.level.get shouldBe 0
   }
 
-  "GET to /members/search?place_id={?}&profile_id={?}" should "give 403 for non moderator" in {
+  "GET to /members/search?place_id={?}" should "give 403 for non moderator" in {
     val placeId = mongoCreatePlace()
 
     val url = s"$membersBaseUrl/members/search?place_id=$placeId"
@@ -109,6 +109,15 @@ class MsMembersSpec extends BaseMsMembersSpec {
   }
 
   "GET to /members/search?place_id={?}" should "list found members that place" in {
-    fail() //todo with pagination and search criteria?
+    val placeId = mongoCreatePlace()
+    val profileId2 = mongoProfileId("testuser2")
+    val profileId3 = mongoProfileId("testuser3")
+    mongoCreateMember(placeId, username = "testuser2")
+    mongoCreateMember(placeId, level = 0, username = "testuser3")
+
+    val url = s"$membersBaseUrl/members/search?place_id=$placeId"
+    val members = (When getTo url withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Member]]
+
+    members.map(_.profile_id) should contain only profileId2
   }
 }

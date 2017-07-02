@@ -58,6 +58,13 @@ abstract class BaseMsBookingSpec extends FlatSpec with BeforeAndAfterAll with Be
       dateFrom = Some(ts.dateString(from).toInt), timeFrom = Some(ts.timeString(from).toInt/100),
       dateTo = Some(ts.dateString(to).toInt), timeTo = Some(ts.timeString(to).toInt/100))
   }
+
+  def updateSlotBounds(slotId: String,
+                       bookBounds: Option[ms.slots.vo.Bounds] = None, cancelBounds: Option[ms.slots.vo.Bounds] = None) {
+    mongoUpdateSlot(slotId,
+      dateFrom = None, timeFrom = None, dateTo = None, timeTo = None,
+      bookBounds = bookBounds, cancelBounds = cancelBounds)
+  }
 }
 
 class MsBookingQuoteSpec extends BaseMsBookingSpec {
@@ -223,6 +230,46 @@ class MsBookingQuoteSpec extends BaseMsBookingSpec {
     When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-2"
   }
 
+  "POST to /booking/quote" should "return a quote for a selected slot when inside slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val dayBound = Some(ms.slots.vo.Bound(None, None, before = Some(1440)))
+    val zeroBound = Some(ms.slots.vo.Bound(None, None, before = Some(0)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(dayBound, zeroBound)))
+
+    val url = s"$bookingBaseUrl/booking/quote"
+    val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CREATED
+  }
+
+  "POST to /booking/quote" should "give 409 if earlier than slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val hourBound = Some(ms.slots.vo.Bound(None, None, before = Some(60)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(hourBound, hourBound)))
+
+    val url = s"$bookingBaseUrl/booking/quote"
+    val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-17"
+  }
+
+  "POST to /booking/quote" should "give 409 if later than slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId)
+    val dayBound = Some(ms.slots.vo.Bound(None, None, before = Some(1440)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(dayBound, dayBound)))
+
+    val url = s"$bookingBaseUrl/booking/quote"
+    val json = s"""{ "selected": [{ "slot_id": "$slotId" }] }"""
+    When postTo url entity json withHeaders testuserTokenHeader expect() code SC_CONFLICT withApiCode "ms-booking-18"
+  }
+
 }
 
 class MsBookingRefundSpec extends BaseMsBookingSpec {
@@ -379,6 +426,62 @@ class MsBookingRefundSpec extends BaseMsBookingSpec {
     val headers = authHeaderSeq("testuser2")
     val json = s"""{ "slot_ids": ["$slotId"] }"""
     When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-2"
+  }
+
+  "POST to /booking/refund" should "return a refund for a selected slot when inside slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val (slotId, bookedId) = {
+      val ids = setup2ActiveBookings(existingPlaceId = Some(placeId))
+      (ids("slotIdA"), ids("bookedId"))
+    }
+    val quoteId = mongoCreateFreeQuote(placeId, Seq(slotId), status = 1, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
+    val dayBound = Some(ms.slots.vo.Bound(None, None, before = Some(1440)))
+    val zeroBound = Some(ms.slots.vo.Bound(None, None, before = Some(0)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(dayBound, zeroBound)))
+
+    val url = s"$bookingBaseUrl/booking/refund"
+    val headers = authHeaderSeq("testuser2")
+    val json = s"""{ "slot_ids": ["$slotId"] }"""
+    When postTo url entity json withHeaders headers expect() code SC_CREATED
+  }
+
+  "POST to /booking/refund" should "give 409 if earlier than slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val (slotId, bookedId) = {
+      val ids = setup2ActiveBookings(existingPlaceId = Some(placeId))
+      (ids("slotIdA"), ids("bookedId"))
+    }
+    val quoteId = mongoCreateFreeQuote(placeId, Seq(slotId), status = 1, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
+    val dayBound = Some(ms.slots.vo.Bound(None, None, before = Some(1440)))
+    val hourBound = Some(ms.slots.vo.Bound(None, None, before = Some(60)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(hourBound, hourBound)))
+
+    val url = s"$bookingBaseUrl/booking/refund"
+    val headers = authHeaderSeq("testuser2")
+    val json = s"""{ "slot_ids": ["$slotId"] }"""
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-17"
+  }
+
+  "POST to /booking/refund" should "give 409 if later than slot bounds" in {
+    val placeId = mongoCreatePlace()
+    val (slotId, bookedId) = {
+      val ids = setup2ActiveBookings(existingPlaceId = Some(placeId))
+      (ids("slotIdA"), ids("bookedId"))
+    }
+    val quoteId = mongoCreateFreeQuote(placeId, Seq(slotId), status = 1, username = "testuser2")
+    mongoCreateReference(placeId, Seq(bookedId), quoteId = Some(quoteId), username = "testuser2")
+    val dayBound = Some(ms.slots.vo.Bound(None, None, before = Some(1440)))
+    updateSlotTime(slotId, 120, 120+15)
+    updateSlotBounds(slotId, bookBounds = Some(ms.slots.vo.Bounds(dayBound, dayBound)))
+
+    val url = s"$bookingBaseUrl/booking/refund"
+    val headers = authHeaderSeq("testuser2")
+    val json = s"""{ "slot_ids": ["$slotId"] }"""
+    When postTo url entity json withHeaders headers expect() code SC_CONFLICT withApiCode "ms-booking-18"
   }
 
 }

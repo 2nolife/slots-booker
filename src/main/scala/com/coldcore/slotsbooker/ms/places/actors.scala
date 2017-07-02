@@ -51,17 +51,22 @@ trait PriceCommands {
   case class DeletePriceIN(placeId: String, spaceId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
-object PlacesActor extends PlaceCommands with SpaceCommands with PriceCommands {
+trait BoundsCommands {
+  case class GetBoundsIN(placeId: String, spaceId: String, of: Symbol, profile: ProfileRemote) extends RequestInfo
+}
+
+object PlacesActor extends PlaceCommands with SpaceCommands with PriceCommands with BoundsCommands {
   def props(placesDb: PlacesDb, voAttributes: VoAttributes): Props = Props(new PlacesActor(placesDb, voAttributes))
 }
 
 class PlacesActor(val placesDb: PlacesDb, val voAttributes: VoAttributes) extends Actor with ActorLogging with MsgInterceptor with VoExpose
-  with AmendPlace with GetPlace with AmendSpace with GetSpace with AmendPrice with GetPrice {
+  with AmendPlace with GetPlace with AmendSpace with GetSpace with AmendPrice with GetPrice with GetBounds {
 
   def receive =
     amendPlaceReceive orElse getPlaceReceive orElse
     amendSpaceReceive orElse getSpaceReceive orElse
-    amendPriceReceive orElse getPriceReceive
+    amendPriceReceive orElse getPriceReceive orElse
+    getBoundsReceive
 
   val placeModerator = (place: vo.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
 
@@ -414,7 +419,7 @@ trait GetPrice {
 
     case GetPricesIN(placeId, spaceId, effective, profile) =>
       lazy val myPlace = placesDb.placeById(placeId)
-      lazy val mySpace = placesDb.spaceById(spaceId, customSpaceFields(deep_spaces = false, deep_prices = false))
+      lazy val mySpace = placesDb.spaceById(spaceId)
       lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
 
       def read: Option[Seq[vo.Price]] =
@@ -425,6 +430,34 @@ trait GetPrice {
         else (ApiCode.OK, read)
 
       reply ! CodeEntityOUT(code, exposePrices(prices, myPlace, profile))
+
+  }
+
+}
+
+trait GetBounds {
+  self: PlacesActor =>
+  import PlacesActor._
+
+  val getBoundsReceive: Actor.Receive = {
+
+    case GetBoundsIN(placeId, spaceId, of, profile) =>
+      lazy val myPlace = placesDb.placeById(placeId)
+      lazy val mySpace = placesDb.spaceById(spaceId)
+      lazy val spaceNotFound = mySpace.isEmpty || mySpace.get.place_id != placeId
+
+      def read: Option[vo.Bounds] =
+        of match {
+          case 'book => placesDb.effectiveBookBoundsBySpaceId(spaceId)
+          case 'cancel => placesDb.effectiveCancelBoundsBySpaceId(spaceId)
+          case _ => None
+        }
+
+      val (code, bounds) =
+        if (spaceNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else (ApiCode.OK, read)
+
+      reply ! CodeEntityOUT(code, bounds)
 
   }
 

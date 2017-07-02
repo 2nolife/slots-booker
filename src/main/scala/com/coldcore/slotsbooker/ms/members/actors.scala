@@ -17,6 +17,7 @@ import org.apache.http.HttpStatus._
 trait MemberCommands {
   case class UpdateMemberIN(obj: vo.UpdateMember, profile: ProfileRemote) extends RequestInfo
   case class GetMemberIN(placeId: String, profileId: Option[String], profile: ProfileRemote) extends RequestInfo
+  case class SearchMembersIN(placeId: String, profile: ProfileRemote) extends RequestInfo
 }
 
 trait PlacesMsRestCalls extends SystemRestCalls {
@@ -37,10 +38,10 @@ object MembersActor extends MemberCommands {
 
 class MembersActor(val membersDb: MembersDb, val placesBaseUrl: String, val systemToken: String,
                    val restClient: RestClient) extends Actor with ActorLogging with MsgInterceptor with PlacesMsRestCalls
-  with AmendMember with GetMember {
+  with AmendMember with GetMember with SearchMembers {
 
   def receive =
-    amendMemberReceive orElse getMemberReceive
+    amendMemberReceive orElse getMemberReceive orElse searchMembersReceive
 
   val placeModerator = (place: vo.ext.Place, profile: ProfileRemote) => place.isModerator(profile.profile_id)
 
@@ -89,6 +90,30 @@ trait GetMember {
         else (ApiCode(SC_FORBIDDEN), None)
 
       reply ! CodeEntityOUT(code, member)
+
+  }
+
+}
+
+trait SearchMembers {
+  self: MembersActor =>
+  import MembersActor._
+
+  val searchMembersReceive: Actor.Receive = {
+
+    case SearchMembersIN(placeId, profile) =>
+      lazy val (codeA, myPlace) = placeFromMsPlaces(placeId)
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val canRead = placeModerator(myPlace.get, profile) || profile.isSuper
+
+      def read(): Option[Seq[vo.Member]] = Some(membersDb.searchMembers(placeId))
+
+      val (code, members) =
+        if (placeNotFound) (codeA, None)
+        else if (canRead) (ApiCode.OK, read())
+        else (ApiCode(SC_FORBIDDEN), None)
+
+      reply ! CodeEntityOUT(code, members)
 
   }
 

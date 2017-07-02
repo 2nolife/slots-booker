@@ -81,9 +81,9 @@ object Attributes {
     override def write(a: Attributes): JsValue = a.value
   }
 
-  def apply(fields: JsField*): Attributes = new Attributes(JsObject(fields: _*))
-  def apply(json: String): Attributes = new Attributes(json.parseJson.asJsObject)
-  def apply: Attributes = new Attributes(JsObject())
+  def apply(fields: JsField*): Attributes = Attributes(JsObject(fields: _*))
+  def apply(json: String): Attributes = Attributes(json.parseJson.asJsObject)
+  def apply: Attributes = Attributes(JsObject())
 
 }
 

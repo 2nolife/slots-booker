@@ -15,7 +15,7 @@ object Profile extends DefaultJsonProtocol {
 
   def apply(p: ProfileRemote): Profile = {
     import p._
-    new Profile(profile_id, Some(username).noneIfEmpty, Some(email).noneIfEmpty, Some(roles).noneIfEmpty, None, None)
+    Profile(profile_id, Some(username).noneIfEmpty, Some(email).noneIfEmpty, Some(roles).noneIfEmpty, None, None)
   }
 }
 

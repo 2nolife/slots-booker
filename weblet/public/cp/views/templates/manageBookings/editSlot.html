@@ -33,7 +33,7 @@
 
         <tr ng-show="editedSlot.activeBooking">
           <td>{{editedSlot.activeBooking.user.username}}, {{editedSlot.activeBooking.user.fullName}}</td>
-          <td>{{editedSlot.activeBooking.reference.quote.currency}} {{editedSlot.activeBooking.reference.quote.amount | sb_numberX100 : true}}</td>
+          <td>{{editedSlot.activeBooking.reference.quote.currency | sb_currencySign}} {{editedSlot.activeBooking.slotPrice.amount | sb_numberX100 : true}}</td>
           <td>{{editedSlot.activeBooking.attributes.ref}}</td>
           <td>
             <i data-toggle="tooltip" title="Booked" class="fa fa-user"></i>

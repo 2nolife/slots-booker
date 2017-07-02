@@ -39,7 +39,16 @@ trait MembersRoute {
             }
           }
 
-        } 
+        } ~
+        path("search") {
+
+          get {
+            parameters('place_id) { placeId =>
+              completeByActor[Seq[vo.Member]](membersActor, SearchMembersIN(placeId, profile))
+            }
+          }
+
+        }
 
       }
     }

@@ -45,11 +45,26 @@ class TimestampSpec extends FlatSpec with Matchers with BeforeAndAfter {
     Timestamp.asString(Timestamp.asCalendar("20170325"+"000000")) shouldBe "20170325"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar("10010101"+"000000")) shouldBe "10010101"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar("00010101"+"000000")) shouldBe "00010101"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar("99990101"+"000000")) shouldBe "99990101"+"000000"+"000"
 
     Timestamp.asString(Timestamp.asCalendar(20170325, 46)) shouldBe "20170325"+"000046"+"000"
     Timestamp.asString(Timestamp.asCalendar(20170325,  0)) shouldBe "20170325"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar(10010101,  0)) shouldBe "10010101"+"000000"+"000"
     Timestamp.asString(Timestamp.asCalendar(   10101,  0)) shouldBe "00010101"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar(99990101,  0)) shouldBe "99990101"+"000000"+"000"
+
+    Timestamp.asString(Timestamp.min) shouldBe "00010101"+"000000"+"000"
+    Timestamp.asString(Timestamp.max) shouldBe "99990101"+"000000"+"000"
+  }
+
+  "asString" should "roll over on hours excess" in {
+    Timestamp.asString(Timestamp.asCalendar("20170325"+"240000"+"000")) shouldBe "20170326"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar("20170325"+"250000"+"000")) shouldBe "20170326"+"010000"+"000"
+    Timestamp.asString(Timestamp.asCalendar("20170325"+"251234"+"567")) shouldBe "20170326"+"011234"+"567"
+
+    Timestamp.asString(Timestamp.asCalendar(20170325, 240000,   0)) shouldBe "20170326"+"000000"+"000"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 250000,   0)) shouldBe "20170326"+"010000"+"000"
+    Timestamp.asString(Timestamp.asCalendar(20170325, 251234, 567)) shouldBe "20170326"+"011234"+"567"
   }
 
   "dateString" should "return yyyyMMdd" in {

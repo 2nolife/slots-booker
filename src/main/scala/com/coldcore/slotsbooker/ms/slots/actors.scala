@@ -15,6 +15,7 @@ import ms.vo.Implicits._
 import ms.attributes.Types._
 import ms.attributes.{OncePermission, WritePermission, Permission => ap, Util => au}
 import org.apache.http.HttpStatus._
+import ms.{BoundsUtil => bu}
 
 trait SlotsCommands {
   case class CreateSlotIN(obj: vo.CreateSlot, profile: ProfileRemote) extends RequestInfo
@@ -45,6 +46,10 @@ trait PricesCommands {
   case class DeletePriceIN(slotId: String, priceId: String, profile: ProfileRemote) extends RequestInfo
 }
 
+trait BoundsCommands {
+  case class GetBoundsIN(slotId: String, of: Symbol, profile: ProfileRemote) extends RequestInfo
+}
+
 trait SearchCommands {
   case class SearchSlotsIN(placeId: String, spaceId: String, profile: ProfileRemote,
                            dateFrom: Int, dateTo: Int, timeFrom: Int, timeTo: Int,
@@ -66,19 +71,24 @@ trait PlacesMsRestCalls extends SystemRestCalls {
     restGet[vo.ext.Space](s"$placesBaseUrl/places/$placeId/spaces/$spaceId?deep=false&deep_spaces=$withInnerSpaces")
 
   def effectivePricesFromMsPlaces(placeId: String, spaceId: String): (ApiCode, Option[Seq[vo.Price]]) = {
-    val (code, prices) = restGet[Seq[vo.ext.Price]](s"$placesBaseUrl/places/$placeId/spaces/$spaceId/prices?effective")
+    val (code, prices) = restGet[Seq[vo.ext.Price]](s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/prices")
     if (code not SC_OK) (code, None) else (code, prices.map(_.map(vo.Price(_))))
+  }
+
+  def effectiveBoundsFromMsPlaces(placeId: String, spaceId: String, of: Symbol): (ApiCode, Option[vo.Bounds]) = {
+    val (code, bounds) = restGet[vo.ext.Bounds](s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/bounds?${of.name}")
+    if (code not SC_OK) (code, None) else (code, bounds.map(vo.Bounds(_)))
   }
 }
 
-object SlotsActor extends SlotsCommands with PricesCommands with BookedCommands with BookingsCommands with SearchCommands {
+object SlotsActor extends SlotsCommands with PricesCommands with BookedCommands with BookingsCommands with SearchCommands with BoundsCommands {
   def props(slotsDb: SlotsDb, placesBaseUrl: String, systemToken: String, restClient: RestClient, voAttributes: VoAttributes): Props =
     Props(new SlotsActor(slotsDb, placesBaseUrl, systemToken, restClient, voAttributes))
 }
 
 class SlotsActor(val slotsDb: SlotsDb, val placesBaseUrl: String, val systemToken: String,
                  val restClient: RestClient, val voAttributes: VoAttributes) extends Actor with ActorLogging with MsgInterceptor with VoExpose
-  with PlacesMsRestCalls with AmendSlot with GetSlot with AmendPrice with GetPrice with AmendBooking with GetBooking
+  with PlacesMsRestCalls with AmendSlot with GetSlot with AmendPrice with GetPrice with AmendBooking with GetBooking with GetBounds
   with AmendBooked with SearchSlots {
 
   def receive =
@@ -86,7 +96,8 @@ class SlotsActor(val slotsDb: SlotsDb, val placesBaseUrl: String, val systemToke
     amendPriceReceive orElse getPriceReceive orElse
     amendBookingReceive orElse getBookingReceive orElse
     amendBookedReceive orElse
-    searchSlotsReceive
+    searchSlotsReceive orElse
+    getBoundsReceive
 
   val bookingOwner = (p: vo.Booking, profile: ProfileRemote) => p.profile_id.contains(profile.profile_id)
   val bookedOwner = (p: vo.Booked, profile: ProfileRemote) => p.profile_id.contains(profile.profile_id)
@@ -381,7 +392,7 @@ trait AmendBooking {
       lazy val canUpdate = profile.isSuper || bookingOwner(myBooking.get, profile) || placeModerator(myPlace.get, profile)
 
       def update(): Option[vo.Booking] = slotsDb.updateBooking(bookingId, obj)
-                             
+
       val (code, booking) =
         if (bookingNotFound) (ApiCode(SC_NOT_FOUND), None)
         else if (placeNotFound) (codeA, None)
@@ -504,6 +515,54 @@ trait SearchSlots {
         else (ApiCode.OK, read)
 
       reply ! CodeEntityOUT(code, exposeSeq(slots, myPlace, profile))
+
+  }
+
+}
+
+trait GetBounds {
+  self: SlotsActor =>
+  import SlotsActor._
+
+  val getBoundsReceive: Actor.Receive = {
+
+    case GetBoundsIN(slotId, of, profile) =>
+      lazy val mySlot = slotsDb.slotById(slotId, customSlotFields(deep_bookings = false, deep_prices = true, deep_booked = false))
+      lazy val (codeA, myPlace) = placeFromMsPlaces(mySlot.get.place_id)
+      lazy val slotNotFound = mySlot.isEmpty
+      lazy val placeNotFound = myPlace.isEmpty
+      lazy val parentBounds = effectiveBoundsFromMsPlaces(mySlot.get.place_id, mySlot.get.space_id, of)
+
+      def read: (ApiCode, Option[vo.Bounds]) = {
+        val (code, bounds) =
+          of match {
+            case 'book => if (mySlot.get.book_bounds.isEmpty) parentBounds else (ApiCode.OK, mySlot.get.book_bounds)
+            case 'cancel => if (mySlot.get.cancel_bounds.isEmpty) parentBounds else (ApiCode.OK, mySlot.get.cancel_bounds)
+            case _ => (ApiCode.OK, None)
+          }
+        (code, calculate(bounds))
+      }
+
+      def calculate(bounds: Option[vo.Bounds]): Option[vo.Bounds] =
+        bounds.map { b =>
+          val s = mySlot.get; import s._
+          val f = (date: Int, time: Int, b2: Option[vo.Bound], inclusive: Boolean) =>
+            b2.map { b3 =>
+              val (d, t) = bu.offset(date, time, b3.buBound, inclusive)
+              (Some(d), Some(t))
+            }.getOrElse(None, None)
+          val ((dateFrom, timeFrom), (dateTo, timeTo)) = (
+            f(date_from.get, time_from.get, b.open, false),
+            f(date_to.get, time_to.get, b.close, true))
+          vo.Bounds(dateFrom, dateTo, timeFrom, timeTo, b.open, b.close)
+        }
+
+      val (code, bounds) =
+        if (slotNotFound) (ApiCode(SC_NOT_FOUND), None)
+        else if (placeNotFound) (codeA, None)
+        else read
+
+      reply ! CodeEntityOUT(code, bounds)
 
   }
 

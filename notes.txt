@@ -198,10 +198,15 @@ Add client IP to the rest of the commands AND replies
 Add generated X header to requests to help with tracking
 See if weblet sets proper X-Forwarded-For header
 Deployment diagram
-Moderator can book paid slots without payment (special free price)
-Moderator can book paid slots with negative user balance (even if negative is disabled)
-Moderator can book slots of any member level for members and non-members
-Remove shadow _var from source in classes.js as redundant
+Moderator should have no restrictions and can book slots on behalf of a user:
+ a. paid slots without payment (special free price)
+ b. slots with negative user balance (even if negative is disabled)
+ c. slots of any member level for members and non-members
+ d. slots not available for booking yet
+ e. refund expired slots
+ f. no maximum limit applied
+Members search pagination
+Refactor ?effective --> effective/prices /availability etc
 
 
 Running in the background

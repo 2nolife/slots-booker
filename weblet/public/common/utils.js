@@ -262,9 +262,19 @@ sb.utils = {
     var sign = currency
     switch (currency) {
       case 'USD': sign = '$'; break
-      case 'GBP': sign = '£'; break //tod EUR
+      case 'GBP': sign = '£'; break //todo EUR
     }
     return sign
+  },
+
+  memberLevelAsWord: function(/*num*/ value) {
+    var word = value
+    switch (value) {
+      case 0: word = 'No'; break
+      case 1: word = 'Standard'; break
+      case 2: word = 'Exclusive'; break
+    }
+    return word
   }
 
 }

@@ -726,7 +726,7 @@ class MsPlaceSpacePricesSpec extends BaseMsPlacesSpec {
     prices(1).name.get shouldBe "Wakeboard"
   }
 
-  "GET to /places/{id}/spaces/{id}/prices?effective" should "list prices within a space or parent spaces" in {
+  "GET to /places/{id}/spaces/{id}/effective/prices" should "list prices within a space or parent spaces" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId)
     val spaceIdA = mongoCreateInnerSpace(placeId, spaceId)
@@ -735,17 +735,17 @@ class MsPlaceSpacePricesSpec extends BaseMsPlacesSpec {
     val priceId2 = mongoCreateSpacePrice(placeId, spaceId)
     val priceIdA = mongoCreateSpacePrice(placeId, spaceIdA)
 
-    val urlA = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/prices?effective"
+    val urlA = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/prices"
     val pricesA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
 
     pricesA.map(_.price_id) should contain only (priceId1, priceId2)
 
-    val urlB = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdA/prices?effective"
+    val urlB = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdA/effective/prices"
     val pricesB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
 
     pricesB.map(_.price_id) should contain only priceIdA
 
-    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/prices?effective"
+    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/effective/prices"
     val pricesC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[Seq[vo.Price]]
 
     pricesC.map(_.price_id) should contain only (priceId1, priceId2)
@@ -791,6 +791,91 @@ class MsPlaceSpacePricesSpec extends BaseMsPlacesSpec {
 
     val jsonB = """{"attributes": {"kex_r": "value_a"} }"""
     When patchTo url entity jsonB withHeaders testuserTokenHeader expect() code SC_FORBIDDEN
+  }
+
+}
+
+class MsPlaceSpaceBoundsSpec extends BaseMsPlacesSpec {
+
+  "GET to /places/{id}/spaces/{id}/effective/bounds?book" should "return slots booking bounds for a space or parent spaces" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId,
+      bookBounds = Some(vo.Bounds(Some(vo.Bound(date = None, time = Some(800), before = Some(14*1440))), None))) // open: 2 weeks before at 8:00, close: ?
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId,
+      bookBounds = Some(vo.Bounds(None, Some(vo.Bound(date = Some(20170322), time = Some(1000), None))))) // open: ?, close: 22/03/2017 at 10:00
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+
+    val urlA = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/bounds?book"
+    val boundsA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsA.open.get shouldBe vo.Bound(None, Some(800), Some(14*1440))
+    boundsA.close shouldBe None
+
+    val urlB = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdA/effective/bounds?book"
+    val boundsB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsB.open shouldBe None
+    boundsB.close.get shouldBe vo.Bound(Some(20170322), Some(1000), None)
+
+    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/effective/bounds?book"
+    val boundsC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsC.open.get shouldBe vo.Bound(None, Some(800), Some(14*1440))
+    boundsC.close shouldBe None
+  }
+
+  "GET to /places/{id}/spaces/{id}/effective/bounds?cancel" should "return slots cancel bounds for a space or parent spaces" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId,
+      cancelBounds = Some(vo.Bounds(None, Some(vo.Bound(date = None, time = None, before = Some(2*1440)))))) // open: ?, close: 2 days before
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId,
+      cancelBounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+
+    val urlA = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/bounds?cancel"
+    val boundsA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsA.open shouldBe None
+    boundsA.close.get shouldBe vo.Bound(None, None, Some(2*1440))
+
+    val urlB = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdA/effective/bounds?cancel"
+    val boundsB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsB.open.get shouldBe vo.Bound(Some(20170323), Some(2000), None)
+    boundsB.close shouldBe None
+
+    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/effective/bounds?cancel"
+    val boundsC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsC.open shouldBe None
+    boundsC.close.get shouldBe vo.Bound(None, None, Some(2*1440))
+  }
+
+  "GET to /places/{id}/spaces/{id}/effective/bounds?cancel" should "return slots booking bounds if cancel bounds not set" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId,
+      bookBounds = Some(vo.Bounds(Some(vo.Bound(date = None, time = Some(800), before = Some(14*1440))), None))) // open: 2 weeks before at 8:00, close: ?
+    val spaceIdA = mongoCreateInnerSpace(placeId, spaceId,
+      cancelBounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
+    val spaceIdB = mongoCreateInnerSpace(placeId, spaceId)
+
+    val urlA = s"$placesBaseUrl/places/$placeId/spaces/$spaceId/effective/bounds?cancel"
+    val boundsA = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsA.open.get shouldBe vo.Bound(None, Some(800), Some(14*1440))
+    boundsA.close shouldBe None
+
+    val urlB = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdA/effective/bounds?cancel"
+    val boundsB = (When getTo urlB withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsB.open.get shouldBe vo.Bound(Some(20170323), Some(2000), None)
+    boundsB.close shouldBe None
+
+    val urlC = s"$placesBaseUrl/places/$placeId/spaces/$spaceIdB/effective/bounds?cancel"
+    val boundsC = (When getTo urlC withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    boundsC.open.get shouldBe vo.Bound(None, Some(800), Some(14*1440))
+    boundsC.close shouldBe None
   }
 
 }

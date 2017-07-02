@@ -238,11 +238,9 @@ app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClass
   service.refreshPrices = function(/*str*/ placeId, /*str*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
     options = $.extend(true, {}, options)
 
-    var query = ''
-    if (options.effective != undefined) query += '&effective'
-    if (query) query = '?'+query.substring(1)
+    var effective = options.effective != undefined ? '/effective' : ''
 
-    $http.get('/api/places/'+placeId+'/spaces/'+spaceId+'/prices'+query)
+    $http.get('/api/places/'+placeId+'/spaces/'+spaceId+effective+'/prices')
       .then(
         function successCallback(response) {
           var prices = response.data
@@ -409,11 +407,9 @@ app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassW
   service.refreshPrices = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
     options = $.extend(true, {}, options)
 
-    var query = ''
-    if (options.effective != undefined) query += '&effective'
-    if (query) query = '?'+query.substring(1)
+    var effective = options.effective != undefined ? '/effective' : ''
 
-    $http.get('/api/slots/'+slotId+'/prices'+query)
+    $http.get('/api/slots/'+slotId+effective+'/prices')
       .then(
         function successCallback(response) {
           var prices = response.data
@@ -683,6 +679,32 @@ app.service('sb_apiMembersService', function($http, sb_apiHelper, $q, sb_apiClas
         function successCallback(response) {
           var member = response.data
           callback(sb_apiClassWrap.wrap(member, 'member'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.patchPlaceMember = function(/*json*/ entity, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.patch('/api/members/member', entity)
+      .then(
+        function successCallback(response) {
+          var member = response.data
+          callback(sb_apiClassWrap.wrap(member, 'member'))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.refreshMembers = function(/*str*/ placeId, /*fn*/ callback, /*fn*/ statusCallback) {
+    $http.get('/api/members/search?place_id='+placeId)
+      .then(
+        function successCallback(response) {
+          var members = response.data
+          callback(members.map(function(member) { return sb_apiClassWrap.wrap(member, 'member') }))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {

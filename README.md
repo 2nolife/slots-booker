@@ -35,6 +35,12 @@ Feedback email cftp@coldcore.com
 * Requires MongoDB up and running
 * From the project's root directory do `sbt it:test`
 
+## Default configuration ##
+
+* MongoDB is running on port 27017
+* Microservices ports: 8021 to 8028
+* UI port 8080
+
 ## License ##
 
 This code is open source software licensed under the [GNU Lesser General Public License v3](http://www.gnu.org/licenses/lgpl-3.0.en.html).
@@ -49,7 +55,9 @@ This code is open source software licensed under the [GNU Lesser General Public 
 * Users balance per club in multiple currencies
 * Expiration of unpaid bookings
 * References for successful bookings and refunds
+* Time periods to book and cancel with hierarchy across spaces and slots
 * Local timezone support per club
+* Discount for club members and membership types
 * Responses with full and partial JSON graph
 * Users can credit clubs and pay through PayPal
 * Genius Bar: the simple UI example to demo basic bookings
@@ -61,10 +69,8 @@ This code is open source software licensed under the [GNU Lesser General Public 
 * Control panel for users, admins and moderators
 * 3rd party payment support
 * Deals and promotions on slots (get 3 for the price of 2)
-* Discount for club members and membership types
-* Queue for booked slots in case if cancelled
-* Future slots availability time periods
-* Bookings cancel and refund (full or partial) time periods
+* Notifications in case if booked slots cancelled
+* Time periods for partial refunds with hierarchy across spaces and slots
 * Example applications to demo all the features
 * Audit logs
 * Means to integrate with external parties
@@ -73,5 +79,4 @@ This code is open source software licensed under the [GNU Lesser General Public 
 
 ### Other features ###
 * Read only anonymous users support
-* Better error responses with custom codes
-
+* Error responses with custom codes (available for 409 status code)

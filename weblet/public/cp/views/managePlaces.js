@@ -290,7 +290,7 @@ app.directive('editedPlaceModerators', function($rootScope) {
     }
 
 
-    function addModerator(/*User*/ user) {
+    function addModerator(/*EditedUser*/ user) {
       var moderatorIds = [].concat($scope.editedPlace.source.moderatorIds)
       moderatorIds.push(user.id)
       patchAndRefresh(moderatorIds)

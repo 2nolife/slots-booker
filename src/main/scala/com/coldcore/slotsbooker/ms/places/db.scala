@@ -1,7 +1,6 @@
 package com.coldcore.slotsbooker
 package ms.places.db
 
-import ms.{Timestamp => ts}
 import ms.db.MongoQueries
 import ms.places.Constants._
 import com.mongodb.casbah.Imports._
@@ -9,10 +8,11 @@ import com.mongodb.casbah.MongoClient
 import com.mongodb.casbah.commons.MongoDBObject
 import org.bson.types.ObjectId
 import ms.places.vo
-import spray.json._
 import ms.places.vo.Implicits._
+import ms.places.{DateTimeUtil => du}
 import PlacesDb._
 import ms.vo.Attributes
+import spray.json._
 
 import scala.annotation.tailrec
 
@@ -54,7 +54,7 @@ object PlacesDb {
                             spaceFields = customSpaceFields(deep_spaces, deep_prices))
 }
 
-trait PlacesDb extends PlaceCRUD with SpaceCRUD with PriceCRUD with PlaceSearch with SpaceSearch
+trait PlacesDb extends PlaceCRUD with SpaceCRUD with PriceCRUD with BoundsCRUD with PlaceSearch with SpaceSearch
 
 trait PlaceCRUD {
   def placeById(placeId: String, fields: PlaceFields = defaultPlaceFields): Option[vo.Place]
@@ -83,6 +83,11 @@ trait PriceCRUD {
   def deletePrice(priceId: String): Boolean
 }
 
+trait BoundsCRUD {
+  def effectiveBookBoundsBySpaceId(spaceId: String): Option[vo.Bounds]
+  def effectiveCancelBoundsBySpaceId(spaceId: String): Option[vo.Bounds]
+}
+
 trait PlaceSearch {
   def searchPlaces(byAttributes: Seq[(String,String)], joinOR: Boolean, fields: PlaceFields = defaultPlaceFields): Seq[vo.Place]
 }
@@ -92,7 +97,7 @@ trait SpaceSearch {
 }
 
 class MongoPlacesDb(client: MongoClient, dbName: String) extends PlacesDb with VoFactory with MongoQueries
-  with PlaceCrudImpl with SpaceCrudImpl with PriceCrudImpl with PlaceSearchImpl with SpaceSearchImpl {
+  with PlaceCrudImpl with SpaceCrudImpl with PriceCrudImpl with BoundsCrudImpl with PlaceSearchImpl with SpaceSearchImpl {
 
   private val db = client(dbName)
   val places = db(MS)
@@ -104,32 +109,9 @@ class MongoPlacesDb(client: MongoClient, dbName: String) extends PlacesDb with V
 trait VoFactory {
   self: MongoPlacesDb =>
 
-  private def datetime(timezone: Option[String], offsetMinutes: Option[Int]): vo.DateTime = {
-    import ts._
-    val utc = asCalendar
-    val local = timezone.map(copyTz(utc, _)) orElse offsetMinutes.map(addMinutes(copy(utc), _)) getOrElse utc
-    val offset = timezone.map(_ => offsetInMinutes(local, utc)) orElse offsetMinutes getOrElse 0
-
-    vo.DateTime(
-      timezone = timezone,
-      offset_minutes = Some(offset),
-      date = Some(dateString(local).toInt),
-      time = Some(timeString(local).toInt),
-      utc_date = Some(dateString(utc).toInt),
-      utc_time = Some(timeString(utc).toInt)
-    )
-  }
-
   def asPlace(data: MongoDBObject, fields: PlaceFields): vo.Place = {
     import data._
     val placeId = as[ObjectId]("_id").toString
-
-    val dt =
-      getAs[DBObject]("datetime")
-        .map(asDateTime(_)) match {
-          case Some(d) => datetime(d.timezone, d.offset_minutes)
-          case None => datetime(None, Some(0))
-        }
 
     vo.Place(
       place_id = placeId,
@@ -145,7 +127,11 @@ trait VoFactory {
       attributes =
         getAs[AnyRef]("attributes")
         .map(json => Attributes(json.toString)),
-      datetime = Some(dt)
+      datetime =
+        getAs[DBObject]("datetime")
+        .map(asDateTime(_))
+        .map(du.datetime)
+        .orElse(Some(du.datetime))
     )
   }
 
@@ -168,6 +154,25 @@ trait VoFactory {
       country = getAs[String]("country"))
   }
 
+  def asBounds(data: MongoDBObject): vo.Bounds = {
+    import data._
+    vo.Bounds(
+      open =
+        getAs[DBObject]("open")
+        .map(asBound(_)),
+      close =
+        getAs[DBObject]("close")
+        .map(asBound(_)))
+  }
+
+  def asBound(data: MongoDBObject): vo.Bound = {
+    import data._
+    vo.Bound(
+      date = getAs[Int]("date"),
+      time = getAs[Int]("time"),
+      before = getAs[Int]("before"))
+  }
+
   def asSpace(data: MongoDBObject, fields: SpaceFields): vo.Space = {
     import data._
     val placeId = as[String]("place_id")
@@ -185,7 +190,13 @@ trait VoFactory {
         .map(_.toString.parseJson.asJsObject),
       attributes =
         getAs[AnyRef]("attributes")
-          .map(json => Attributes(json.toString))
+        .map(json => Attributes(json.toString)),
+      book_bounds =
+        getAs[DBObject]("book_bounds")
+        .map(asBounds(_)),
+      cancel_bounds =
+        getAs[DBObject]("cancel_bounds")
+        .map(asBounds(_))
     )
   }
 
@@ -205,6 +216,18 @@ trait VoFactory {
     )
   }
 
+  def asMongoObject(bound: vo.Bound): MongoDBObject = {
+    import bound._
+    val f = (key: String, value: Option[Int]) => value.map(v => MongoDBObject(key -> v)).getOrElse(MongoDBObject())
+    f("date", date) ++ f("time", time) ++ f("before", before)
+  }
+
+  def asMongoObject(bounds: vo.Bounds): MongoDBObject = {
+    import bounds._
+    val f = (key: String, value: Option[vo.Bound]) => value.map(v => MongoDBObject(key -> asMongoObject(v))).getOrElse(MongoDBObject())
+    f("open", open) ++ f("close", close)
+  }
+
 }
 
 trait PlaceCrudImpl {
@@ -222,7 +245,7 @@ trait PlaceCrudImpl {
           "profile_id" $eq profileId,
           "moderators" $eq profileId)))
       .map(asPlace(_, fields))
-      .toSeq  
+      .toSeq
 
   override def createPlace(profileId: String, obj: vo.CreatePlace, fields: PlaceFields): vo.Place = {
     import obj._
@@ -334,7 +357,9 @@ trait SpaceCrudImpl {
     import obj._
     Map(
       "name" -> name,
-      "metadata" -> metadata.map(asDBObject)
+      "metadata" -> metadata.map(asDBObject),
+      "book_bounds" -> book_bounds.map(asMongoObject),
+      "cancel_bounds" -> cancel_bounds.map(asMongoObject)
     ).foreach { case (key, value) =>
       update(finderById(spaceId), spaces, key, value)
     }
@@ -377,10 +402,10 @@ trait PriceCrudImpl {
 
   override def effectivePricesBySpaceId(spaceId: String): Seq[vo.Price] = {
     @tailrec def f(id: String): Seq[vo.Price] = {
-      spaceById(id, customSpaceFields(deep_spaces = false, deep_prices = true)) match {
-        case space if space.get.prices.isDefined => space.get.prices.get
-        case space if space.get.parent_space_id.isEmpty => Seq.empty
-        case space => f(space.get.parent_space_id.get)
+      spaceById(id, customSpaceFields(deep_spaces = false, deep_prices = true)).get match {
+        case space if space.prices.isDefined => space.prices.get
+        case space if space.parent_space_id.isEmpty => Seq.empty
+        case space => f(space.parent_space_id.get)
       }
     }
     f(spaceId)
@@ -433,6 +458,25 @@ trait PriceCrudImpl {
 
     priceById(price.idString).get
   }
+
+}
+
+trait BoundsCrudImpl {
+  self: MongoPlacesDb =>
+
+  @tailrec private def bounds(id: String, extract: vo.Space => Option[vo.Bounds]): Option[vo.Bounds] = {
+    spaceById(id, defaultSpaceFields).get match {
+      case space if extract(space).isDefined => extract(space)
+      case space if space.parent_space_id.isEmpty => None
+      case space => bounds(space.parent_space_id.get, extract)
+    }
+  }
+
+  override def effectiveBookBoundsBySpaceId(spaceId: String): Option[vo.Bounds] =
+    bounds(spaceId, space => space.book_bounds)
+
+  override def effectiveCancelBoundsBySpaceId(spaceId: String): Option[vo.Bounds] =
+    bounds(spaceId, space => space.cancel_bounds) orElse bounds(spaceId, space => space.book_bounds)
 
 }
 

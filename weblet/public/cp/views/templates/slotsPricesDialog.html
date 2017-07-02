@@ -33,7 +33,7 @@
                       <span>{{credit.amount | sb_numberX100 : true}}</span>
                     </p>
                   </td>
-                  <td>{{member.level}}</td>
+                  <td>{{member.level | sb_memberLevelAsWord}}</td>
                 </tr>
 
                 </tbody>
@@ -65,7 +65,7 @@
                         <span class="amount">{{price.amount | sb_numberX100 : true}}</span>
                       </label>
                       <span class="c3">{{price.name}}</span>
-                      <span class="c4" ng-show="price.memberLevel">{{price.memberLevel}}</span>
+                      <span class="c4" ng-show="price.memberLevel">{{price.memberLevel | sb_memberLevelAsWord}}</span>
                     </div>
                   </td>
                 </tr>

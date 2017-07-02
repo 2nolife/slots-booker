@@ -1,0 +1,32 @@
+<div class="place-members container-fluid" ng-show="showContent">
+
+  <div class="row gap-top">
+    <button class="btn btn-xs btn-success col-sm-2" ng-click="addMember()"><i class="fa fa-plus fa-fw"></i> Member</button>
+  </div>
+
+  <div class="row">
+    <table class="table table-hover">
+      <thead>
+      <tr>
+        <th>Username</th>
+        <th>Name</th>
+        <th>Membership</th>
+      </tr>
+      </thead>
+      <tbody>
+
+      <tr ng-repeat="member in editedPlace.members" ng-click="editMember(member)">
+        <td>{{member.user.username}}</td>
+        <td>{{member.user.fullName}}</td>
+        <td>{{member.level | sb_memberLevelAsWord}}</td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <user-finder-dialog trigger="userFinderTrigger" place-id="editedPlace.id" on-user="onUser(user)"/>
+
+  <edited-place-edit-member-dialog trigger="editMemberTrigger" edited-member="editedMember" on-save="onMemberSave()"/>
+
+</div>

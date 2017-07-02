@@ -25,6 +25,7 @@ cp.classes = {
 
       if (key == '*' || !_this.rid) _this.rid = Math.random()
       if (key == 'spaces') wrapSpaces()
+      if (key == 'members') wrapMembers()
     }
 
     applyChangesFromSource()
@@ -44,6 +45,16 @@ cp.classes = {
         { key: 'prm0', name: 'Parameter 0', value: f(a.prm0), type: 'text', write: true  },
         { key: 'prm1', name: 'Parameter 1', value: f(a.prm1), type: 'text', write: true  }
       ]
+    }
+
+    this.refreshMembers = function(/*bool*/ force, /*fn*/ callback) {
+      source.refresh('members', force, callback)
+    }
+
+    function wrapMembers() {
+      var members = source.members.map(function(member) { return new cp.classes.EditedMember(member) })
+      _this.members = members
+      _this.onChangeCallback.trigger('members-wrap', _this)
     }
 
     this.refresh = function(/*fn*/ callback) {
@@ -693,6 +704,7 @@ cp.classes = {
     function applyChangesFromSource() {
       _this.id = source.id
       _this.profileId = source.profileId
+      _this.slotId = source.slotId
       _this.user = source.user
       _this.reference = source.reference
       _this.status = source.status
@@ -708,12 +720,14 @@ cp.classes = {
     }
 
     this.refreshReference = function() {
-      source.refresh('reference')
+      source.refresh('reference', false, function() {
+        _this.slotPrice = source.reference.quote.priceFor(_this.slotId)
+      })
     }
 
   },
 
-  EditedUser: function(/*Booking*/ source) {
+  EditedUser: function(/*User*/ source) {
 
     var _this = this
 
@@ -750,7 +764,7 @@ cp.classes = {
       if (force) delete _this.members[placeId]
       if (!_this.members[placeId])
         _this.sc.apiMembersService.getPlaceMember(placeId, _this.id, function(/*Member*/ member) {
-          _this.members[placeId] = member
+          _this.members[placeId] = new cp.classes.EditedMember(member)
           if (callback) callback()
         })
       else if (callback) callback()
@@ -764,6 +778,39 @@ cp.classes = {
           if (callback) callback()
         })
       else if (callback) callback()
+    }
+
+  },
+
+  EditedMember: function(/*Member*/ source) {
+
+    var _this = this
+
+    this.source = source
+
+    this.onChangeCallback = source.onChangeCallback
+
+    function applyChangesFromSource() {
+      _this.profileId = source.profileId
+      _this.placeId = source.placeId
+      _this.level = source.level
+      _this.user = source.user
+    }
+
+    applyChangesFromSource()
+
+    source.onChangeCallback.add(applyChangesFromSource)
+
+    this.refreshUser = function() {
+      source.refresh('user')
+    }
+
+    this.toApiEntity = function() {
+      return {
+        profile_id: _this.profileId,
+        place_id: _this.placeId,
+        level: _this.level
+      }
     }
 
   }

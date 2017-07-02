@@ -98,7 +98,7 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
 
 }
 
-trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute {
+trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute with SpacesInnerBoundsRoute {
   self: PlacesRestService =>
 
   def spacesRoute(profile: ProfileRemote, placeId: String) =
@@ -194,7 +194,8 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute {
           }
 
         } ~
-        pricesRoute(profile, placeId, spaceId)
+        pricesRoute(profile, placeId, spaceId) ~
+        boundsRoute(profile, placeId, spaceId)
 
       }
 
@@ -205,6 +206,13 @@ trait SpacesInnerPricesRoute {
 
   def pricesRoute(profile: ProfileRemote, placeId: String, spaceId: String) =
 
+      path("effective" / "prices") {
+
+        get {
+          completeByActor[Seq[vo.Price]](placesActor, GetPricesIN(placeId, spaceId, effective = Some(""), profile))
+        }
+
+      } ~
       path("prices") {
 
         post {
@@ -213,9 +221,7 @@ trait SpacesInnerPricesRoute {
           }
         } ~
         get {
-          parameters('effective ?) { effective =>
-            completeByActor[Seq[vo.Price]](placesActor, GetPricesIN(placeId, spaceId, effective, profile))
-          }
+          completeByActor[Seq[vo.Price]](placesActor, GetPricesIN(placeId, spaceId, effective = None, profile))
         }
 
       } ~
@@ -234,5 +240,24 @@ trait SpacesInnerPricesRoute {
         }
 
       }
+
+}
+
+trait SpacesInnerBoundsRoute {
+  self: PlacesRestService =>
+
+  def boundsRoute(profile: ProfileRemote, placeId: String, spaceId: String) =
+
+      path("effective" / "bounds") {
+
+        get {
+          parameters('book ?, 'cancel ?) { (book, cancel) =>
+            completeByActor[vo.Bounds](placesActor, GetBoundsIN(placeId, spaceId,
+                                                                of = book.map(_ => 'book) orElse cancel.map(_ => 'cancel) getOrElse '?,
+                                                                profile))
+          }
+        }
+
+      } 
 
 }

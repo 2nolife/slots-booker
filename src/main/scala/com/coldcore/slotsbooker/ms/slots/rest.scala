@@ -17,7 +17,7 @@ class SlotsRestService(hostname: String, port: Int, val systemToken: String, val
   bind(slotsRoute, name = "Slots")
 }
 
-trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with SlotsInnerHoldRoute {
+trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with SlotsInnerHoldRoute with SlotsInnerBoundsRoute {
   self: SlotsRestService =>
 
   def slotsRoute =
@@ -119,7 +119,8 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
           } ~
           bookingsRoute(profile, slotId) ~
           pricesRoute(profile, slotId) ~
-          holdRoute(profile, slotId)
+          holdRoute(profile, slotId) ~
+          boundsRoute(profile, slotId)
 
         }
 
@@ -172,6 +173,13 @@ trait SlotsInnerPricesRoute {
 
   def pricesRoute(profile: ProfileRemote, slotId: String) =
 
+    path("effective" / "prices") {
+
+      get {
+        completeByActor[Seq[vo.Price]](slotsActor, GetPricesIN(slotId, effective = Some(""), profile))
+      }
+
+    } ~
     path("prices") {
 
       post {
@@ -180,9 +188,7 @@ trait SlotsInnerPricesRoute {
         }
       } ~
       get {
-        parameters('effective ?) { effective =>
-          completeByActor[Seq[vo.Price]](slotsActor, GetPricesIN(slotId, effective, profile))
-        }
+        completeByActor[Seq[vo.Price]](slotsActor, GetPricesIN(slotId, effective = None, profile))
       }
 
     } ~
@@ -223,3 +229,21 @@ trait SlotsInnerHoldRoute {
 
 }
 
+trait SlotsInnerBoundsRoute {
+  self: SlotsRestService =>
+
+  def boundsRoute(profile: ProfileRemote, slotId: String) =
+
+    path("effective" / "bounds") {
+
+      get {
+        parameters('book ?, 'cancel ?) { (book, cancel) =>
+          completeByActor[vo.Bounds](slotsActor, GetBoundsIN(slotId,
+                                                             of = book.map(_ => 'book) orElse cancel.map(_ => 'cancel) getOrElse '?,
+                                                             profile))
+        }
+      }
+
+    }
+
+}

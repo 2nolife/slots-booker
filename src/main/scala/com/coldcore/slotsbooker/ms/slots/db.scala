@@ -115,7 +115,13 @@ trait VoFactory {
       booked = if (fields.deepBooked) getAs[String]("booked").flatMap(bookedById) else None,
       attributes =
         getAs[AnyRef]("attributes")
-          .map(json => Attributes(json.toString))
+        .map(json => Attributes(json.toString)),
+      book_bounds =
+        getAs[DBObject]("book_bounds")
+          .map(asBounds(_)),
+      cancel_bounds =
+        getAs[DBObject]("cancel_bounds")
+          .map(asBounds(_))
     )
   }
 
@@ -169,6 +175,37 @@ trait VoFactory {
     )
   }
 
+  def asBounds(data: MongoDBObject): vo.Bounds = {
+    import data._
+    vo.Bounds(
+      open =
+        getAs[DBObject]("open")
+        .map(asBound(_)),
+      close =
+        getAs[DBObject]("close")
+        .map(asBound(_)))
+  }
+
+  def asBound(data: MongoDBObject): vo.Bound = {
+    import data._
+    vo.Bound(
+      date = getAs[Int]("date"),
+      time = getAs[Int]("time"),
+      before = getAs[Int]("before"))
+  }
+
+  def asMongoObject(bound: vo.Bound): MongoDBObject = {
+    import bound._
+    val f = (key: String, value: Option[Int]) => value.map(v => MongoDBObject(key -> v)).getOrElse(MongoDBObject())
+    f("date", date) ++ f("time", time) ++ f("before", before)
+  }
+
+  def asMongoObject(bounds: vo.Bounds): MongoDBObject = {
+    import bounds._
+    val f = (key: String, value: Option[vo.Bound]) => value.map(v => MongoDBObject(key -> asMongoObject(v))).getOrElse(MongoDBObject())
+    f("open", open) ++ f("close", close)
+  }
+
 }
 
 trait SlotsCrudImpl {
@@ -211,7 +248,9 @@ trait SlotsCrudImpl {
       "date_from" -> date_from,
       "date_to" -> date_to,
       "time_from" -> time_from,
-      "time_to" -> time_to
+      "time_to" -> time_to,
+      "book_bounds" -> book_bounds.map(asMongoObject),
+      "cancel_bounds" -> cancel_bounds.map(asMongoObject)
     ).foreach { case (key, value) =>
       update(finderById(slotId), slots, key, value)
     }

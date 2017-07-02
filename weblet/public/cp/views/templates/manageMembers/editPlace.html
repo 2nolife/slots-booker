@@ -3,5 +3,7 @@
     <button class="btn btn-primary" ng-click="showListedPlaces()"><i class="fa fa-long-arrow-left fa-fw"></i> Back</button>
     <button class="btn btn-default" ng-click="reloadEditedPlace()"><i class="fa fa-refresh fa-fw {{loadEditedPlaceSpin ? 'fa-spin' : ''}}"></i> Refresh</button>
   </div>
-  
+
+  <edited-place-members trigger="editedPlace" edited-place="editedPlace" />
+
 </div>

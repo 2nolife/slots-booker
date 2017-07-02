@@ -2,10 +2,11 @@ package com.coldcore.slotsbooker
 package ms.booking.service
 
 import akka.actor.ActorSystem
-import ms.{Logger, Timestamp => ts}
+import ms.{Logger, Timestamp => ts, BoundsUtil => bu}
 import ms.booking.vo.{Reference, SelectedPrice}
 import ms.booking.db.BookingDb
 import ms.booking.vo
+import ms.booking.vo.Implicits._
 import ms.booking.Constants._
 import ms.http.{ApiCode, RestClient, SystemRestCalls}
 import ms.vo.{Attributes, EmptyEntity}
@@ -69,7 +70,10 @@ trait SlotsMsRestCalls extends SystemRestCalls {
     restPatch[vo.ext.Booking](s"$slotsBaseUrl/slots/$slotId/bookings/$bookingId", vo.ext.UpdateSlotBooking(status, attributes, profileId))
 
   def effectivePricesFromMsSlots(slotId: String): (ApiCode, Option[Seq[vo.ext.Price]]) =
-    restGet[Seq[vo.ext.Price]](s"$slotsBaseUrl/slots/$slotId/prices?effective")
+    restGet[Seq[vo.ext.Price]](s"$slotsBaseUrl/slots/$slotId/effective/prices")
+
+  def effectiveBoundsFromMsSlots(slotId: String, of: Symbol): (ApiCode, Option[vo.ext.Bounds]) =
+    restGet[vo.ext.Bounds](s"$slotsBaseUrl/slots/$slotId/effective/bounds?${of.name}")
 
 }
 
@@ -149,6 +153,19 @@ class BookingServiceImpl(val bookingDb: BookingDb,
     val codesAndSlots = slots.map { slot =>
       val (code, prices) = effectivePricesFromMsSlots(slot.slot_id)
       (code, slot.copy(prices = prices))
+    }
+
+    codesAndSlots.map(_._1).find(_ not SC_OK).map(Left(_)).getOrElse(Right(codesAndSlots.map(_._2)))
+  }
+
+  def resolveSlotBounds(slots: Seq[vo.ext.Slot], of: Symbol): Either[ApiCode, Seq[vo.ext.Slot]] = {
+    val codesAndSlots = slots.map { slot =>
+      val (code, bounds) = effectiveBoundsFromMsSlots(slot.slot_id, of)
+      of match {
+        case 'book => (code, slot.copy(book_bounds = bounds))
+        case 'cancel => (code, slot.copy(cancel_bounds = bounds))
+        case _ => (code, slot)
+      }
     }
 
     codesAndSlots.map(_._1).find(_ not SC_OK).map(Left(_)).getOrElse(Right(codesAndSlots.map(_._2)))
@@ -234,34 +251,53 @@ trait QuoteSlots {
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get != slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_not_bookable)) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
-      val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
-      if (place.isEmpty) Left(codeA)
-      else {
-        val offsetMinutes = place.get.datetime.flatMap(_.offset_minutes).getOrElse(0)
-        val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Place] = {// place
+      val (code, place) = placeFromMsPlaces(slots.head.place_id)
+      if (code not SC_OK) Left(code) else Right(place.get)
+    }
 
-        val past = (f: vo.ext.Slot => (Int, Int)) =>
-          slots
-            .map(f)
-            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
-            .exists(localAsLong >=)
+    def step4(slots: Seq[vo.ext.Slot], place: vo.ext.Place): Either[ApiCode, _] = { // check slots dates
+      val offsetMinutes = place.datetime.flatMap(_.offset_minutes).getOrElse(0)
+      val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
 
-        val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
-        val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
-        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
+      val past = (f: vo.ext.Slot => (Int, Int)) =>
+        slots
+          .map(f)
+          .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
+          .exists(localAsLong >=)
+
+      val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
+      val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
+      if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
+    }
+
+    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot "bounds"
+      resolveSlotBounds(slots, 'book)
+
+    def step6(resolvedSlots: Seq[vo.ext.Slot], place: vo.ext.Place): Either[ApiCode, _] = { // check slots bounds
+      val offsetMinutes = place.datetime.flatMap(_.offset_minutes).getOrElse(0)
+      val localPoint = ts.addMinutes(ts.asCalendar, offsetMinutes)
+
+      resolvedSlots
+        .map(slot => bu.compare(localPoint, slot.buDates,
+          slot.book_bounds.flatMap(_.open.map(_.buBound)),
+          slot.book_bounds.flatMap(_.close.map(_.buBound))))
+        .find(0 !=) match {
+        case Some(-1) => Left(ApiCode(SC_CONFLICT, 'slot_early_bound))
+        case Some(1) => Left(ApiCode(SC_CONFLICT, 'slot_late_bound))
+        case _ => Right(SC_OK)
       }
     }
 
-    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot prices
+    def step7(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot prices
       resolveSlotPrices(slots)
 
-    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Member] = {// membership
+    def step8(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Member] = {// membership
       val (code, member) = memberFromMsMembers(slots.head.place_id, profileId)
       if (code not SC_OK) Left(code) else Right(member.get)
     }
 
-    def step6(resolvedSlots: Seq[vo.ext.Slot], member: vo.ext.Member): Either[ApiCode, _] = { // check prices validity
+    def step9(resolvedSlots: Seq[vo.ext.Slot], member: vo.ext.Member): Either[ApiCode, _] = { // check prices validity
       val priceLevels =
         resolvedSlots.flatMap { slot =>
           selected.collectFirst { case sp if sp.slot_id == slot.slot_id =>
@@ -276,7 +312,7 @@ trait QuoteSlots {
       else Right(SC_OK)
     }
 
-    def step7(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
+    def step10(resolvedSlots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.SlotPrice]] = { // convert selected into objects
       val pairs =
         selected.map { sp =>
           resolvedSlots
@@ -289,13 +325,16 @@ trait QuoteSlots {
 
     val eitherA: Either[ApiCode,vo.Quote] =
       for {
-        slots         <- step1().right
-        _             <- step2(slots).right
-        _             <- step3(slots).right
-        resolvedSlots <- step4(slots).right
-        member        <- step5(slots).right
-        _             <- step6(resolvedSlots, member).right
-        prices        <- step7(resolvedSlots).right
+        slots       <- step1().right
+        _           <- step2(slots).right
+        place       <- step3(slots).right
+        _           <- step4(slots, place).right
+        boundsSlots <- step5(slots).right
+        _           <- step6(boundsSlots, place).right
+        pricesSlots <- step7(slots).right
+        member      <- step8(slots).right
+        _           <- step9(pricesSlots, member).right
+        prices      <- step10(pricesSlots).right
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Quote(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),
@@ -341,27 +380,46 @@ trait RefundSlots {
     def step2(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = // check slots status
       if (slots.exists(_.book_status.get == slotBookStatus('bookable))) Left(ApiCode(SC_CONFLICT, 'slot_bookable)) else Right(SC_OK)
 
-    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, _] = { // check slots dates
-    val (codeA, place) = placeFromMsPlaces(slots.head.place_id)
-      if (place.isEmpty) Left(codeA)
-      else {
-        val offsetMinutes = place.get.datetime.flatMap(_.offset_minutes).getOrElse(0)
-        val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
+    def step3(slots: Seq[vo.ext.Slot]): Either[ApiCode, vo.ext.Place] = {// place
+      val (code, place) = placeFromMsPlaces(slots.head.place_id)
+      if (code not SC_OK) Left(code) else Right(place.get)
+    }
 
-        val past = (f: vo.ext.Slot => (Int, Int)) =>
-          slots
-            .map(f)
-            .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
-            .exists(localAsLong >=)
+    def step4(slots: Seq[vo.ext.Slot], place: vo.ext.Place): Either[ApiCode, _] = { // check slots dates
+      val offsetMinutes = place.datetime.flatMap(_.offset_minutes).getOrElse(0)
+      val localAsLong = ts.asLong(ts.addMinutes(ts.asCalendar, offsetMinutes))
 
-        val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
-        val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
+      val past = (f: vo.ext.Slot => (Int, Int)) =>
+        slots
+          .map(f)
+          .map { case (date, time) => ts.asLong(ts.asCalendar(date, time*100)) }
+          .exists(localAsLong >=)
 
-        if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
+      val fromPast = past(slot => slot.date_from.getOrElse(0) -> slot.time_from.getOrElse(0))
+      val toPast = past(slot => slot.date_to.getOrElse(0) -> slot.time_to.getOrElse(0))
+
+      if (fromPast || toPast) Left(ApiCode(SC_CONFLICT, 'slot_expired)) else Right(SC_OK)
+    }
+
+    def step5(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.ext.Slot]] = // resolve slot "bounds"
+      resolveSlotBounds(slots, 'cancel)
+
+    def step6(resolvedSlots: Seq[vo.ext.Slot], place: vo.ext.Place): Either[ApiCode, _] = { // check slots bounds
+      val offsetMinutes = place.datetime.flatMap(_.offset_minutes).getOrElse(0)
+      val localPoint = ts.addMinutes(ts.asCalendar, offsetMinutes)
+
+      resolvedSlots
+        .map(slot => bu.compare(localPoint, slot.buDates,
+          slot.book_bounds.flatMap(_.open.map(_.buBound)),
+          slot.book_bounds.flatMap(_.close.map(_.buBound))))
+        .find(0 !=) match {
+        case Some(-1) => Left(ApiCode(SC_CONFLICT, 'slot_early_bound))
+        case Some(1) => Left(ApiCode(SC_CONFLICT, 'slot_late_bound))
+        case _ => Right(SC_OK)
       }
     }
 
-    def step4(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.Reference]] = { // get references for slots
+    def step7(slots: Seq[vo.ext.Slot]): Either[ApiCode, Seq[vo.Reference]] = { // get references for slots
       val references = slots.flatMap(_.booked).flatMap(booked => bookingDb.referenceByBookedId(booked.booked_id, quote = true))
       if (references.size != slots.size) Left(ApiCode(SC_CONFLICT, 'ref_slot_mismatch))
       else if (references.map(_.place_id).exists(slots.head.place_id !=)) Left(ApiCode(SC_CONFLICT, 'ref_place_mismatch))
@@ -369,10 +427,10 @@ trait RefundSlots {
       else Right(references.distinct)
     }
 
-    def step5(references: Seq[vo.Reference]): Either[ApiCode, Seq[vo.Quote]] = // get quotes from references
+    def step8(references: Seq[vo.Reference]): Either[ApiCode, Seq[vo.Quote]] = // get quotes from references
       Right(references.map(_.quote.get))
 
-    def step6(quotes: Seq[vo.Quote]): Either[ApiCode, Seq[vo.SlotPrice]] = { // collect cancellable prices
+    def step9(quotes: Seq[vo.Quote]): Either[ApiCode, Seq[vo.SlotPrice]] = { // collect cancellable prices
       val prices = quotes.flatMap(_.prices).flatten
       val incomplete =
         quotes
@@ -396,12 +454,15 @@ trait RefundSlots {
 
     val eitherA: Either[ApiCode, vo.Refund] =
       for {
-        slots      <- step1().right
-        _          <- step2(slots).right
-        _          <- step3(slots).right
-        references <- step4(slots).right
-        quotes     <- step5(references).right
-        prices     <- step6(quotes).right
+        slots       <- step1().right
+        _           <- step2(slots).right
+        place       <- step3(slots).right
+        _           <- step4(slots, place).right
+        boundsSlots <- step5(slots).right
+        _           <- step6(boundsSlots, place).right
+        references  <- step7(slots).right
+        quotes      <- step8(references).right
+        prices      <- step9(quotes).right
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Refund(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),

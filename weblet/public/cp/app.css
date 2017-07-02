@@ -211,11 +211,10 @@ h1.top {
 }
 
 .slots-prices-dialog .table th.c3 {
-  width: 200px;
+  width: 240px;
 }
 
 .slots-prices-dialog .table th.c4 {
-  text-align: right;
 }
 
 .slots-prices-dialog .table td span {
@@ -241,7 +240,12 @@ h1.top {
 }
 
 .slots-prices-dialog .table td .c3 {
-  width: 260px;
+  width: 235px;
+}
+
+
+.slots-prices-dialog .table td .c4 {
+  font-size: 12px;
 }
 
 .slots-prices-dialog .credit span:first-child {

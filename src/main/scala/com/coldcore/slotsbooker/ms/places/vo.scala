@@ -8,15 +8,23 @@ case class Address(line1: Option[String], line2: Option[String], line3: Option[S
                    postcode: Option[String], town: Option[String], country: Option[String])
 object Address extends DefaultJsonProtocol { implicit val format = jsonFormat6(apply) }
 
+case class Bound(date: Option[Int], time: Option[Int], before: Option[Int])
+object Bound extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+
+case class Bounds(open: Option[Bound], close: Option[Bound])
+object Bounds extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
+
 case class Price(price_id: String, place_id: String, space_id: String, name: Option[String],
                  amount: Option[Int], currency: Option[String], attributes: Option[Attributes], member_level: Option[Int])
 object Price extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
 case class Space(space_id: String, place_id: String, parent_space_id: Option[String], name: Option[String],
-                 spaces: Option[Seq[Space]], prices: Option[Seq[Price]], metadata: Option[JsObject], attributes: Option[Attributes])
+                 spaces: Option[Seq[Space]], prices: Option[Seq[Price]], metadata: Option[JsObject], attributes: Option[Attributes],
+                 book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
 object Space extends DefaultJsonProtocol {
   implicit val format: RootJsonFormat[Space] =
-    rootFormat(lazyFormat(jsonFormat(apply, "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes")))
+    rootFormat(lazyFormat(jsonFormat(apply,
+      "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes", "slots_open", "slots_close")))
 }
 
 case class DateTime(timezone: Option[String], offset_minutes: Option[Int],
@@ -49,8 +57,9 @@ object UpdatePlace extends DefaultJsonProtocol { implicit val format = jsonForma
 case class CreateSpace(name: String, attributes: Option[Attributes])
 object CreateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat2(apply) }
 
-case class UpdateSpace(name: Option[String], metadata: Option[JsObject], attributes: Option[Attributes])
-object UpdateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat3(apply) }
+case class UpdateSpace(name: Option[String], metadata: Option[JsObject], attributes: Option[Attributes],
+                       book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
+object UpdateSpace extends DefaultJsonProtocol { implicit val format = jsonFormat5(apply) }
 
 
 case class CreatePrice(name: String, amount: Int, currency: String,
@@ -85,7 +94,7 @@ object Implicits {
   implicit class SpaceExt(obj: Space) {
 
     private def flatSpaces(space: Space): Seq[Space] =
-      space +: space.spaces.getOrElse(Nil).flatMap(flatSpaces(_))
+      space +: space.spaces.getOrElse(Nil).flatMap(flatSpaces)
 
     def flatSpaces: Seq[Space] =
       flatSpaces(obj)
