@@ -84,8 +84,8 @@ case class Slot(slot_id: String, place_id: String, space_id: String,
                 date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
                 bookings: Option[Seq[Booking]], prices: Option[Seq[Price]],
                 book_status: Option[Int], booked: Option[Booked], attributes: Option[Attributes],
-                book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
-object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat15(apply) }
+                book_bounds: Option[Bounds], cancel_bounds: Option[Bounds], disabled: Option[Int])
+object Slot extends DefaultJsonProtocol { implicit val format = jsonFormat16(apply) }
 
 case class CreateSlot(place_id: String, space_id: String, name: String,
                       date_from: Int, date_to: Int, time_from: Int, time_to: Int,
@@ -95,8 +95,8 @@ object CreateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat
 case class UpdateSlot(name: Option[String],
                       date_from: Option[Int], date_to: Option[Int], time_from: Option[Int], time_to: Option[Int],
                       attributes: Option[Attributes],
-                      book_bounds: Option[Bounds], cancel_bounds: Option[Bounds])
-object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
+                      book_bounds: Option[Bounds], cancel_bounds: Option[Bounds], disabled: Option[Int])
+object UpdateSlot extends DefaultJsonProtocol { implicit val format = jsonFormat9(apply) }
 
 /** External JSON objects from other micro services. */
 package ext {
@@ -175,6 +175,11 @@ object Implicits {
   }
 
   implicit class BoundExt(obj: Bound) {
+
+    def plus(minutes: Int): Bound = {
+      import obj._
+      obj.copy(before = before.map(_ - minutes))
+    }
 
     def buBound: bu.Bound = {
       import obj._

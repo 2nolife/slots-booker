@@ -24,7 +24,7 @@ case class Space(space_id: String, place_id: String, parent_space_id: Option[Str
 object Space extends DefaultJsonProtocol {
   implicit val format: RootJsonFormat[Space] =
     rootFormat(lazyFormat(jsonFormat(apply,
-      "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes", "slots_open", "slots_close")))
+      "space_id", "place_id", "parent_space_id", "name", "spaces", "prices", "metadata", "attributes", "book_bounds", "cancel_bounds")))
 }
 
 case class DateTime(timezone: Option[String], offset_minutes: Option[Int],

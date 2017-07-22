@@ -51,7 +51,7 @@ app.value('state', {
 
 })
 
-app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state, $location) {
+app.run(function($injector, $rootScope, $cookies, $interval, state, $location) {
 
   $rootScope.$on('api.authorized', function() {
     $injector.get('sb_loginService').refreshUser(function(/*str*/ status) {
@@ -63,14 +63,12 @@ app.run(function($injector, $rootScope, $cookies, $timeout, $interval, state, $l
     $location.path('/sign-in')
   })
 
-  $timeout(function() {
-    state.accessToken = $cookies.get('token')
-    if (!state.accessToken) {
-      $rootScope.$broadcast('api.unauthorized')
-    } else {
-      $injector.get('sb_loginService').setHttpAuthHeader()
-      $injector.get('sb_loginService').refreshUser()
-    }
-  }, 10)
+  state.accessToken = $cookies.get('token')
+  if (!state.accessToken) {
+    $rootScope.$broadcast('api.unauthorized')
+  } else {
+    $injector.get('sb_loginService').setHttpAuthHeader()
+    $injector.get('sb_loginService').refreshUser()
+  }
 
 })

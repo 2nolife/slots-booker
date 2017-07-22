@@ -36,7 +36,7 @@ cp.classes = {
       var a = _this.attributes,
           f = cp.classes.utils.attributeValueAsString
       _this.attributesArray = [ // same as "vo_attributes_place"
-        { key: 'client_key',       name: 'Client key',       value: f(a.client_key),       type: 'text',  write: false },
+        { key: 'client_key',       name: 'Client key',       value: f(a.client_key),       type: 'text',  write: false },  //todo admin only
         { key: 'external_key',     name: 'External key',     value: f(a.external_key),     type: 'text',  write: true  },
         { key: 'url',              name: 'URL',              value: f(a.url),              type: 'text',  write: true  },
         { key: 'email',            name: 'Email',            value: f(a.email),            type: 'email', write: true  },
@@ -84,7 +84,7 @@ cp.classes = {
 
     function wrapSpaces() {
       var spaces = source.spaces.map(function(space) { return new cp.classes.EditedSpace(space) })
-      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.spaces = spaces
       _this.onChangeCallback.trigger('spaces-wrap', _this)
     }
@@ -107,6 +107,8 @@ cp.classes = {
       _this.name = source.name
       _this.parentSpaces = getParentSpaces()
       _this.attributes = source.attributes
+      _this.bookBounds = source.bookBounds
+      _this.cancelBounds = source.cancelBounds
 
       _this.template = ((_this.attributes || {}).prm0 || {}).template || 'default'
 
@@ -117,6 +119,9 @@ cp.classes = {
       if (key == 'prices') wrapPrices()
       if (key == 'effectivePrices') wrapEffectivePrices()
       if (key == 'slots') wrapSlots()
+
+      formatBounds('bookBounds')
+      formatBounds('cancelBounds')
     }
 
     applyChangesFromSource()
@@ -152,14 +157,14 @@ cp.classes = {
 
     function wrapPrices() {
       var prices = source.prices.map(function(price) { return new cp.classes.EditedPrice(price) })
-      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.prices = prices
       _this.onChangeCallback.trigger('prices-wrap', _this)
     }
 
     function wrapEffectivePrices() {
       var prices = source.effectivePrices.map(function(price) { return new cp.classes.EditedPrice(price) })
-      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.effectivePrices = prices
       _this.onChangeCallback.trigger('effective-prices-wrap', _this)
     }
@@ -170,7 +175,7 @@ cp.classes = {
 
     function wrapSpaces() {
       var spaces = source.spaces.map(function(space) { return new cp.classes.EditedSpace(space, _this) })
-      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      spaces.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.spaces = spaces
       _this.onChangeCallback.trigger('spaces-wrap', _this)
     }
@@ -194,8 +199,44 @@ cp.classes = {
       source.refresh('*', true, callback)
     }
 
+    function formatBounds(/*str*/ tkey) {
+      function format(/*str*/ key) {
+        if (_this[tkey][key]) {
+          var formatted = {},
+              before = _this[tkey][key].before,
+              time = _this[tkey][key].time
+          if (before != undefined) formatted.daysBefore = before/1440
+          if (time != undefined) formatted.time = sb.utils.formatTime(time)
+          _this[tkey][key].formatted = formatted
+        }
+      }
+
+      format('open')
+      format('close')
+    }
+
     this.toApiAttributesEntity = function() {
       return cp.classes.utils.toApiAttributesEntity(_this.attributesArray)
+    }
+
+    this.toApiBoundsEntity = function() {
+      function convert(/*Bound*/ bound) {
+        var time = (bound.formatted || {}).time,
+            before = (bound.formatted || {}).daysBefore
+        time = time != undefined ? parseInt(sb.utils.parseTime(time)) : null
+        before = before != undefined ? parseInt(before)*1440 : null
+        return { date: null, time: time, before: before } //todo date is not supported in UI
+      }
+      function append(/*json*/ json, /*str*/ tkey, /*str*/ jkey) {
+        json[jkey] = {}
+        if (_this[tkey].open) json[jkey].open = convert(_this[tkey].open)
+        if (_this[tkey].close) json[jkey].close = convert(_this[tkey].close)
+      }
+
+      var entity = {}
+      append(entity, 'bookBounds', 'book_bounds')
+      append(entity, 'cancelBounds', 'cancel_bounds')
+      return entity
     }
 
   },
@@ -339,14 +380,14 @@ cp.classes = {
 
     function wrapPrices() {
       var prices = source.prices.map(function(price) { return new cp.classes.EditedPrice(price) })
-      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.prices = prices
       _this.onChangeCallback.trigger('prices-wrap', _this)
     }
 
     function wrapEffectivePrices() {
       var prices = source.effectivePrices.map(function(price) { return new cp.classes.EditedPrice(price) })
-      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name < b.name ? 1 : 0 })
+      prices.sort(function(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0 })
       _this.effectivePrices = prices
       _this.onChangeCallback.trigger('effective-prices-wrap', _this)
     }
@@ -737,19 +778,18 @@ cp.classes = {
     this.onChangeCallback = source.onChangeCallback
 
     function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['members', 'balances'])
+
       _this.id = source.id
       _this.username = source.username
       _this.fullName = source.fullName
       _this.attributes = source.attributes
 
-      if (key == '*' || !_this.rid) {
-        _this.rid = Math.random()
-        delete _this.members
-        delete _this.balances
-      }
-
       _this.members = _this.members || {}
       _this.balances = _this.balances || {}
+
+      if (key == '*' || !_this.rid) _this.rid = Math.random()
     }
 
     applyChangesFromSource()

@@ -5,6 +5,7 @@ var MongoClient = require('mongodb').MongoClient,
 var config = require('./config.json'),
     moduleGeniusBar = require('./genius-bar'),
     moduleWestfieldCinema = require('./westfield-cinema'),
+    moduleDenhamWsc = require('./denham-wsc'),
     moduleUsers = require('./users'),
     qu = require('./query-utils')
 
@@ -21,6 +22,7 @@ function drop() {
 
 function setupPlaces() {
   var arr = [
+    moduleDenhamWsc.setupPlace,
     moduleGeniusBar.setupPlace,
     moduleWestfieldCinema.setupPlace
   ]
@@ -47,7 +49,7 @@ function connect() {
 
 connect()
   .then(function() {
-    [moduleUsers, moduleGeniusBar, moduleWestfieldCinema].forEach(function(module) {
+    [moduleUsers, moduleGeniusBar, moduleWestfieldCinema, moduleDenhamWsc].forEach(function(module) {
       module.setVars(_db, _profileIds, _placeIds)
     })
   })

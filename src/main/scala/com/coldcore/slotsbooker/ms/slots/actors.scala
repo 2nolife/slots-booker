@@ -15,7 +15,7 @@ import ms.vo.Implicits._
 import ms.attributes.Types._
 import ms.attributes.{OncePermission, WritePermission, Permission => ap, Util => au}
 import org.apache.http.HttpStatus._
-import ms.{BoundsUtil => bu}
+import ms.{BoundsUtil => bu, Timestamp => ts}
 
 trait SlotsCommands {
   case class CreateSlotIN(obj: vo.CreateSlot, profile: ProfileRemote) extends RequestInfo

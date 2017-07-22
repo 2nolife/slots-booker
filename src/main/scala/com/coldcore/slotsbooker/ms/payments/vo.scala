@@ -37,13 +37,15 @@ package ext {
 
   case class Quote(quote_id: String, place_id: String, profile_id: Option[String],
                    amount: Option[Int], currency: Option[String],
-                   status: Option[Int], prices: Option[Seq[SlotPrice]])
-  object Quote extends DefaultJsonProtocol { implicit val format = jsonFormat7(apply) }
+                   status: Option[Int], prices: Option[Seq[SlotPrice]],
+                   entry_updated: Option[Long])
+  object Quote extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
   case class Refund(refund_id: String, place_id: String, profile_id: Option[String],
                     amount: Option[Int], currency: Option[String],
-                    status: Option[Int], prices: Option[Seq[SlotPrice]])
-  object Refund extends DefaultJsonProtocol { implicit val format = jsonFormat7(apply) }
+                    status: Option[Int], prices: Option[Seq[SlotPrice]],
+                    entry_updated: Option[Long])
+  object Refund extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
 
   case class Reference(reference_id: String, place_id: String, ref: Option[String], profile_id: Option[String],
                        quote: Option[Quote], refund: Option[Refund])

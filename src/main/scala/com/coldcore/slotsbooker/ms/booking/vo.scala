@@ -15,14 +15,16 @@ object SlotPrice extends DefaultJsonProtocol {
 
 case class Quote(quote_id: String, place_id: String, profile_id: Option[String],
                  amount: Option[Int], currency: Option[String],
-                 status: Option[Int], prices: Option[Seq[SlotPrice]], deal: Option[Boolean])
-object Quote extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
+                 status: Option[Int], prices: Option[Seq[SlotPrice]], deal: Option[Boolean],
+                 entry_updated: Option[Long])
+object Quote extends DefaultJsonProtocol { implicit val format = jsonFormat9(apply) }
 
 case class Refund(refund_id: String, place_id: String, profile_id: Option[String],
                   amount: Option[Int], currency: Option[String],
                   status: Option[Int], prices: Option[Seq[SlotPrice]],
-                  quotes: Option[Seq[Quote]])
-object Refund extends DefaultJsonProtocol { implicit val format = jsonFormat8(apply) }
+                  quotes: Option[Seq[Quote]],
+                  entry_updated: Option[Long])
+object Refund extends DefaultJsonProtocol { implicit val format = jsonFormat9(apply) }
 
 case class Reference(reference_id: String, place_id: String, ref: Option[String], profile_id: Option[String],
                      booked_ids: Option[Seq[String]], quote: Option[Quote], refund: Option[Refund])

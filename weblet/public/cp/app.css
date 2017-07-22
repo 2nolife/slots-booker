@@ -79,6 +79,10 @@ h1.top {
   padding-right: 10px;
 }
 
+#view-manage-places .edited-place .bounds .input-group-addon:first-child {
+  min-width: 60px;
+}
+
 #view-manage-places .edited-space button.slot-period {
   border-right: none;
   border-radius: 0;

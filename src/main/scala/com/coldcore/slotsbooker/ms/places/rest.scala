@@ -8,10 +8,12 @@ import ms.rest.BaseRestService
 import ms.vo.{EmptyEntity, ProfileRemote}
 import ms.places.vo
 
-class PlacesRestService(hostname: String, port: Int, val getDeepFields: Boolean,
+class PlacesRestService(hostname: String, port: Int, anonymousReads: Boolean, val getDeepFields: Boolean,
                         val placesActor: ActorRef,
                         externalAuthActor: ActorRef)(implicit system: ActorSystem)
   extends BaseRestService(hostname, port, externalAuthActor) with PlacesRoute {
+
+  val authenticate = if (anonymousReads) authenticateTokenOrAnonymous else authenticateToken
 
   bind(placesRoute, name = "Places")
 }
@@ -21,25 +23,29 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
 
   def placesRoute =
     pathPrefix("places") {
-      authenticateToken { profile =>
+      authenticate { profile =>
 
         pathEnd {
 
           get {
-            parameters('deep ? getDeepFields,
-                       'deep_spaces.as[Boolean].?,
-                       'deep_prices.as[Boolean].?) {
-              (deep,
-               deep_spaces,
-               deep_prices) =>
+            authorized(profile) {
+              parameters('deep ? getDeepFields,
+                         'deep_spaces.as[Boolean].?,
+                         'deep_prices.as[Boolean].?) {
+                (deep,
+                 deep_spaces,
+                 deep_prices) =>
 
-              completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(profile,
-                                                                      deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+                completeByActor[Seq[vo.Place]](placesActor, GetPlacesIN(profile,
+                                                                        deep_spaces.getOrElse(deep), deep_prices.getOrElse(deep)))
+              }
             }
           } ~
           post {
-            entity(as[vo.CreatePlace]) { entity =>
-              completeByActor[vo.Place](placesActor, CreatePlaceIN(entity, profile))
+            authorized(profile) {
+              entity(as[vo.CreatePlace]) { entity =>
+                completeByActor[vo.Place](placesActor, CreatePlaceIN(entity, profile))
+              }
             }
           }
 
@@ -68,8 +74,10 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
           pathEnd {
 
             patch {
-              entity(as[vo.UpdatePlace]) { entity =>
-                completeByActor[vo.Place](placesActor, UpdatePlaceIN(placeId, entity, profile))
+              authorized(profile) {
+                entity(as[vo.UpdatePlace]) { entity =>
+                  completeByActor[vo.Place](placesActor, UpdatePlaceIN(placeId, entity, profile))
+                }
               }
             } ~
             get {
@@ -85,7 +93,9 @@ trait PlacesRoute extends PlacesInnerSpacesRoute {
               }
             } ~
             delete {
-              completeByActor[EmptyEntity](placesActor, DeletePlaceIN(placeId, profile))
+              authorized(profile) {
+                completeByActor[EmptyEntity](placesActor, DeletePlaceIN(placeId, profile))
+              }
             }
 
           } ~
@@ -106,8 +116,10 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute with SpacesInnerBoun
       path("spaces") {
 
         post {
-          entity(as[vo.CreateSpace]) { entity =>
-            completeByActor[vo.Space](placesActor, CreateSpaceIN(placeId, entity, profile))
+          authorized(profile) {
+            entity(as[vo.CreateSpace]) { entity =>
+              completeByActor[vo.Space](placesActor, CreateSpaceIN(placeId, entity, profile))
+            }
           }
         } ~
         get {
@@ -150,13 +162,17 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute with SpacesInnerBoun
         pathEnd {
 
           patch {
-            entity(as[vo.UpdateSpace]) { entity =>
-              completeByActor[vo.Space](placesActor, UpdateSpaceIN(placeId, spaceId, entity, profile))
+            authorized(profile) {
+              entity(as[vo.UpdateSpace]) { entity =>
+                completeByActor[vo.Space](placesActor, UpdateSpaceIN(placeId, spaceId, entity, profile))
+              }
             }
           } ~
           post {
-            entity(as[vo.CreateSpace]) { entity =>
-              completeByActor[vo.Space](placesActor, CreateInnerSpaceIN(placeId, spaceId, entity, profile))
+            authorized(profile) {
+              entity(as[vo.CreateSpace]) { entity =>
+                completeByActor[vo.Space](placesActor, CreateInnerSpaceIN(placeId, spaceId, entity, profile))
+              }
             }
           } ~
           get {
@@ -172,7 +188,9 @@ trait PlacesInnerSpacesRoute extends SpacesInnerPricesRoute with SpacesInnerBoun
             }
           } ~
           delete {
-            completeByActor[EmptyEntity](placesActor, DeleteSpaceIN(placeId, spaceId, profile))
+            authorized(profile) {
+              completeByActor[EmptyEntity](placesActor, DeleteSpaceIN(placeId, spaceId, profile))
+            }
           }
 
         } ~
@@ -216,8 +234,10 @@ trait SpacesInnerPricesRoute {
       path("prices") {
 
         post {
-          entity(as[vo.CreatePrice]) { entity =>
-            completeByActor[vo.Price](placesActor, CreatePriceIN(placeId, spaceId, entity, profile))
+          authorized(profile) {
+            entity(as[vo.CreatePrice]) { entity =>
+              completeByActor[vo.Price](placesActor, CreatePriceIN(placeId, spaceId, entity, profile))
+            }
           }
         } ~
         get {
@@ -228,15 +248,19 @@ trait SpacesInnerPricesRoute {
       pathPrefix("prices" / Segment) { priceId =>
 
         patch {
-          entity(as[vo.UpdatePrice]) { entity =>
-            completeByActor[vo.Price](placesActor, UpdatePriceIN(placeId, spaceId, priceId, entity, profile))
+          authorized(profile) {
+            entity(as[vo.UpdatePrice]) { entity =>
+              completeByActor[vo.Price](placesActor, UpdatePriceIN(placeId, spaceId, priceId, entity, profile))
+            }
           }
         } ~
         get {
           completeByActor[vo.Price](placesActor, GetPriceIN(placeId, spaceId, priceId, profile))
         } ~
         delete {
-          completeByActor[EmptyEntity](placesActor, DeletePriceIN(placeId, spaceId, priceId, profile))
+          authorized(profile) {
+            completeByActor[EmptyEntity](placesActor, DeletePriceIN(placeId, spaceId, priceId, profile))
+          }
         }
 
       }

@@ -6,6 +6,7 @@ module.exports = {
   find_forEach: find_forEach,
   insert_n: insert_n,
   insert_one: insert_one,
+  findAndModify_single: findAndModify_single,
   findAndModify_byId: findAndModify_byId,
   sequentialPromise: sequentialPromise
 }
@@ -56,9 +57,9 @@ function insert_one(collection, /*json*/ newItem, /*fn*/ onItem) {
   })
 }
 
-function findAndModify_byId(collection, /*str*/ id, update, /*fn*/ callback, /*bool*/ assertExists) {
+function findAndModify_single(collection, query, update, /*fn*/ callback, /*bool*/ assertExists) {
   collection.findAndModify(
-    finderById(id),
+    query,
     sortById(),
     update,
     function(err, result) {
@@ -67,6 +68,10 @@ function findAndModify_byId(collection, /*str*/ id, update, /*fn*/ callback, /*b
       if (assertExists) assert(result.value != null, 'Item not found')
       if (callback) callback(result)
     })
+}
+
+function findAndModify_byId(collection, /*str*/ id, update, /*fn*/ callback, /*bool*/ assertExists) {
+  findAndModify_single(collection, finderById(id), update, /*fn*/ callback, /*bool*/ assertExists)
 }
 
 /** Use instead of "Q.all" to avoid DB hammering when executing too mary concurrent inserts / updates */

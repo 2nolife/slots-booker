@@ -8,6 +8,7 @@ import com.mongodb.casbah.MongoClient
 import com.mongodb.casbah.commons.MongoDBObject
 import org.bson.types.ObjectId
 import ms.booking.vo
+import ms.{Timestamp => ts}
 
 trait BookingDb extends QuoteCRUD with RefundCRUD with ReferenceCRUD
 
@@ -42,7 +43,7 @@ class MongoBookingDb(client: MongoClient, dbName: String) extends BookingDb with
   val references = db(MS+"-references")
   val locks = db(MS+"-locks")
 
-  val quoteStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2)
+  val quoteStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2, 'not_paid -> 3)
   val refundStatus = Map('inactive -> 0, 'complete -> 1, 'pending_payment -> 2)
 }
 
@@ -77,7 +78,8 @@ trait VoFactory {
         getAs[Seq[DBObject]]("prices")
           .map(_.map(asSlotPrice(_)))
           .noneIfEmpty,
-      deal = getAs[Boolean]("deal")
+      deal = getAs[Boolean]("deal"),
+      entry_updated = getAs[Long]("entry.updated")
     )
   }
 
@@ -97,7 +99,8 @@ trait VoFactory {
       quotes =
         getAs[Seq[String]]("quote_ids")
           .map(_.flatMap(quoteById))
-          .noneIfEmpty
+          .noneIfEmpty,
+      entry_updated = getAs[Long]("entry.updated")
     )
   }
 
@@ -273,12 +276,10 @@ trait ReferenceCrudImpl {
   override def referencePaid(ref: String, profileId: String): Option[vo.Reference] =
     referenceByRef(ref, profileId).map { reference =>
       reference.quote.foreach { q =>
-        quotes
-          .findAndModify(finderById(q.quote_id), $set("status" -> quoteStatus('complete)))
+        updateQuoteStatus(q.quote_id, quoteStatus('complete))
       }
       reference.refund.foreach { r =>
-        refunds
-          .findAndModify(finderById(r.refund_id), $set("status" -> quoteStatus('complete)))
+        updateRefundStatus(r.refund_id, refundStatus('complete))
       }
       referenceById(reference.reference_id).get
     }
@@ -292,8 +293,8 @@ trait ReferenceCrudImpl {
             .isDefined
 
         if (refunded)
-          quotes // mask as refunded to eliminate from future searches
-            .findAndModify(finderById(id), $set("status" -> quoteStatus('complete)))
+          quotes // mask as expired to eliminate from future searches
+            .findAndModify(finderById(id), $set("status" -> quoteStatus('not_paid)))
 
         if (refunded) None
         else

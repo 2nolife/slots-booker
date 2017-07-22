@@ -142,6 +142,7 @@ app.directive('editedPlaceSpaces', function($rootScope) {
     $scope.saveEditedSpaceProperties = function() {
       var entity = $scope.editedSpace.toApiAttributesEntity()
       entity.name = $scope.editedSpace.name
+      $.extend(true, entity, $scope.editedSpace.toApiBoundsEntity())
       sb_apiSpacesService.patchSpace($scope.editedSpace.placeId, $scope.editedSpace.id, entity, function() {
         $scope.editedSpace.refresh()
         sb_notifyService.notify('Saved', 'success')

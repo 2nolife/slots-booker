@@ -116,8 +116,8 @@ app.directive('myReservationsSelectBooking', function() {
 
       function slotStatus() {
         var now = new Date(),
-            todayDatetime = sb.utils.todayDate()+(now.getHours()*100+now.getMinutes())
-            slotDatetime = ''+_this.dateFrom+_this.timeFrom,
+            todayDatetime = sb.utils.datetime(sb.utils.todayDate(), now.getHours()*100+now.getMinutes()),
+            slotDatetime = sb.utils.datetime(_this.dateFrom, _this.timeFrom),
             status = ''
        if (sb.utils.datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
 

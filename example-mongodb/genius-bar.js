@@ -26,14 +26,6 @@ function setVars(/*obj*/ db, /*{}*/ profileIds, /*{}*/ placeIds) {
   console.log('Genius Bar module set up')
 }
 
-function finderById(/*str*/ id) {
-  return { _id: ObjectID.createFromHexString(id) }
-}
-
-function sortById() {
-  return [['_id', 'asc']]
-}
-
 function addSlots() {
   var deferred = Q.defer()
   var times = [0900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700],

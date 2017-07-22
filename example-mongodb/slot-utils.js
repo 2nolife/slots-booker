@@ -6,7 +6,9 @@ module.exports = {
   setDb: setDb,
   addSlot: addSlot,
   addPrice: addPrice,
-  bookRandomSlots: bookRandomSlots
+  bookRandomSlots: bookRandomSlots,
+  bookSlot: bookSlot,
+  cancelSlot: cancelSlot
 }
 
 var _slots, _booked, _bookings, _prices
@@ -99,6 +101,22 @@ function bookSlot(/*str*/ slotId, /*str*/ profileId) { //todo proper booking as 
     finderById(slotId),
     sortById(),
     { $set: { book_status: 1 }},
+    function(err, result) {
+      assert.equal(null, err)
+      assert(result.value != null, 'Slot not found')
+      deferred.resolve()
+    })
+
+  return deferred.promise
+}
+
+function cancelSlot(/*str*/ slotId) { //todo proper cancel as in MongoVerify
+  var deferred = Q.defer()
+
+  _slots.findAndModify(
+    finderById(slotId),
+    sortById(),
+    { $set: { book_status: 0 }},
     function(err, result) {
       assert.equal(null, err)
       assert(result.value != null, 'Slot not found')

@@ -21,21 +21,28 @@ app.filter('sb_numberX100', function() {
   }
 })
 
-app.filter('sb_numberAsDate', function() {
+app.filter('sb_formatDate', function() {
   return function(/*num|str*/ value) {
-    // 20161230 -> 12/30/2016
+    // 20161230 -> 30/12/2016
     return value ? sb.utils.formatDate(value) : ''
   }
 })
 
-app.filter('sb_numberAsTime', function() {
+app.filter('sb_formatDateFull', function() {
+  return function(/*num|str*/ value) {
+    // 20161230 -> 30 December 2016
+    return value ? sb.utils.formatDateFull(value) : ''
+  }
+})
+
+app.filter('sb_formatTime', function() {
   return function(/*num|str*/ value) {
     // 1259 -> 12:59
     return value ? sb.utils.formatTime(value) : ''
   }
 })
 
-app.filter('sb_numberAsWeekday', function() {
+app.filter('sb_weekdayAsWord', function() {
   return function(/*str*/ value) {
     // 20161230 -> Friday
     return value ? sb.utils.weekdayAsWord(value) : ''
@@ -53,5 +60,19 @@ app.filter('sb_memberLevelAsWord', function() {
   return function(/*num*/ value) {
     // 1 -> Standard
     return value || value == 0 ? sb.utils.memberLevelAsWord(value) : ''
+  }
+})
+
+app.filter('sb_memberLevelAsWordSimple', function() {
+  return function(/*num*/ value) {
+    // 1 -> Standard
+    return value || value == 0 ? sb.utils.memberLevelAsWordSimple(value) : ''
+  }
+})
+
+app.filter('sb_formatTime', function() {
+  return function(/*num|str*/ value) {
+    // 1200 -> 12:00
+    return value ? sb.utils.formatTime(value) : ''
   }
 })

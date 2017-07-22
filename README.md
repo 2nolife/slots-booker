@@ -46,27 +46,29 @@ Feedback email cftp@coldcore.com
 This code is open source software licensed under the [GNU Lesser General Public License v3](http://www.gnu.org/licenses/lgpl-3.0.en.html).
 
 ## Available features ##
-* Authentication with OAuth2 token
 * Multi tenancy and multiple clubs per user
 * Hierarchy of spaces (e.g. halls, parking lots) and time slots per club
 * Hierarchy of prices across spaces and slots
 * Bookings which do or do not require payment
 * Cancellation and full refunds for bookings
-* Users balance per club in multiple currencies
 * Expiration of unpaid bookings
 * References for successful bookings and refunds
 * Time periods to book and cancel with hierarchy across spaces and slots
+* Users balance per club in multiple currencies
+* Users can credit clubs and pay through PayPal
 * Local timezone support per club
 * Discount for club members and membership types
+* Authentication with OAuth2 token
+* Read only anonymous users support
 * Responses with full and partial JSON graph
-* Users can credit clubs and pay through PayPal
 * Genius Bar: the simple UI example to demo basic bookings
 * Westfield Cinema: the advanced UI example to demo a cinema
+* Denham WSC: the advanced UI example to demo a water ski club
 
 ## Outstanding work ##
 
 ### Major topics ###
-* Control panel for users, admins and moderators
+* Control panel for users, admins and moderators (partially available)
 * 3rd party payment support
 * Deals and promotions on slots (get 3 for the price of 2)
 * Notifications in case if booked slots cancelled
@@ -78,5 +80,5 @@ This code is open source software licensed under the [GNU Lesser General Public 
 * Optional payments (extra luggage, fancy 3D glasses)
 
 ### Other features ###
-* Read only anonymous users support
 * Error responses with custom codes (available for 409 status code)
+* User payment and refund statements

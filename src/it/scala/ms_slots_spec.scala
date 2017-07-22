@@ -2,6 +2,7 @@ package com.coldcore.slotsbooker
 package test
 
 import akka.http.scaladsl.model.headers.Authorization
+import ms.{Timestamp => ts}
 import org.apache.http.HttpStatus._
 import org.scalatest._
 import ms.slots.vo
@@ -83,6 +84,11 @@ class MsSlotsSpec extends BaseMsSlotsSpec {
     val slot = (When patchTo url entity json withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Slot]
 
     slot.name.get shouldBe "Red Parking"
+  }
+
+  "GET to /slots/{id}" should "not give 401 for an anonymous read" in {
+    val url = s"$slotsBaseUrl/slots/$randomId"
+    When getTo url expect() code SC_NOT_FOUND
   }
 
   "GET to /slots/{id}" should "return a slot" in {
@@ -886,7 +892,7 @@ class MsSlotsBoundsSpec extends BaseMsSlotsSpec {
       bookBounds = Some(ms.places.vo.Bounds(Some(ms.places.vo.Bound(date = None, time = Some(800), before = Some(14*1440))), None))) // open: 2 weeks before at 8:00, close: ?
     val slotIdA = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1200, timeTo = 1215, // 24/03/2017 12:00 to 12:15
-      book_bounds = Some(vo.Bounds(None, Some(vo.Bound(date = Some(20170322), time = Some(1000), None))))) // open: ?, close: 22/03/2017 at 10:00
+      bookBounds = Some(vo.Bounds(None, Some(vo.Bound(date = Some(20170322), time = Some(1000), None))))) // open: ?, close: 22/03/2017 at 10:00
     val slotIdB = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1215, timeTo = 1230) // 24/03/2017 12:15 to 12:30
 
@@ -903,13 +909,29 @@ class MsSlotsBoundsSpec extends BaseMsSlotsSpec {
     Some(boundsB).map(b => (b.date_from, b.date_to, b.time_from, b.time_to)).get shouldBe (Some(20170310), None, Some(800), None)
   }
 
+  "GET to /slots/{id}/effective/bounds?book" should "calculate book bounds date and time" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId,
+      dateFrom = 20170318, dateTo = 20170318, timeFrom = 1200, timeTo = 1230,
+      bookBounds = Some(vo.Bounds( // open: 2 weeks before at 8:00, close: 2 days before at 24:00
+        Some(vo.Bound(date = None, time = Some(800), before = Some(14*1440))),
+        Some(vo.Bound(date = None, time = Some(2400), before = Some(2*1440))))))
+
+    val urlA = s"$slotsBaseUrl/slots/$slotId/effective/bounds?book"
+    val bounds = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    (bounds.date_from.get, bounds.time_from.get) shouldBe (20170304, 800)
+    (bounds.date_to.get, bounds.time_to.get) shouldBe (20170316, 2400)
+  }
+
   "GET to /slots/{id}/effective/bounds?cancel" should "return cancel bounds for a slot inherited from parent spaces" in {
     val placeId = mongoCreatePlace()
     val spaceId = mongoCreateSpace(placeId,
       cancelBounds = Some(ms.places.vo.Bounds(None, Some(ms.places.vo.Bound(date = None, time = Some(2400), before = Some(2*1440)))))) // open: ?, close: 2 days before at 24:00
     val slotIdA = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1200, timeTo = 1215, // 24/03/2017 12:00 to 12:15
-      cancel_bounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
+      cancelBounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
     val slotIdB = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1215, timeTo = 1230) // 24/03/2017 12:15 to 12:30
 
@@ -932,7 +954,7 @@ class MsSlotsBoundsSpec extends BaseMsSlotsSpec {
       bookBounds = Some(ms.places.vo.Bounds(Some(ms.places.vo.Bound(date = None, time = Some(800), before = Some(14*1440))), None))) // open: 2 weeks before at 8:00, close: ?
     val slotIdA = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1200, timeTo = 1215, // 24/03/2017 12:00 to 12:15
-      cancel_bounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
+      cancelBounds = Some(vo.Bounds(Some(vo.Bound(date = Some(20170323), time = Some(2000), None)), None))) // open: 23/03/2017 at 20:00, close: ?
     val slotIdB = mongoCreateSlot(placeId, spaceId,
       dateFrom = 20170324, dateTo = 20170324, timeFrom = 1215, timeTo = 1230) // 24/03/2017 12:15 to 12:30
 
@@ -947,6 +969,22 @@ class MsSlotsBoundsSpec extends BaseMsSlotsSpec {
 
     (boundsB.open.get, boundsB.close) shouldBe (vo.Bound(None, Some(800), Some(14*1440)), None)
     Some(boundsB).map(b => (b.date_from, b.date_to, b.time_from, b.time_to)).get shouldBe (Some(20170310), None, Some(800), None)
+  }
+
+  "GET to /slots/{id}/effective/bounds?cancel" should "calculate cancel bounds date and time" in {
+    val placeId = mongoCreatePlace()
+    val spaceId = mongoCreateSpace(placeId)
+    val slotId = mongoCreateSlot(placeId, spaceId,
+      dateFrom = 20170318, dateTo = 20170318, timeFrom = 1200, timeTo = 1230,
+      cancelBounds = Some(vo.Bounds( // open: none, close: 2 days before at 24:00
+        None,
+        Some(vo.Bound(date = None, time = Some(2400), before = Some(2*1440))))))
+
+    val urlA = s"$slotsBaseUrl/slots/$slotId/effective/bounds?cancel"
+    val bounds = (When getTo urlA withHeaders testuserTokenHeader expect() code SC_OK).withBody[vo.Bounds]
+
+    (bounds.date_from, bounds.time_from) shouldBe (None, None)
+    (bounds.date_to.get, bounds.time_to.get) shouldBe (20170316, 2400)
   }
 
 }

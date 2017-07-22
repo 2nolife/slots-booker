@@ -112,6 +112,11 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
     When patchTo url entity json withHeaders headers expect() code SC_FORBIDDEN
   }
 
+  "GET to /places" should "give 401 with invalid bearer token" in {
+    val url = s"$placesBaseUrl/places"
+    assert401_invalidToken { When getTo url }
+  }
+
   "GET to /places" should "return places where a user is either owner or moderator" in {
     val placeId = mongoCreatePlace()
     val profileId = mongoProfileId("testuser2")
@@ -132,6 +137,11 @@ class MsPlacesSpec extends BaseMsPlacesSpec {
     val placesC = (When getTo url withHeaders headersC expect() code SC_OK).withBody[Seq[vo.Place]]
 
     placesC.size shouldBe 0
+  }
+
+  "GET to /places/{id}" should "not give 401 for an anonymous read" in {
+    val url = s"$placesBaseUrl/places/$randomId"
+    When getTo url expect() code SC_NOT_FOUND
   }
 
   "GET to /places/{id}" should "return a place" in {

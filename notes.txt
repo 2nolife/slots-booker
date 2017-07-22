@@ -69,6 +69,10 @@ Model diagram
     2 - is being booked
     3 - is being released (goes to bookable)
 
+  * disabled property
+    0 - enabled
+    1 - disabled (other reason)
+
   Booked (maps slots with bookings)
   |
   +-- Properties (status, paid,etc)
@@ -96,7 +100,7 @@ Model diagram
     0 - inactive
     1 - complete
     2 - pending payment (from user)
-    3 - not paid
+    3 - not paid and expired
 
   * deal property
     true  - package deal or discount was applied, bookings may only be cancelled all at once
@@ -206,7 +210,11 @@ Moderator should have no restrictions and can book slots on behalf of a user:
  e. refund expired slots
  f. no maximum limit applied
 Members search pagination
-Refactor ?effective --> effective/prices /availability etc
+User token refresh with every request
+User logout
+Sign in by email
+Forbid refund and quote in case of multiple currencies
+Forbid booking on disabled slots
 
 
 Running in the background

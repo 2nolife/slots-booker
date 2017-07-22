@@ -9,10 +9,12 @@ import ms.rest.BaseRestService
 import ms.slots.actors.SlotsActor._
 import ms.slots.vo
 
-class SlotsRestService(hostname: String, port: Int, val systemToken: String, val getDeepFields: Boolean,
+class SlotsRestService(hostname: String, port: Int, anonymousReads: Boolean, val systemToken: String, val getDeepFields: Boolean,
                        val slotsActor: ActorRef,
                        externalAuthActor: ActorRef)(implicit system: ActorSystem)
   extends BaseRestService(hostname, port, externalAuthActor) with SlotsRoute {
+
+  val authenticate = if (anonymousReads) authenticateTokenOrAnonymous else authenticateToken
 
   bind(slotsRoute, name = "Slots")
 }
@@ -22,13 +24,15 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
 
   def slotsRoute =
     pathPrefix("slots") {
-      authenticateToken { profile =>
+      authenticate { profile =>
 
         pathEnd {
 
           post {
-            entity(as[vo.CreateSlot]) { entity =>
-              completeByActor[vo.Slot](slotsActor, CreateSlotIN(entity, profile))
+            authorized(profile) {
+              entity(as[vo.CreateSlot]) { entity =>
+                completeByActor[vo.Slot](slotsActor, CreateSlotIN(entity, profile))
+              }
             }
           }
 
@@ -71,9 +75,11 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
         path("booked") {
 
           post {
-            entity(as[vo.CreateBooked]) { entity =>
-              authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
-                completeByActor[vo.Booked](slotsActor, CreateBookedIN(entity, userProfile))
+            authorized(profile) {
+              entity(as[vo.CreateBooked]) { entity =>
+                authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
+                  completeByActor[vo.Booked](slotsActor, CreateBookedIN(entity, userProfile))
+                }
               }
             }
           }
@@ -82,9 +88,11 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
         path("booked" / Segment) { bookedId =>
 
           patch {
-            entity(as[vo.UpdateBooked]) { entity =>
-              authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
-                completeByActor[vo.Booked](slotsActor, UpdateBookedIN(bookedId, entity, userProfile))
+            authorized(profile) {
+              entity(as[vo.UpdateBooked]) { entity =>
+                authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
+                  completeByActor[vo.Booked](slotsActor, UpdateBookedIN(bookedId, entity, userProfile))
+                }
               }
             }
           }
@@ -94,8 +102,10 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
           pathEnd {
 
             patch {
-              entity(as[vo.UpdateSlot]) { entity =>
-                completeByActor[vo.Slot](slotsActor, UpdateSlotIN(slotId, entity, profile))
+              authorized(profile) {
+                entity(as[vo.UpdateSlot]) { entity =>
+                  completeByActor[vo.Slot](slotsActor, UpdateSlotIN(slotId, entity, profile))
+                }
               }
             } ~
             get {
@@ -113,7 +123,9 @@ trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with
               }
             } ~
             delete {
-              completeByActor[EmptyEntity](slotsActor, DeleteSlotIN(slotId, profile))
+              authorized(profile) {
+                completeByActor[EmptyEntity](slotsActor, DeleteSlotIN(slotId, profile))
+              }
             }
 
           } ~
@@ -137,9 +149,11 @@ trait SlotsInnerBookingsRoute {
     path("bookings") {
 
       post {
-        entity(as[vo.CreateBooking]) { entity =>
-          authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
-            completeByActor[vo.Booking](slotsActor, CreateBookingIN(slotId, entity, userProfile))
+        authorized(profile) {
+          entity(as[vo.CreateBooking]) { entity =>
+            authenticateSystemToken(systemToken, entity.as_profile_id) { userProfile =>
+              completeByActor[vo.Booking](slotsActor, CreateBookingIN(slotId, entity, userProfile))
+            }
           }
         }
       } ~
@@ -153,11 +167,13 @@ trait SlotsInnerBookingsRoute {
     path("bookings" / Segment) { bookingId =>
 
       patch {
-        entity(as[vo.UpdateBooking]) { entity =>
-          def update(userProfile: ProfileRemote): Route =
-            completeByActor[vo.Booking](slotsActor, UpdateBookingIN(slotId, bookingId, entity, userProfile))
+        authorized(profile) {
+          entity(as[vo.UpdateBooking]) { entity =>
+            def update(userProfile: ProfileRemote): Route =
+              completeByActor[vo.Booking](slotsActor, UpdateBookingIN(slotId, bookingId, entity, userProfile))
 
-          entity.as_profile_id.map(authenticateSystemToken(systemToken, _) { update }).getOrElse { update(profile) }
+            entity.as_profile_id.map(authenticateSystemToken(systemToken, _) { update }).getOrElse { update(profile) }
+          }
         }
       } ~
       get {
@@ -183,8 +199,10 @@ trait SlotsInnerPricesRoute {
     path("prices") {
 
       post {
-        entity(as[vo.CreatePrice]) { entity =>
-          completeByActor[vo.Price](slotsActor, CreatePriceIN(slotId, entity, profile))
+        authorized(profile) {
+          entity(as[vo.CreatePrice]) { entity =>
+            completeByActor[vo.Price](slotsActor, CreatePriceIN(slotId, entity, profile))
+          }
         }
       } ~
       get {
@@ -195,15 +213,19 @@ trait SlotsInnerPricesRoute {
     path("prices" / Segment) { priceId =>
 
       patch {
-        entity(as[vo.UpdatePrice]) { entity =>
-          completeByActor[vo.Price](slotsActor, UpdatePriceIN(slotId, priceId, entity, profile))
+        authorized(profile) {
+          entity(as[vo.UpdatePrice]) { entity =>
+            completeByActor[vo.Price](slotsActor, UpdatePriceIN(slotId, priceId, entity, profile))
+          }
         }
       } ~
       get {
         completeByActor[vo.Price](slotsActor, GetPriceIN(slotId, priceId, profile))
       } ~
       delete {
-        completeByActor[EmptyEntity](slotsActor, DeletePriceIN(slotId, priceId, profile))
+        authorized(profile) {
+          completeByActor[EmptyEntity](slotsActor, DeletePriceIN(slotId, priceId, profile))
+        }
       }
 
     }
@@ -218,9 +240,11 @@ trait SlotsInnerHoldRoute {
     path("hold") {
 
       patch {
-        entity(as[vo.UpdateHold]) { entity =>
-          authenticateSystemToken(systemToken) { _ =>
-            completeByActor[EmptyEntity](slotsActor, UpdateHoldIN(slotId, entity, profile))
+        authorized(profile) {
+          entity(as[vo.UpdateHold]) { entity =>
+            authenticateSystemToken(systemToken) { _ =>
+              completeByActor[EmptyEntity](slotsActor, UpdateHoldIN(slotId, entity, profile))
+            }
           }
         }
       }

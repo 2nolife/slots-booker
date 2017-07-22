@@ -939,7 +939,7 @@ class MsBookingUpdateModeratorSpec extends BaseMsBookingSpec {
 }
 
 //todo refund and quote in case of multiple currencies should give 409
-//todo bookings or refunds of the slots in the past should give 409
+//todo booking or refunding disabled slots should give 409
 
 class MsBookingReferenceSpec extends BaseMsBookingSpec {
 

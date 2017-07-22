@@ -24,7 +24,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val placesActor = system.actorOf(PlacesActor.props(placesDb, config.voAttributes).withRouter(FromConfig), name = MS)
 
-    new PlacesRestService(config.hostname, config.port, config.getDeepFields, placesActor, externalAuthActor(config, restClient))
+    new PlacesRestService(config.hostname, config.port, config.anonymousReads, config.getDeepFields, placesActor, externalAuthActor(config, restClient))
   }
 }
 

@@ -238,7 +238,7 @@ app.service('sb_apiSpacesService', function($http, sb_apiHelper, $q, sb_apiClass
   service.refreshPrices = function(/*str*/ placeId, /*str*/ spaceId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
     options = $.extend(true, {}, options)
 
-    var effective = options.effective != undefined ? '/effective' : ''
+    var effective = options.effective ? '/effective' : ''
 
     $http.get('/api/places/'+placeId+'/spaces/'+spaceId+effective+'/prices')
       .then(
@@ -389,7 +389,7 @@ app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassW
     options = $.extend(true, {}, options)
 
     var query = ''
-    if (options.active != undefined) query += '&active'
+    if (options.active) query += '&active'
     if (query) query = '?'+query.substring(1)
 
     $http.get('/api/slots/'+slotId+'/bookings'+query)
@@ -407,13 +407,30 @@ app.service('sb_apiSlotsService', function($http, sb_apiHelper, $q, sb_apiClassW
   service.refreshPrices = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
     options = $.extend(true, {}, options)
 
-    var effective = options.effective != undefined ? '/effective' : ''
+    var effective = options.effective ? '/effective' : ''
 
     $http.get('/api/slots/'+slotId+effective+'/prices')
       .then(
         function successCallback(response) {
           var prices = response.data
           callback(prices.map(function(price) { return sb_apiClassWrap.wrap(price, 'price') }))
+          if (statusCallback) statusCallback('success')
+        },
+        function errorCallback(response) {
+          if (!statusCallback || !statusCallback('error', response)) sb_apiHelper.notifyResponseError(response)
+        })
+  }
+
+  service.refreshBounds = function(/*str*/ slotId, /*fn*/ callback, /*fn*/ statusCallback, /*json*/ options) {
+    options = $.extend(true, {}, options)
+
+    var effective = options.effective ? '/effective' : ''
+
+    $http.get('/api/slots/'+slotId+effective+'/bounds?'+options.param)
+      .then(
+        function successCallback(response) {
+          var bounds = response.data
+          callback(sb_apiClassWrap.wrap(bounds, 'bounds'))
           if (statusCallback) statusCallback('success')
         },
         function errorCallback(response) {
@@ -771,6 +788,9 @@ app.service('sb_apiClassWrap', function($injector) {
         break
       case 'member':
         clz = new sb.classes.Member(json, sc)
+        break
+      case 'bounds':
+        clz = new sb.classes.Bounds(json, sc)
         break
     }
 

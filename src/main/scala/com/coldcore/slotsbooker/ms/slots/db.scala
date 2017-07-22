@@ -113,6 +113,7 @@ trait VoFactory {
       prices = if (fields.deepPrices) Some(pricesBySlotId(slotId)).noneIfEmpty else None,
       book_status = getAs[Int]("book_status"),
       booked = if (fields.deepBooked) getAs[String]("booked").flatMap(bookedById) else None,
+      disabled = getAs[Int]("disabled").orElse(Some(0)),
       attributes =
         getAs[AnyRef]("attributes")
         .map(json => Attributes(json.toString)),
@@ -249,6 +250,7 @@ trait SlotsCrudImpl {
       "date_to" -> date_to,
       "time_from" -> time_from,
       "time_to" -> time_to,
+      "disabled" -> disabled,
       "book_bounds" -> book_bounds.map(asMongoObject),
       "cancel_bounds" -> cancel_bounds.map(asMongoObject)
     ).foreach { case (key, value) =>

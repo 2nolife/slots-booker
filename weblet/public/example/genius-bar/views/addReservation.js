@@ -156,8 +156,8 @@ app.directive('addReservationSelectSlot', function() {
 
       function slotStatus() {
         var now = new Date(),
-            todayDatetime = sb.utils.todayDate()+(now.getHours()*100+now.getMinutes())
-            slotDatetime = ''+_this.dateFrom+_this.timeFrom,
+            todayDatetime = sb.utils.datetime(sb.utils.todayDate(), now.getHours()*100+now.getMinutes()),
+            slotDatetime = sb.utils.datetime(_this.dateFrom, _this.timeFrom),
             status = 'free'
         if (sb.utils.datetimeCompare(slotDatetime, todayDatetime) <= 0) status = 'late'
         if (_this.bookStatus != 0) status = 'booked'

@@ -1,6 +1,7 @@
 module.exports = {
   todayDate: todayDate,
   addDaysDate: addDaysDate,
+  addMinutesTime: addMinutesTime,
   weekdayAsWord : weekdayAsWord
 }
 
@@ -31,6 +32,15 @@ function addDaysDate(/*str*/ value, /*num*/ add) {
   var date = strToDate(value)
   var result = dateUTC(date.getFullYear(), date.getMonth(), date.getDate()+add)
   return dateToStr(result)
+}
+
+/** 1230,45 -> 1315, 22:00,125 -> 0005 */
+function addMinutesTime(/*str|num*/ value, /*num*/ add) {
+  var str = ('0000'+value).slice(-4),
+      minutes = parseInt(str.substr(0,2))*60+parseInt(str.substr(2,2))+add,
+      result = Math.floor(minutes/60)*100+Math.floor(minutes%60)
+  while (result >= 2400) result -= 2400
+  return ('0000'+result).slice(-4)
 }
 
 /** 20170123 -> Wednesday */

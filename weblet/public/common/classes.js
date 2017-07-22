@@ -11,7 +11,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['name', 'address', 'owner', 'spaces', 'moderatorIds', 'moderators', 'attributes', 'members'])
+
       _this.id = source.place_id
       _this.name = _this.name || source.name
       _this.address = _this.address || source.address
@@ -130,7 +133,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Place*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -145,7 +148,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['name', 'prices', 'spaces', 'firstSpace', 'slots', 'slotsFilter', 'attributes', 'bookBounds', 'cancelBounds'])
+
       _this.id = source.space_id
       _this.placeId = source.place_id
       _this.parentSpaceId = source.parent_space_id
@@ -156,6 +162,8 @@ sb.classes = {
       _this.slots = _this.slots
       _this.slotsFilter = _this.slotsFilter || _this._slotsFilter || defaultSlotsFilter()
       _this.attributes = _this.attributes || source.attributes || {}
+      _this.bookBounds = _this.bookBounds || new sb.classes.Bounds(source.book_bounds)
+      _this.cancelBounds = _this.cancelBounds || new sb.classes.Bounds(source.cancel_bounds)
     }
 
     applyChangesFromSource()
@@ -190,7 +198,7 @@ sb.classes = {
             _this.onChangeCallback.trigger('effectivePrices')
           },
           callback,
-          { effective: '' })
+          { effective: true })
 
       } else callback('noop')
     }
@@ -298,7 +306,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Space*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -313,7 +321,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['name', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo', 'prices', 'effectivePrices', 'bookings', 'activeBookings', 'attributes', 'bookStatus'])
+
       _this.id = source.slot_id
       _this.placeId = source.place_id
       _this.spaceId = source.space_id
@@ -328,6 +339,11 @@ sb.classes = {
       _this.activeBookings = _this.activeBookings
       _this.attributes = _this.attributes || source.attributes || {}
       _this.bookStatus = source.book_status
+      _this.disabled = source.disabled
+      _this.bookBounds = _this.bookBounds || new sb.classes.Bounds(source.book_bounds)
+      _this.cancelBounds = _this.cancelBounds || new sb.classes.Bounds(source.cancel_bounds)
+      _this.effectiveBookBounds = _this.effectiveBookBounds
+      _this.effectiveCancelBounds = _this.effectiveCancelBounds
     }
 
     applyChangesFromSource()
@@ -358,7 +374,37 @@ sb.classes = {
             _this.onChangeCallback.trigger('effectivePrices')
           },
           callback,
-          { effective: '' })
+          { effective: true })
+
+      } else callback('noop')
+    }
+
+    /** get slot effective book bounds from API  */
+    function refreshEffectiveBookBounds(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.effectiveBookBounds || force) {
+
+        sc.apiSlotsService.refreshBounds(_this.id,
+          function(/*[Bound]*/ bounds) {
+            _this.effectiveBookBounds = bounds
+            _this.onChangeCallback.trigger('effectiveBookBounds')
+          },
+          callback,
+          { effective: true, param: 'book' })
+
+      } else callback('noop')
+    }
+
+    /** get slot effective cancel bounds from API  */
+    function refreshEffectiveCancelBounds(/*bool*/ force, /*fn*/ callback) {
+      if (!_this.effectiveCancelBounds || force) {
+
+        sc.apiSlotsService.refreshBounds(_this.id,
+          function(/*[Bound]*/ bounds) {
+            _this.effectiveCancelBounds = bounds
+            _this.onChangeCallback.trigger('effectiveCancelBounds')
+          },
+          callback,
+          { effective: true, param: 'cancel' })
 
       } else callback('noop')
     }
@@ -387,7 +433,7 @@ sb.classes = {
             _this.onChangeCallback.trigger('activeBookings')
           },
           callback,
-          { active: '' })
+          { active: true })
 
       } else callback('noop')
     }
@@ -416,6 +462,14 @@ sb.classes = {
           f = refreshEffectivePrices
           break
 
+        case 'effectiveBookBounds':
+          f = refreshEffectiveBookBounds
+          break
+
+        case 'effectiveCancelBounds':
+          f = refreshEffectiveCancelBounds
+          break
+
         case 'bookings':
           f = refreshBookings
           break
@@ -438,7 +492,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Slot*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -453,7 +507,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['name', 'amount', 'currency', 'memberLevel', 'attributes'])
+
       _this.id = source.price_id
       _this.placeId = source.place_id
       _this.spaceId = source.space_id
@@ -515,7 +572,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Price*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -530,7 +587,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['name', 'status', 'user', 'attributes', 'price', 'reference', 'referenceCancel'])
+
       _this.id = source.booking_id
       _this.slotId = source.slot_id
       _this.profileId = source.profile_id
@@ -593,9 +653,9 @@ sb.classes = {
 
     /** get booking reference from API */
     function refreshReferenceCancel(/*bool*/ force, /*fn*/ callback) {
-      if ((!_this.referenceCancel || force) && _this.attributes.ref_cancel) {
+      if ((!_this.referenceCancel || force) && _this.attributes.cancel_ref) {
 
-        sc.apiPaymentsService.getReference(_this.attributes.ref_cancel, source.profile_id,
+        sc.apiPaymentsService.getReference(_this.attributes.cancel_ref, source.profile_id,
           function(/*Reference*/ reference) {
             _this.referenceCancel = reference
             _this.onChangeCallback.trigger('referenceCancel')
@@ -651,7 +711,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Booking*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -666,7 +726,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['username', 'email', 'roles', 'metadata', 'attributes', 'fullName'])
+
       _this.id = source.profile_id
       _this.username = _this.username || source.username
       _this.email = _this.email || source.email
@@ -714,7 +777,7 @@ sb.classes = {
     this.copyFrom = function(/*json|User*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -729,7 +792,10 @@ sb.classes = {
 
     this.onChangeCallback = new sb.classes.inner.Callbacks(_this)
 
-    function applyChangesFromSource() {
+    function applyChangesFromSource(/*str*/ key) {
+      if (key == '*') sb.utils.removeKeys(_this,
+        ['user', 'level'])
+
       _this.profileId = source.profile_id
       _this.placeId = source.place_id
       _this.user = _this.user
@@ -788,7 +854,7 @@ sb.classes = {
     this.copyFrom = function(/*json|Member*/ src) {
       var json = src.source ? src.source : src
       sb.utils.replaceInternals(source, json)
-      applyChangesFromSource()
+      applyChangesFromSource('*')
       _this.onChangeCallback.trigger('*')
     }
 
@@ -807,6 +873,23 @@ sb.classes = {
     this.amount = source.amount
     this.currency = source.currency
     this.prices = (source.prices || []).map(function(/*json*/ p) { return new sb.classes.Price(p) })
+    this.entry = entryProperties()
+
+    function entryProperties() {
+      var updatedTs = ''+source.entry_updated,
+          updated = {}
+
+      if (updatedTs) {
+        updated = {
+          date: parseInt(updatedTs.substr(0, 8)),
+          time: parseInt(updatedTs.substr(8, 4))
+        }
+      }
+
+      return {
+        updated: updated
+      }
+    }
 
     this.priceFor = function(/*str*/ slotId) {
       var found = $.grep(_this.prices, function(/*Price*/ price) { return price.slotId == slotId })
@@ -817,6 +900,8 @@ sb.classes = {
 
   Refund: function(/*json*/ source, /*services*/ sc) { // read-only
 
+    var _this = this
+
     this.sc = sc
     this.source = source
 
@@ -826,6 +911,23 @@ sb.classes = {
     this.amount = source.amount
     this.currency = source.currency
     this.prices = (source.prices || []).map(function(/*json*/ p) { return new sb.classes.Price(p) })
+    this.entry = entryProperties()
+
+    function entryProperties() {
+      var updatedTs = ''+source.entry_updated,
+          updated = {}
+
+      if (updatedTs) {
+        updated = {
+          date: parseInt(updatedTs.substr(0, 8)),
+          time: parseInt(updatedTs.substr(8, 4))
+        }
+      }
+
+      return {
+        updated: updated
+      }
+    }
 
     this.priceFor = function(/*str*/ slotId) {
       var found = $.grep(_this.prices, function(/*Price*/ price) { return price.slotId == slotId })
@@ -876,6 +978,37 @@ sb.classes = {
       var arr = $.grep(_this.currencies, function(c) { return c.currency == currency })
       return arr.length ? arr[0] : { currency: currency, attributes: {} }
     }
+
+  },
+
+  Bounds: function(/*json*/ source, /*services*/ sc) { // read-only
+
+    var _this = this
+
+    source = source || {}
+    
+    this.sc = sc
+    this.source = source
+
+    this.dateFrom = source.date_from
+    this.dateTo = source.date_to
+    this.timeFrom = source.time_from
+    this.timeTo = source.time_to
+    this.open = source.open ? new sb.classes.Bound(source.open) : null
+    this.close = source.close ? new sb.classes.Bound(source.close) : null
+
+  },
+
+  Bound: function(/*json*/ source, /*services*/ sc) { // read-only
+
+    var _this = this
+
+    this.sc = sc
+    this.source = source
+
+    this.date = source.date
+    this.time = source.time
+    this.before = source.before
 
   }
 

@@ -9,7 +9,7 @@ app.service('sb_authInterceptor', function($q, $rootScope) {
 
 })
 
-app.service('sb_loginService', function($rootScope, $cookies, $http, state, sb_notifyService) {
+app.service('sb_loginService', function($rootScope, $cookies, $http, state, sb_notifyService, sb_apiClassWrap) {
   var service = this
 
   function notifyResponseError(/*obj*/ response) {
@@ -46,7 +46,8 @@ app.service('sb_loginService', function($rootScope, $cookies, $http, state, sb_n
     $http.get('/api/profiles/me')
       .then(
         function successCallback(response) {
-          state.userProfile = new sb.classes.User(response.data)
+          var user = response.data
+          state.userProfile = sb_apiClassWrap.wrap(user, 'user')
           sb.utils.assert(state.userProfile.id, 'Invalid user profile')
           $rootScope.$broadcast('api.user.ok')
           if (statusCallback) statusCallback('success')

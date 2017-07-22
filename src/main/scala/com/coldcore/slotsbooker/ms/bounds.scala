@@ -17,6 +17,11 @@ object BoundsUtil {
 
   case class Dates(dateFrom: Int, dateTo: Int, timeFrom: Int, timeTo: Int) // time w/o seconds
 
+  def offsetPoint(point: Calendar, bound: Bound, inclusive: Boolean = false): (Int,Int) = {
+    val t = ts.asString(point)
+    offset(t.take(8).toInt, t.slice(8, 12).toInt, bound, inclusive)
+  }
+
   def offset(date: Int, time: Int, bound: Bound, inclusive: Boolean = false): (Int,Int) = {
     val (days, mins) =
       if (bound.before.isEmpty) (0, 0)

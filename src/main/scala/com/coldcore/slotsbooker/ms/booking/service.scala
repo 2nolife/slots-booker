@@ -338,7 +338,7 @@ trait QuoteSlots {
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Quote(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),
-                 Some(quoteStatus('inactive)), Some(prices), deal = Some(false))
+                 Some(quoteStatus('inactive)), Some(prices), deal = Some(false), entry_updated = null)
       }
 
     if (eitherA.isRight) (SC_CREATED, Some(eitherA.right.get))
@@ -363,7 +363,8 @@ trait QuoteSlots {
       val selected = existing.get.prices.getOrElse(Nil).map(sp => SelectedPrice(sp.slot_id, sp.price_id))
       val (code, quote) = getQuote(selected, profileId)
       if (quote.isEmpty) (code, None)
-      else if (existing.get != quote.get.copy(quote_id = quoteId, status = existing.get.status)) (ApiCode(SC_CONFLICT, 'generated_quote_mismatch), None)
+      else if (existing.get != quote.get.copy(quote_id = quoteId, status = existing.get.status,
+                                              entry_updated = existing.get.entry_updated)) (ApiCode(SC_CONFLICT, 'generated_quote_mismatch), None)
       else (SC_OK, existing)
     }
   }
@@ -466,7 +467,7 @@ trait RefundSlots {
       } yield {
         val amount = if (prices.map(_.price_id).exists(None !=)) Some(prices.foldLeft(0)((a,b) => a+b.amount.getOrElse(0))) else None
         vo.Refund(null, slots.head.place_id, Some(profileId), amount, prices.headOption.flatMap(_.currency),
-                  Some(refundStatus('inactive)), Some(prices), Some(quotes))
+                  Some(refundStatus('inactive)), Some(prices), Some(quotes), entry_updated = null)
       }
 
     if (eitherA.isRight) (SC_CREATED, Some(eitherA.right.get))
@@ -494,7 +495,8 @@ trait RefundSlots {
       val slotIds = existing.get.prices.getOrElse(Nil).map(_.slot_id)
       val (code, refund) = getRefund(slotIds, profileId)
       if (refund.isEmpty) (code, None)
-      else if (existing.get != refund.get.copy(refund_id = refundId, status = existing.get.status)) (ApiCode(SC_CONFLICT, 'generated_refund_mismatch), None)
+      else if (existing.get != refund.get.copy(refund_id = refundId, status = existing.get.status,
+                                               entry_updated = existing.get.entry_updated)) (ApiCode(SC_CONFLICT, 'generated_refund_mismatch), None)
       else (SC_OK, existing)
     }
   }

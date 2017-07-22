@@ -90,6 +90,13 @@ trait OAuth2TokenValidator {
       authenticateTokenAsync(fakeTokenFn, makeProfileFn)
     }
 
+  /** Same as "authenticateToken" but can return "anonymous" profile is authentication fails. */
+  def authenticateTokenOrAnonymous: Directive1[ProfileRemote] =
+    extractRequestContext.flatMap { ctx ⇒
+      import ctx.executionContext
+      authenticateTokenAsync(fakeTokenFn, makeProfileFn, default = Some(anonymousProfileRemote))
+    }
+
   /** Validate if a token matches the shared system token without calling external micro services. */
   def authenticateSystemToken(systemToken: String): Directive1[ProfileRemote] =
     extractRequestContext.flatMap { ctx ⇒
@@ -127,6 +134,10 @@ trait OAuth2TokenValidator {
           reject(authRejectedReason)
       }
     }
+
+  /** Reject anonymous profiles. */
+  def authorized(profile: ProfileRemote): Directive0 =
+    if (profile.isAnonymous) reject(authRejectedReason) else pass
 
 }
 

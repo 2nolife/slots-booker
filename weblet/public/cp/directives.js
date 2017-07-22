@@ -21,7 +21,7 @@ app.directive('triggeredNavTabs', function() {
 
     template:
       '<ul class="nav nav-tabs {{class}}">' +
-      '  <li ng-class="{active: selectedIndex == $index}" ng-repeat="name in names" ng-show="name">' +
+      '  <li ng-class="{active: selectedIndex == $index}" ng-repeat="name in names" ng-show="nan(name)">' +
       '    <a href ng-click="select($index)">{{name}}</a>' +
       '  </li>' +
       '</ul>',
@@ -42,7 +42,10 @@ app.directive('triggeredNavTabs', function() {
           unwatch()
 
           scope.selectedIndex = -1
-          scope.names = newValue.split(',').map(function(v) { return $.trim(v) })
+          scope.names = newValue.split(',').map(function(v,n) {
+            v = $.trim(v)
+            return v ? v : n
+          })
 
           scope.select = function(/*num*/ index) {
             scope.selectedIndex = index
@@ -55,6 +58,10 @@ app.directive('triggeredNavTabs', function() {
       scope.$watch('resetTrigger', function(newValue, oldValue) {
         scope.select(-1)
       })
+
+      scope.nan = function(v) {
+        return isNaN(v)
+      }
     }
 
   }

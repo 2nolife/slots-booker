@@ -26,6 +26,12 @@ sb.utils = {
     return id
   },
 
+  removeKeys: function(/*obj*/ obj, /*[str]*/ keys) {
+    keys.forEach(function(key) {
+      delete obj[key]
+    })
+  },
+
   replaceInternals: function(/*obj*/ obj, /*obj*/ copyFrom) {
     Object.keys(obj).forEach(function(key) {
       delete obj[key]
@@ -71,6 +77,12 @@ sb.utils = {
     return day+'/'+month+'/'+year
   },
 
+  /** 20161230 -> 30 December 2016 */
+  formatDateFull: function(/*num|str*/ value) {
+    var str = ''+value
+    return str.substr(6, 2)+' '+sb.utils.monthAsWord(str)+' '+str.substr(0, 4)
+  },
+
   /** 1259 -> 12:59 */
   formatTime: function(/*num|str*/ value) {
     var str = ('0000'+value).slice(-4)
@@ -114,6 +126,13 @@ sb.utils = {
   /** 20170123 */
   todayDate: function() {
     return sb.utils.dateToStr(new Date())
+  },
+
+  /** 20170317,845 -> 201703170845 */
+  datetime: function(/*num|str*/ date, /*num|str*/ time) {
+    var sdate = ''+date,
+        stime = ('0000'+time).slice(-4)
+    return sdate+stime
   },
 
   /** 20170123,1 -> 20170124 */
@@ -214,20 +233,7 @@ sb.utils = {
   },
 
   apiCodeText: function(/*str*/ code) {
-    var s = 'No description'
-    switch (code) {
-      case 'ms-auth-1': s = 'Invalid username or password'; break;
-      case 'ms-auth-2': s = 'Token has expired'; break;
-
-      case 'ms-profiles-1': s = 'Action forbidden'; break;
-      case 'ms-profiles-2': s = 'Profile not found'; break;
-      case 'ms-profiles-3': s = 'Trying to update forbidden attributes'; break;
-      case 'ms-profiles-4': s = 'Trying to update forbidden fields'; break;
-      case 'ms-profiles-5': s = 'Username already exists'; break;
-      case 'ms-profiles-6': s = 'Email already exists'; break;
-      case 'ms-profiles-7': s = 'External service failed'; break;
-    }
-    return s
+    return sb.utils.text.apiCode[code] || 'No description'
   },
 
   apiCodeFromResponse: function(/*obj*/ response) {
@@ -275,6 +281,31 @@ sb.utils = {
       case 2: word = 'Exclusive'; break
     }
     return word
+  },
+
+  memberLevelAsWordSimple: function(/*num*/ value) {
+    return value == 0 ? 'Non-member' : value > 0 ? 'Member' : value
   }
 
+}
+
+sb.utils.text = {
+
+  apiCode: {
+    'ms-auth-1': 'Invalid username or password',
+    'ms-auth-2': 'Token has expired',
+
+    'ms-profiles-1': 'Action forbidden',
+    'ms-profiles-2': 'Profile not found',
+    'ms-profiles-3': 'Trying to update forbidden attributes',
+    'ms-profiles-4': 'Trying to update forbidden fields',
+    'ms-profiles-5': 'Username already exists',
+    'ms-profiles-6': 'Email already exists',
+    'ms-profiles-7': 'External service failed',
+
+    'ms-payments-1': 'Not enough credit',
+    'ms-payments-2': 'Invalid quote status',
+    'ms-payments-3': 'Invalid refund status', 
+    'ms-payments-4': 'Required field is missing: reason'
+  }
 }

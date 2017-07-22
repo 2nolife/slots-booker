@@ -24,7 +24,7 @@ object start extends StartSingle with Constants with CreateAuthActors with Creat
 
     val slotsActor = system.actorOf(SlotsActor.props(slotsDb, config.placesBaseUrl, config.systemToken, restClient, config.voAttributes).withRouter(FromConfig), name = MS)
 
-    new SlotsRestService(config.hostname, config.port, config.systemToken, config.getDeepFields, slotsActor, externalAuthActor(config, restClient))
+    new SlotsRestService(config.hostname, config.port, config.anonymousReads, config.systemToken, config.getDeepFields, slotsActor, externalAuthActor(config, restClient))
   }
 }
 

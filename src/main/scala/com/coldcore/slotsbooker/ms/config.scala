@@ -66,6 +66,8 @@ trait CommonSettings extends DefaultSettingsReader {
   def collectVoAttributes(names: String*): VoAttributes =
     names.map(name => name -> au.parse(readString(s"vo_attributes_$name"))).toMap
 
+  val anonymousReads: Boolean = readBoolean("anonymous_reads")
+
   val getDeepFields: Boolean = readBoolean("get_deep_fields")
 
   val sandboxMode: Boolean = readBoolean("sandbox_mode")

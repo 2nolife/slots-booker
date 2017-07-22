@@ -290,7 +290,7 @@ trait MongoCreate {
                       dateFrom: Int = 0, dateTo: Int = 0, timeFrom: Int = 0, timeTo: Int = 2400,
                       bookStatus: Int = 0,
                       bookedId: Option[String] = None,
-                      book_bounds: Option[slots.vo.Bounds] = None, cancel_bounds: Option[slots.vo.Bounds] = None): String = {
+                      bookBounds: Option[slots.vo.Bounds] = None, cancelBounds: Option[slots.vo.Bounds] = None): String = {
     val slot = MongoDBObject(
       "test" -> true,
       "place_id" -> placeId,
@@ -305,8 +305,8 @@ trait MongoCreate {
       .insert(slot)
 
     Map(
-      "book_bounds" -> book_bounds.map(asMongoObject),
-      "cancel_bounds" -> cancel_bounds.map(asMongoObject)
+      "book_bounds" -> bookBounds.map(asMongoObject),
+      "cancel_bounds" -> cancelBounds.map(asMongoObject)
     ).foreach { case (key, value) =>
       update(finderById(slot.idString), mongoSlots, key, value)
     }

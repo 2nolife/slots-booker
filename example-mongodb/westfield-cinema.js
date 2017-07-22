@@ -28,14 +28,6 @@ function setVars(/*obj*/ db, /*{}*/ profileIds, /*{}*/ placeIds) {
   console.log('Westfield Cinema module set up')
 }
 
-function finderById(/*str*/ id) {
-  return { _id: ObjectID.createFromHexString(id) }
-}
-
-function sortById() {
-  return [['_id', 'asc']]
-}
-
 var _hallNames = ['Hall A', 'Hall B', 'Hall C', 'Hall D'],
     _hallSeatIds = {}, // { 'Hall A': [list of IDs], 'Hall B': [list of IDs] }
     _seatTypes = {}, // { seatId: seatType, seatId: seatType , seatId: seatType }
