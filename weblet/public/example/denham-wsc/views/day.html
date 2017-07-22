@@ -1,0 +1,40 @@
+<div id="view-day">
+
+  <h4 class="alert alert-warning" ng-show="limitExceeded">
+    Booking limit exceeded...
+    <span>You have already made 2 bookings on this day which is your limit. Please call 01895 820007 to make additional bookings.</span>
+  </h4>
+
+  <div class="nav">
+    <p><span ng-show="userProfile">Choose your playing date and time...</span>&nbsp;</p>
+    <button class="btn" ng-click="changeDay(-1)"><i class="fa fa-play fa-flip-horizontal"></i> Previous</button>
+    <h1>{{printDate}}</h1>
+    <button class="btn" ng-click="changeDay(1)">Next <i class="fa fa-play"></i></button>
+    <a href class="calendar" ng-click="selectDateTrigger()"><i class="fa fa-calendar"></i></a>
+    <input class="calendar" type="text" ng-model="selectedDate" sb-datepicker />
+    <p><span ng-show="userProfile">You can book up to 14 days ahead</span>&nbsp;</p>
+  </div>
+
+  <div class="legend">
+    <p class="legend-available">Available</p>
+    <p class="legend-member">Member Booking</p>
+    <p class="legend-your">Your Booking</p>
+    <p class="legend-club">Club Booking</p>
+    <p class="legend-unavailable">Unavailable</p>
+  </div>
+
+  <div class="make" ng-show="userProfile">
+    <button class="btn" ng-class="{active: selectedSlotsCount}" ng-click="checkout()">Make Booking</button>
+    <button class="btn" ng-class="{active: selectedSlotsCount}" ng-click="unselectAllSlots()">Cancel Booking</button>
+  </div>
+
+  <p class="title">{{firstLake.name}}</p>
+  <div class="slots">
+    <p ng-repeat="slot in firstLake.slots" class="legend-{{slot.custom.legend}}" ng-class="{selected: slot.selected}" ng-click="toggleSelectSlot(slot)">
+      <span class="time">{{slot.timeFrom | sb_formatTime}}</span>
+      <span class="name">{{slot.custom.name}}</span>
+    </p>
+  </div>
+  <p class="title">Denham Lake</p>
+
+</div>

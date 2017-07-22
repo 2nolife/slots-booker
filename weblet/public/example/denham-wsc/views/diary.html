@@ -1,0 +1,26 @@
+<div id="view-diary">
+
+  <div class="diary">
+    <table>
+      <thead>
+      <tr>
+        <th colspan="4">Your Diary</th>
+      </tr>
+      </thead>
+      <tbody>
+
+      <tr ng-repeat="slot in season.bookedSlots">
+        <td class="c1">
+          <span class="day">{{slot.dateFrom | sb_weekdayAsWord}}</span>
+          <span class="datetime">{{slot.dateFrom | sb_formatDateFull}} at {{slot.timeFrom | sb_formatTime}}</span>
+        </td>
+        <td class="c2">{{season.firstLake.name}}</td>
+        <td class="c3"> </td>
+        <td class="c4"><a href="#/day/{{slot.dateFrom}}">View on Calendar</a></td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</div>

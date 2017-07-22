@@ -1,0 +1,37 @@
+<div id="view-checkout">
+
+  <h4 class="alert alert-warning" ng-show="status == 'progress'">Booking, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Booking complete</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Oops! {{statusText}}</h4>
+
+  <div class="info" ng-show="basket">
+    <p class="time">Booking for {{lake.name}} {{printDatetime}} </p>
+    <p class="name">Booking for {{user.fullName}}</p>
+    <p class="balance">Your current account balance is {{credit.currency | sb_currencySign}} {{credit.amount | sb_numberX100}}</p>
+
+    <div class="prices" ng-show="!status">
+      <div class="radio" ng-repeat="price in prices">
+        <label class="c2">
+          <input type="radio" name="lake_{{lake.id}}" ng-model="lake.selectedPrice" ng-value="price"/>
+          <span class="sign">{{price.currency | sb_currencySign}}</span>
+          <span class="amount">{{price.amount | sb_numberX100 }}</span>
+        </label>
+        <span class="c3">{{price.name}}</span>
+      </div>
+    </div>
+
+    <p class="total">The price is {{currency | sb_currencySign}} {{ lake.selectedPrice.amount * basket.slots.length | sb_numberX100 }}</p>
+  </div>
+
+  <div class="controls" ng-show="basket && !status">
+    <button class="btn" ng-click="completeBooking()">Complete Booking</button>
+    <button class="btn" ng-click="cancel()">Cancel</button>
+  </div>
+
+  <div class="empty" ng-show="!basket || status == 'failed' || status == 'success'">
+    <p ng-show="!basket">No slots selected or the page was refreshed.</p>
+    <p ng-show="status == 'failed'">Please try again with different day or time.</p>
+    <button class="btn" ng-click="backToDay()">Back to Calendar</button>
+  </div>
+
+</div>

@@ -1,0 +1,25 @@
+<div id="view-refund">
+
+  <h4 class="alert alert-warning" ng-show="status == 'count'">Calculating, please wait...</h4>
+  <h4 class="alert alert-warning" ng-show="status == 'progress'">Cancelling booking, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Booking cancelled</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Oops! {{statusText}}</h4>
+
+  <div class="info" ng-show="basket">
+    <p class="time">Cancel booking for {{lake.name}} {{printDatetime}} </p>
+    <p class="name">Cancelling for {{user.fullName}}</p>
+    <p class="total" ng-show="refund">The total refund is {{refund.currency | sb_currencySign}} {{ refund.amount | sb_numberX100 }}</p>
+  </div>
+
+  <div class="controls" ng-show="basket && !status">
+    <button class="btn" ng-click="completeRefund()">Cancel Booking</button>
+    <button class="btn" ng-click="cancel()">Keep Booking</button>
+  </div>
+
+  <div class="empty" ng-show="!basket || status == 'failed' || status == 'success'">
+    <p ng-show="!basket">No slots selected or the page was refreshed.</p>
+    <p ng-show="status == 'failed'">Please re-select slots and try again.</p>
+    <button class="btn" ng-click="backToDay()">Back to Calendar</button>
+  </div>
+
+</div>

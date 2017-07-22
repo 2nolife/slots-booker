@@ -1,0 +1,67 @@
+<div id="view-statements">
+
+  <div class="statements">
+    <table>
+      <thead>
+      <tr>
+        <th colspan="4">
+          <span>Account Statement</span>
+          <div class="btn-group">
+            <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">{{selectedMonth.month}} {{selectedMonth.year}} <i class="fa fa-caret-down"></i></button>
+            <ul class="dropdown-menu">
+              <li><a href ng-repeat="month in selectableMonths" ng-click="changeMonth(month)">{{month.month}} {{month.year}}</a></li>
+            </ul>
+          </div>
+        </th>
+      </tr>
+      <tr>
+        <th>Transaction Date</th>
+        <th>Amount</th>
+        <th>Transaction Type</th>
+        <th>Notes</th>
+      </tr>
+      </thead>
+      <tbody>
+
+      <tr ng-repeat="tx in season.transactionHistory">
+        <td class="c1">
+          {{tx.updated.date | sb_formatDate}} at {{tx.updated.time | sb_formatTime}}
+        </td>
+        <td class="c2 {{tx.type}}">
+          <span ng-show="tx.status != 3">{{tx.paid.currency | sb_currencySign}} {{tx.paid.amount | sb_numberX100}}</span>
+          <span ng-show="tx.status == 3">{{tx.paid.currency | sb_currencySign}} {{0 | sb_numberX100}}</span>
+        </td>
+        <td class="c3">
+          <span ng-show="tx.status == 1">{{tx.type}}</span>
+          <span ng-show="tx.status == 2">pending</span>
+          <span ng-show="tx.status == 3">expired</span>
+        </td>
+        <td class="c4">{{season.firstLake.name}} on {{tx.slot.dateFrom | sb_weekdayAsWord}} {{tx.slot.dateFrom | sb_formatDateFull}} at {{tx.slot.timeFrom | sb_formatTime}}</td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="top-up">
+    <h4>Your credit is {{credit.currency | sb_currencySign}} {{credit.amount | sb_numberX100}}</h4>
+    <h5 ng-show="selectedTopup.confirmed">Top up with {{selectedTopup.confirmed.currency | sb_currencySign}} {{selectedTopup.confirmed.amount | sb_numberX100}}</h5>
+    <div class="options" ng-show="!selectedTopup.confirmed">
+      <div class="radio" ng-repeat="option in topupOptions">
+        <label>
+          <input type="radio" name="topup_option" ng-model="selectedTopup.option" ng-value="option"/>
+          <span>{{option.currency | sb_currencySign}} {{option.amount | sb_numberX100}}</span>
+        </label>
+      </div>
+      <button class="btn btn-primary" ng-click="topupWithPaypal()">Top up with PayPal</button>
+    </div>
+    <div class="checkout" ng-show="status == 'ready'">
+      <div id="checkout-paypal-button"></div>
+    </div>
+  </div>
+
+  <h4 class="alert alert-warning" ng-show="status == 'loading'">Loading, please wait...</h4>
+  <h4 class="alert alert-success" ng-show="status == 'success'">Success, it may take a few minutes to complete.</h4>
+  <h4 class="alert alert-danger" ng-show="status == 'failed'">Oops, please try again later.</h4>
+
+</div>
