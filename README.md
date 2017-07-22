@@ -73,7 +73,6 @@ This code is open source software licensed under the [GNU Lesser General Public 
 * Deals and promotions on slots (get 3 for the price of 2)
 * Notifications in case if booked slots cancelled
 * Time periods for partial refunds with hierarchy across spaces and slots
-* Example applications to demo all the features
 * Audit logs
 * Means to integrate with external parties
 * Temporary reservations to complete later (plane seats reserved but not selected nor paid for)
