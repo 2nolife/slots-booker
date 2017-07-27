@@ -44,12 +44,12 @@ app.run(function($injector, $rootScope, $cookies, $interval, state, $location) {
   })
 
   $rootScope.$on('api.unauthorized', function() {
-    delete $rootScope.userLoggedIn
+    delete $rootScope.userSignedIn
     $location.path('/sign-in')
   })
 
   $rootScope.$on('api.user.ok', function() {
-    $rootScope.userLoggedIn = true
+    $rootScope.userSignedIn = true
   })
 
   state.accessToken = $cookies.get('token')

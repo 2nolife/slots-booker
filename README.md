@@ -5,6 +5,14 @@ parking lots, hotel rooms, sport classes, restaurant tables, airplane seats, cin
 
 Feedback email cftp@coldcore.com
 
+## Demo ##
+
+You can play with the application: https://sb.coldcore.com
+
+* Control Panel: sign in as "support" / "support"
+* Examples: sign in as "tester" / "tester"
+* Application resets every night and runs on a slow and unreliable server
+
 ## Technologies ##
 
 * Microservices oriented, stateless, REST, OAuth2
@@ -24,7 +32,7 @@ Feedback email cftp@coldcore.com
 * Install [Node](http://www.scala-sbt.org)
 * From the project's `weblet` directory do `npm install` and then `npm start`
 
-### Demo ###
+### Examples ###
 
 * From the project's `example-mongodb` directory do `npm install` and then `npm start` to generate sample data
 (this will erase the existing database data)
