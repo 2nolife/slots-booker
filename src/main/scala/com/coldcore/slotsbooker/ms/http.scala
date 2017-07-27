@@ -6,9 +6,10 @@ import org.apache.http.HttpStatus._
 import org.apache.http.client.HttpClient
 import org.apache.http.client.methods._
 import org.apache.http.entity.{ContentType, StringEntity}
-import org.apache.http.impl.client.HttpClientBuilder
+import org.apache.http.impl.client.{CloseableHttpClient, HttpClientBuilder, HttpClients}
 import spray.json._
 import RestClient._
+import org.apache.http.client.config.RequestConfig
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 
 import scala.io.Source
@@ -26,19 +27,29 @@ class RestClient(connPerRoute: Int = 5, connMaxTotal: Int = 20) {
   cm.setMaxTotal(connMaxTotal)
   cm.setDefaultMaxPerRoute(connPerRoute)
 
-  private val client = HttpClientBuilder.create.setConnectionManager(cm).build
+  private val rc = RequestConfig.custom()
+    .setConnectTimeout(5000)
+    .setConnectionRequestTimeout(5000)
+    .setSocketTimeout(5000)
+    .build
 
-  private def doHttpCall(url: String, client: HttpClient, method: HttpRequestBase): HttpCall = {
+  private val client = HttpClients.custom.setConnectionManager(cm).setDefaultRequestConfig(rc).build
+//  private val client = HttpClients.createDefault
+
+  private def doHttpCall(url: String, method: HttpRequestBase): HttpCall = {
     try {
       val response = client.execute(method)
-      val content = Source.fromInputStream(response.getEntity.getContent).mkString
-      val json =
-        try { content.parseJson } catch {
-          case _: Throwable => ms.vo.ContentEntity(content).toJson
-        }
+      try {
 
-      HttpCallSuccessful(url, response.getStatusLine.getStatusCode, json,
-        response.getAllHeaders.map(x => (x.getName, x.getValue)))
+        val content = Source.fromInputStream(response.getEntity.getContent).mkString
+        val json = try { content.parseJson } catch { case _: Throwable => ms.vo.ContentEntity(content).toJson }
+
+        HttpCallSuccessful(url, response.getStatusLine.getStatusCode, json,
+          response.getAllHeaders.map(x => (x.getName, x.getValue)))
+
+      } finally {
+        response.close()
+      }
     } catch {
       case e : Throwable => HttpCallFailed(url, e)
     } finally {
@@ -50,12 +61,12 @@ class RestClient(connPerRoute: Int = 5, connMaxTotal: Int = 20) {
   private def post_put_patch(method: HttpEntityEnclosingRequestBase, url: String, json: JsObject, rh: Seq[(String,String)]): HttpCall = {
     method.setEntity(new StringEntity(json.toString, ContentType.create("application/json", "UTF-8")))
     for ((name, value) <- rh) method.setHeader(name, value)
-    doHttpCall(url, client, method)
+    doHttpCall(url, method)
   }
 
   private def get_delete(method: HttpRequestBase, url: String, rh: Seq[(String,String)]): HttpCall = {
     for ((name, value) <- rh) method.setHeader(name, value)
-    doHttpCall(url, client, method)
+    doHttpCall(url, method)
   }
 
   def close() {
