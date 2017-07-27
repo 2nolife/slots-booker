@@ -167,16 +167,17 @@ trait HttpBindTo extends WhenTerminated {
 }
 
 class BaseRestService(val hostname: String, val port: Int,
-                      val externalAuthActor: ActorRef)(implicit system: ActorSystem)
+                      val externalAuthActor: ActorRef, name: String)(implicit system: ActorSystem)
   extends Logger with HttpBindTo with SprayJsonSupport with OAuth2TokenValidator with HeartbeatRoute with WhenTerminated with EnableCORSDirectives {
 
   initLoggingAdapter
 
-  implicit val executionContext = system.dispatcher
+//  implicit val dispatcher = system.dispatcher
+  implicit val dispatcher = system.dispatchers.lookup(s"rest-${name.toLowerCase}-dispatcher")
   implicit val materializer = ActorMaterializer()
   implicit val timeout = Timeout(5 seconds)
 
-  def bind(route: Route, name: String) {
+  def bind(route: Route) {
     httpBindTo { enableCORS { heartbeatRoute ~ route }}
     log.info(s"Bound $name REST service to $hostname:$port")
   }

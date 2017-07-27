@@ -10,9 +10,9 @@ import ms.members.vo
 class MembersRestService(hostname: String, port: Int,
                           val membersActor: ActorRef,
                           externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with MembersRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Members") with MembersRoute {
 
-  bind(membersRoute, name = "Members")
+  bind(membersRoute)
 }
 
 trait MembersRoute {

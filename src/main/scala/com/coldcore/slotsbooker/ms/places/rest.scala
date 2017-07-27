@@ -11,11 +11,11 @@ import ms.places.vo
 class PlacesRestService(hostname: String, port: Int, anonymousReads: Boolean, val getDeepFields: Boolean,
                         val placesActor: ActorRef,
                         externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with PlacesRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Places") with PlacesRoute {
 
   val authenticate = if (anonymousReads) authenticateTokenOrAnonymous else authenticateToken
 
-  bind(placesRoute, name = "Places")
+  bind(placesRoute)
 }
 
 trait PlacesRoute extends PlacesInnerSpacesRoute {

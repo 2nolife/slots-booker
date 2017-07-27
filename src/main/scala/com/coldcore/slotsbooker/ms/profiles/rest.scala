@@ -16,9 +16,9 @@ class ProfilesRestService(hostname: String, port: Int, val systemToken: String,
                           val profilesActor: ActorRef,
                           val profilesRegisterActor: ActorRef,
                           externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with ProfilesRoute with RegisterRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Profiles") with ProfilesRoute with RegisterRoute {
 
-  bind(registerRoute ~ profilesRoute, name = "Profiles")
+  bind(registerRoute ~ profilesRoute)
 
   def asProfileRemote(p: vo.Profile): ProfileRemote = {
     import p._

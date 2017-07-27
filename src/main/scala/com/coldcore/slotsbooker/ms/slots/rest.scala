@@ -12,11 +12,11 @@ import ms.slots.vo
 class SlotsRestService(hostname: String, port: Int, anonymousReads: Boolean, val systemToken: String, val getDeepFields: Boolean,
                        val slotsActor: ActorRef,
                        externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with SlotsRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Slots") with SlotsRoute {
 
   val authenticate = if (anonymousReads) authenticateTokenOrAnonymous else authenticateToken
 
-  bind(slotsRoute, name = "Slots")
+  bind(slotsRoute)
 }
 
 trait SlotsRoute extends SlotsInnerBookingsRoute with SlotsInnerPricesRoute with SlotsInnerHoldRoute with SlotsInnerBoundsRoute {

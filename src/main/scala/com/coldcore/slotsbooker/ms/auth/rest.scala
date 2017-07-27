@@ -13,9 +13,9 @@ class AuthRestService(hostname: String, port: Int, val systemToken: String,
                       val tokenActor: ActorRef,
                       val usersActor: ActorRef,
                       externalAuthActor: ActorRef = null)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with TokenRoute with UsersRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Auth") with TokenRoute with UsersRoute {
 
-  bind(tokenRoute ~ usersRoute, name = "Auth")
+  bind(tokenRoute ~ usersRoute)
 }
 
 trait TokenRoute {

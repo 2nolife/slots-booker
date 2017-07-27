@@ -11,9 +11,9 @@ import ms.payments.vo
 class PaymentsRestService(hostname: String, port: Int,
                           val paymentsActor: ActorRef,
                           externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with PaymentsRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Payments") with PaymentsRoute {
 
-  bind(paymentsRoute, name = "Payments")
+  bind(paymentsRoute)
 }
 
 trait PaymentsRoute {

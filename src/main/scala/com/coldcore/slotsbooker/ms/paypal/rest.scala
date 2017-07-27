@@ -10,9 +10,9 @@ import ms.vo.EmptyEntity
 class PaypalRestService(hostname: String, port: Int,
                         val eventsActor: ActorRef,
                         externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with PaypalRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Paypal") with PaypalRoute {
 
-  bind(paypalRoute, name = "Paypal")
+  bind(paypalRoute)
 }
 
 trait PaypalRoute {

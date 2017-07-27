@@ -11,9 +11,9 @@ import ms.booking.vo
 class BookingRestService(hostname: String, port: Int, val systemToken: String,
                          val bookingActor: ActorRef,
                          externalAuthActor: ActorRef)(implicit system: ActorSystem)
-  extends BaseRestService(hostname, port, externalAuthActor) with BookingRoute {
+  extends BaseRestService(hostname, port, externalAuthActor, "Booking") with BookingRoute {
 
-  bind(bookingRoute, name = "Booking")
+  bind(bookingRoute)
 }
 
 trait BookingRoute {
